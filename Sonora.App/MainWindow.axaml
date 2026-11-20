@@ -321,8 +321,9 @@
           <Border Classes="music-card" Padding="18">
             <StackPanel Spacing="10">
               <TextBlock Text="Google" FontSize="16" FontWeight="Bold"/>
-              <TextBlock Text="Используй Google для входа в свой аккаунт SONORA." FontSize="11" Foreground="#82829A" TextWrapping="Wrap"/>
-              <Button Classes="action" Content="Продолжить с Google" HorizontalAlignment="Left" Click="GoogleSignIn_Click"/>
+              <TextBlock Text="Подключи Google к текущему профилю или используй его для первого входа." FontSize="11" Foreground="#82829A" TextWrapping="Wrap"/>
+              <TextBlock Text="{Binding GoogleProviderStatusText}" FontSize="11" Foreground="#79B8FF"/>
+              <Button Classes="action" Content="{Binding GoogleButtonText}" IsEnabled="{Binding CanLinkGoogle}" HorizontalAlignment="Left" Click="GoogleSignIn_Click"/>
             </StackPanel>
           </Border>
           <Border Classes="music-card" Padding="18">
@@ -338,7 +339,7 @@
           </Border>
           <TextBlock Text="{Binding AuthMessage}" Foreground="#79B8FF" FontSize="11" TextWrapping="Wrap"/>
           <Button Classes="settings-row" Content="Выйти из аккаунта" Click="SignOut_Click"/>
-          <TextBlock Text="Привязка нескольких провайдеров к одной учётной записи ещё требует отдельной серверной логики; этот экран пока не объединяет разные аккаунты автоматически." Foreground="#82829A" FontSize="10" TextWrapping="Wrap"/>
+          <TextBlock Text="Если ты уже вошёл через почту, кнопка Google привяжет его к этой же учётной записи. Если ещё не вошёл — выполнит обычный вход через Google." Foreground="#82829A" FontSize="10" TextWrapping="Wrap"/>
         </StackPanel>
       </ScrollViewer>
 
