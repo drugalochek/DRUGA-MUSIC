@@ -101,7 +101,7 @@
       </Grid>
       <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" Margin="-4,0,-4,20">
        <ItemsControl x:Name="PlaylistCards">
-        <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsControl.ItemsPanel>
+        <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
         <ItemsControl.ItemTemplate><DataTemplate>
          <Border Width="184" Height="104" Margin="4,6,10,8" Padding="13" CornerRadius="3" BorderBrush="#263B59" BorderThickness="1">
           <Border.Background>
