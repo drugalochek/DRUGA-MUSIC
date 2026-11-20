@@ -121,6 +121,7 @@
       <TextBlock x:Name="NowPlayingTitle" Text="Ничего не воспроизводится" FontWeight="SemiBold" FontSize="12"/>
       <TextBlock x:Name="NowPlayingArtist" Text="Выбери трек из своей библиотеки" Foreground="{StaticResource MutedBrush}" FontSize="10" Margin="0,3,0,0"/>
      </StackPanel>
+     <Button Content="⤢" ToolTip="Открыть экран воспроизведения" Width="30" Height="30" Margin="8,0,0,0" VerticalAlignment="Center" Background="#172235" Click="OpenNowPlaying_Click"/>
     </StackPanel>
     <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center" Width="360">
      <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
