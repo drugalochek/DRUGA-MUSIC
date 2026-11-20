@@ -114,6 +114,7 @@ public partial class MainWindow : Window
  private void Repeat_Click(object sender,RoutedEventArgs e){repeat=(repeat+1)%3;RepeatButton.Content=repeat==0?"↻":repeat==1?"↻ Все":"↻ 1";}
  private void UpdateProgress()
  {
+  PlayPauseButton.Content=playback.IsPlaying?"Ⅱ":"▶";
   if(playback.Duration<=TimeSpan.Zero)return;CurrentTimeText.Text=playback.Position.ToString(@"m\:ss");
   if(!seeking){updatingSeek=true;SeekSlider.Maximum=Math.Max(1,playback.Duration.TotalSeconds);SeekSlider.Value=Math.Clamp(playback.Position.TotalSeconds,0,SeekSlider.Maximum);updatingSeek=false;}
  }
