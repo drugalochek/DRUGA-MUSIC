@@ -89,7 +89,7 @@ public partial class MainWindow : Window
         e.Handled = true;
     }
 
-    private void ClosePlayer_Click(object? sender, RoutedEventArgs e) => NowPlayingOverlay.IsVisible = false;
+    private void Seek_Released(object? sender, PointerReleasedEventArgs e) => viewModel.SeekToPercent(PlayerSeek.Value);\n\n    private void ClosePlayer_Click(object? sender, RoutedEventArgs e) => NowPlayingOverlay.IsVisible = false;
     private void CloseMini_Click(object? sender, RoutedEventArgs e) => viewModel.StopAndClearCurrentTrack();
 
     private async void SaveProfile_Click(object? sender, RoutedEventArgs e) =>
