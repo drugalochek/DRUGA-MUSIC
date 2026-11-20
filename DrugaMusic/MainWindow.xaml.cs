@@ -21,6 +21,7 @@ public partial class MainWindow : Window
  private readonly ObservableCollection<Playlist> playlists = new();
  private readonly ICollectionView tracksView;
  private readonly PlaybackService playback = new();
+ private readonly FirebaseAuthService accountAuth;
  private readonly DispatcherTimer timer;
  private readonly string dataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SONORA");
  private string LibraryFile => Path.Combine(dataDir,"library.json");
@@ -34,6 +35,8 @@ public partial class MainWindow : Window
  public MainWindow()
  {
   InitializeComponent();
+  accountAuth = new FirebaseAuthService(dataDir);
+  _ = accountAuth.RestoreSessionAsync();
   var legacyDir=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"DrugaMusic");
   if(!Directory.Exists(dataDir)&&Directory.Exists(legacyDir)) try{Directory.Move(legacyDir,dataDir);}catch{}
   tracksView=CollectionViewSource.GetDefaultView(tracks); TracksList.ItemsSource=tracksView;
@@ -254,6 +257,11 @@ public partial class MainWindow : Window
   else if(index<queueIndex)queueIndex--;
   return Current;
  }
- private void Services_Click(object sender,RoutedEventArgs e)=>MessageBox.Show("Интеграции будут подключаться через официальные API и разрешённые механизмы воспроизведения.","SONORA");
+ private async void Services_Click(object sender,RoutedEventArgs e)
+ {
+  await accountAuth.RestoreSessionAsync();
+  var window = new AccountWindow(accountAuth) { Owner = this };
+  window.ShowDialog();
+ }
  private void SetHeader(string title,string subtitle){GreetingText.Text=title;SubtitleText.Text=subtitle;}
 }
