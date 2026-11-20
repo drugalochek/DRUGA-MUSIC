@@ -8,7 +8,6 @@ using System.Windows.Threading;
 using DrugaMusic.Models;
 using DrugaMusic.Services;
 using Microsoft.Win32;
-using TagLib;
 
 namespace DrugaMusic;
 
