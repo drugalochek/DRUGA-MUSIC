@@ -167,27 +167,30 @@
             <TextBlock Text="100% для тебя" FontSize="19" FontWeight="Bold"/>
             <TextBlock Grid.Column="1" Text="На основе предпочтений" Foreground="#82829A" FontSize="11" VerticalAlignment="Center"/>
           </Grid>
-          <Border Width="200" HorizontalAlignment="Left" Classes="music-card" Padding="0" Margin="0,0,0,18">
+          <Border Width="260" HorizontalAlignment="Left" Classes="music-card" Padding="0" Margin="0,0,0,18">
             <StackPanel Spacing="0">
-              <Border Height="200" CornerRadius="14" ClipToBounds="True">
-                <Border.Background>
-                  <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                    <GradientStop Color="#2E64E7" Offset="0"/><GradientStop Color="#0DABC9" Offset="1"/>
-                  </LinearGradientBrush>
-                </Border.Background>
+              <Border Height="205" CornerRadius="14" ClipToBounds="True">
                 <Grid>
-                  <TextBlock Text="100%" FontSize="29" FontWeight="Bold" Margin="12" VerticalAlignment="Top"/>
-                  <TextBlock Text="♫" FontSize="62" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                  <Border Height="28" Background="#1E67D8" VerticalAlignment="Bottom">
-                    <TextBlock Text="ТВОЙ АРТИСТ" FontSize="11" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                  <controls:TrackArtwork ArtworkPath="{Binding ForYouArtworkPath}"/>
+                  <Border>
+                    <Border.Background>
+                      <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                        <GradientStop Color="#161D2C22" Offset="0"/>
+                        <GradientStop Color="#E508101D" Offset="1"/>
+                      </LinearGradientBrush>
+                    </Border.Background>
                   </Border>
+                  <StackPanel Margin="15" VerticalAlignment="Bottom" Spacing="4">
+                    <TextBlock Text="100% FOR YOU" FontSize="9" FontWeight="Bold" Foreground="#A9D3FF" LetterSpacing="2"/>
+                    <TextBlock Text="{Binding ForYouArtistName}" FontSize="20" FontWeight="Bold" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Text="{Binding ForYouTrackCountText}" FontSize="10" Foreground="#C2D0E2"/>
+                  </StackPanel>
+                  <Button Classes="mix-play-button" Content="▶" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,13,14" IsEnabled="{Binding HasForYouArtist}" Click="ForYou_Click"/>
                 </Grid>
               </Border>
-              <TextBlock Text="Твой любимый исполнитель" FontSize="12" Margin="10,8,10,3"/>
-              <TextBlock Text="Все треки одного артиста" FontSize="10" Foreground="#82829A" Margin="10,0,10,10"/>
+              <TextBlock Text="Треки исполнителя, который чаще всего встречается в твоей библиотеке" FontSize="10" Foreground="#8190A5" TextWrapping="Wrap" Margin="12,10,12,12"/>
             </StackPanel>
           </Border>
-
           <Grid ColumnDefinitions="*,Auto" Margin="0,3,0,8">
             <TextBlock Text="Недавно добавленные" FontSize="19" FontWeight="Bold"/>
             <TextBlock Grid.Column="1" Text="{Binding TrackCountText}" Foreground="#82829A" FontSize="11" VerticalAlignment="Center"/>
