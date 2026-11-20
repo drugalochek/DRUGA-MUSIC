@@ -22,6 +22,7 @@ public partial class MainWindow : Window
  private readonly ICollectionView tracksView;
  private readonly PlaybackService playback = new();
  private readonly FirebaseAuthService accountAuth;
+ private readonly Task accountSessionRestore;
  private readonly FirebaseDatabaseService cloudDatabase = new();
  private readonly DispatcherTimer timer;
  private readonly string dataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SONORA");
@@ -37,7 +38,7 @@ public partial class MainWindow : Window
  {
   InitializeComponent();
   accountAuth = new FirebaseAuthService(dataDir);
-  _ = accountAuth.RestoreSessionAsync();
+  accountSessionRestore = accountAuth.RestoreSessionAsync();
   var legacyDir=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"DrugaMusic");
   if(!Directory.Exists(dataDir)&&Directory.Exists(legacyDir)) try{Directory.Move(legacyDir,dataDir);}catch{}
   tracksView=CollectionViewSource.GetDefaultView(tracks); TracksList.ItemsSource=tracksView;
@@ -320,7 +321,7 @@ public partial class MainWindow : Window
  }
  private async void Services_Click(object sender,RoutedEventArgs e)
  {
-  await accountAuth.RestoreSessionAsync();
+  await accountSessionRestore;
   var window = new AccountWindow(accountAuth,SyncAccountDataAsync) { Owner = this };
   window.ShowDialog();
  }
