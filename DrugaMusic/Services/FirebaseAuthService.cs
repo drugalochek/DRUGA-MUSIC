@@ -85,7 +85,9 @@ public sealed class FirebaseAuthService
         await SaveSessionAsync();
     }
 
-    public async Task SignInWithGoogleAsync()
+    private string? _lastGoogleRedirectUri;
+
+    public async Task<string> AcquireGoogleAccessTokenAsync()
     {
         var (code, redirectUri) = await GetGoogleAuthorizationCodeAsync();
         using var tokenResponse = await Http.PostAsync(
@@ -103,12 +105,22 @@ public sealed class FirebaseAuthService
             throw new InvalidOperationException("Google не выдал токен: " + ReadGoogleError(tokenBody));
 
         using var googleJson = JsonDocument.Parse(tokenBody);
-        if (!googleJson.RootElement.TryGetProperty("access_token", out var googleAccessTokenElement))
+        if (!googleJson.RootElement.TryGetProperty("access_token", out var accessTokenElement))
             throw new InvalidOperationException("Google не вернул токен доступа. Попробуй войти ещё раз.");
-        var googleAccessToken = googleAccessTokenElement.GetString();
-        if (string.IsNullOrWhiteSpace(googleAccessToken))
+
+        var accessToken = accessTokenElement.GetString();
+        if (string.IsNullOrWhiteSpace(accessToken))
             throw new InvalidOperationException("Google вернул пустой токен доступа.");
-        GoogleAccessToken = googleAccessToken;
+
+        GoogleAccessToken = accessToken;
+        _lastGoogleRedirectUri = redirectUri;
+        return accessToken;
+    }
+
+    public async Task SignInWithGoogleAsync()
+    {
+        var googleAccessToken = await AcquireGoogleAccessTokenAsync();
+        var redirectUri = _lastGoogleRedirectUri!;
 
         var postBody = $"access_token={Uri.EscapeDataString(googleAccessToken)}&providerId=google.com";
         using var firebaseResponse = await Http.PostAsJsonAsync(
