@@ -358,7 +358,7 @@
         <Grid RowDefinitions="Auto,*,Auto" Margin="24">
           <Button Classes="icon-button" Content="⌄" HorizontalAlignment="Left" Click="ClosePlayer_Click"/>
           <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="16" MaxWidth="420">
-            <Border Width="min(48vw,360px)" Height="min(48vw,360px)" CornerRadius="18" Background="#1B3766" ClipToBounds="True">
+            <Border Width="360" Height="360" CornerRadius="18" Background="#1B3766" ClipToBounds="True">
               <Image Source="{Binding CurrentArtwork}" Stretch="UniformToFill"/>
             </Border>
             <TextBlock Text="{Binding CurrentTrackTitle}" FontSize="22" FontWeight="Bold" TextAlignment="Center"/>
