@@ -44,9 +44,41 @@
       <ScrollViewer x:Name="HomePage" IsVisible="True" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <StackPanel Margin="34,30,42,42" Spacing="0">
           <TextBlock Text="{Binding GreetingText}" Foreground="#8190A5" FontSize="12" Margin="0,0,0,3"/>
-          <TextBlock Text="Главная" FontSize="27" FontWeight="Bold" Margin="0,0,0,14"/>
+          <TextBlock Text="Главная" FontSize="30" FontWeight="Bold" Margin="0,0,0,18"/>
+          <Border CornerRadius="18" BorderBrush="#2B5D9C" BorderThickness="1" Padding="26" Margin="0,0,0,27">
+            <Border.Background>
+              <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                <GradientStop Color="#142C4D" Offset="0"/>
+                <GradientStop Color="#101E34" Offset="0.58"/>
+                <GradientStop Color="#102A3C" Offset="1"/>
+              </LinearGradientBrush>
+            </Border.Background>
+            <Grid ColumnDefinitions="*,Auto">
+              <StackPanel VerticalAlignment="Center" Spacing="9">
+                <Border Background="#1D4778" CornerRadius="5" Padding="8,4" HorizontalAlignment="Left">
+                  <TextBlock Text="ТВОЯ МУЗЫКА — ТВОИ ПРАВИЛА" FontSize="8" FontWeight="Bold" Foreground="#9CCBFF" LetterSpacing="1.3"/>
+                </Border>
+                <TextBlock Text="Слушай своё." FontSize="30" FontWeight="Bold"/>
+                <TextBlock Text="Вся твоя музыка. В одном пространстве." FontSize="13" Foreground="#A7B9D0"/>
+                <Button Classes="action" Content="＋  Добавить музыку" HorizontalAlignment="Left" Margin="0,8,0,0" Click="Import_Click"/>
+              </StackPanel>
+              <Grid Grid.Column="1" Width="230" Height="150" VerticalAlignment="Center">
+                <Border Width="142" Height="142" CornerRadius="71" BorderBrush="#427FC0" BorderThickness="1" Opacity="0.65" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                <Border Width="106" Height="106" CornerRadius="53" BorderBrush="#438BDA" BorderThickness="1" Opacity="0.55" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                <Border Width="68" Height="68" CornerRadius="34" Background="#2268B5" Opacity="0.65" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="5">
+                  <Border Width="4" Height="22" CornerRadius="2" Background="#A8D7FF"/>
+                  <Border Width="4" Height="42" CornerRadius="2" Background="#72B9FF"/>
+                  <Border Width="4" Height="58" CornerRadius="2" Background="#D2ECFF"/>
+                  <Border Width="4" Height="34" CornerRadius="2" Background="#7CC8F3"/>
+                  <Border Width="4" Height="48" CornerRadius="2" Background="#A8D7FF"/>
+                  <Border Width="4" Height="19" CornerRadius="2" Background="#72B9FF"/>
+                </StackPanel>
+              </Grid>
+            </Grid>
+          </Border>
           <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,8">
-            <TextBlock Text="Любимые исполнители" FontSize="17" FontWeight="Bold"/>
+            <TextBlock Text="Любимые исполнители" FontSize="19" FontWeight="Bold"/>
             <TextBlock Grid.Column="1" Text="{Binding ArtistCountText}" Foreground="#82829A" FontSize="11" VerticalAlignment="Center"/>
           </Grid>
           <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" Margin="-6,0,-6,13">
@@ -72,7 +104,7 @@
           </ScrollViewer>
 
           <Grid ColumnDefinitions="*,Auto" Margin="0,7,0,8">
-            <TextBlock Text="Жанр часа" FontSize="17" FontWeight="Bold"/>
+            <TextBlock Text="Жанр часа" FontSize="19" FontWeight="Bold"/>
             <TextBlock Grid.Column="1" Text="Обновляется автоматически" Foreground="#82829A" FontSize="10" VerticalAlignment="Center"/>
           </Grid>
           <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" Margin="-6,0,-6,12">
@@ -90,7 +122,7 @@
           </ScrollViewer>
 
           <Grid ColumnDefinitions="*,Auto" Margin="0,7,0,8">
-            <TextBlock Text="Миксы для тебя" FontSize="17" FontWeight="Bold"/>
+            <TextBlock Text="Миксы для тебя" FontSize="19" FontWeight="Bold"/>
             <TextBlock Grid.Column="1" Text="3 подборки" Foreground="#82829A" FontSize="11" VerticalAlignment="Center"/>
           </Grid>
           <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" Margin="-6,0,-6,14">
@@ -140,7 +172,7 @@
           </ScrollViewer>
 
           <Grid ColumnDefinitions="*,Auto" Margin="0,7,0,8">
-            <TextBlock Text="100% для тебя" FontSize="17" FontWeight="Bold"/>
+            <TextBlock Text="100% для тебя" FontSize="19" FontWeight="Bold"/>
             <TextBlock Grid.Column="1" Text="На основе предпочтений" Foreground="#82829A" FontSize="11" VerticalAlignment="Center"/>
           </Grid>
           <Border Width="200" HorizontalAlignment="Left" Classes="music-card" Padding="0" Margin="0,0,0,18">
@@ -165,7 +197,7 @@
           </Border>
 
           <Grid ColumnDefinitions="*,Auto" Margin="0,3,0,8">
-            <TextBlock Text="Новое в твоей библиотеке" FontSize="17" FontWeight="Bold"/>
+            <TextBlock Text="Недавно добавленные" FontSize="19" FontWeight="Bold"/>
             <TextBlock Grid.Column="1" Text="{Binding TrackCountText}" Foreground="#82829A" FontSize="11" VerticalAlignment="Center"/>
           </Grid>
           <Border Classes="music-card" Padding="7">
@@ -197,7 +229,7 @@
 
       <ScrollViewer x:Name="ExplorePage" IsVisible="False" VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="22,20,22,30" Spacing="10">
-          <TextBlock Text="Обзор" FontSize="27" FontWeight="Bold"/>
+          <TextBlock Text="Обзор" FontSize="30" FontWeight="Bold"/>
           <TextBlock Text="Исполнители" FontSize="17" FontWeight="Bold"/>
           <ItemsControl ItemsSource="{Binding Artists}">
             <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
@@ -238,7 +270,7 @@
 
       <ScrollViewer x:Name="FavoritesPage" IsVisible="False" VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="22,20,22,30" Spacing="12">
-          <TextBlock Text="Избранное" FontSize="27" FontWeight="Bold"/>
+          <TextBlock Text="Избранное" FontSize="30" FontWeight="Bold"/>
           <Border CornerRadius="15" Padding="18" Background="#1B2450">
             <StackPanel Orientation="Horizontal" Spacing="14">
               <Border Width="66" Height="66" CornerRadius="12" Background="#317CEB">
@@ -272,7 +304,7 @@
 
       <ScrollViewer x:Name="SearchPage" IsVisible="False" VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="22,20,22,30" Spacing="12">
-          <TextBlock Text="Поиск" FontSize="27" FontWeight="Bold"/>
+          <TextBlock Text="Поиск" FontSize="30" FontWeight="Bold"/>
           <TextBox x:Name="SearchBox" Classes="search-box" PlaceholderText="Трек, исполнитель или альбом" TextChanged="SearchBox_TextChanged"/>
           <TextBlock Text="Результаты" FontSize="17" FontWeight="Bold"/>
           <ItemsControl ItemsSource="{Binding VisibleTracks}">
@@ -298,7 +330,7 @@
 
       <ScrollViewer x:Name="ProfilePage" IsVisible="False" VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="22,20,22,30" Spacing="14">
-          <TextBlock Text="Профиль" FontSize="27" FontWeight="Bold"/>
+          <TextBlock Text="Профиль" FontSize="30" FontWeight="Bold"/>
           <Border Classes="music-card" Padding="20">
             <StackPanel Orientation="Horizontal" Spacing="15">
               <Border Width="74" Height="74" CornerRadius="37" Background="#2868D8" ClipToBounds="True">
@@ -329,7 +361,7 @@
       <ScrollViewer x:Name="AccountsPage" IsVisible="False" VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="22,20,22,30" Spacing="13" MaxWidth="620" HorizontalAlignment="Left">
           <Button Classes="nav-item" Content="‹  Назад в профиль" HorizontalAlignment="Left" Click="Profile_Click"/>
-          <TextBlock Text="Аккаунты" FontSize="27" FontWeight="Bold"/>
+          <TextBlock Text="Аккаунты" FontSize="30" FontWeight="Bold"/>
           <TextBlock Text="Вход в SONORA и подключённые способы авторизации" FontSize="12" Foreground="#82829A"/>
           <Border Classes="music-card" Padding="18">
             <StackPanel Spacing="10">
@@ -367,7 +399,7 @@
       <ScrollViewer x:Name="SettingsPage" IsVisible="False" VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="22,20,22,30" Spacing="12">
           <Button Classes="nav-item" Content="‹  Назад в профиль" HorizontalAlignment="Left" Click="Profile_Click"/>
-          <TextBlock Text="Настройки" FontSize="27" FontWeight="Bold"/>
+          <TextBlock Text="Настройки" FontSize="30" FontWeight="Bold"/>
           <TextBlock Text="Параметры приложения SONORA" Foreground="#82829A" FontSize="12"/>
           <Border Classes="music-card" Padding="16">
             <StackPanel Spacing="6">
@@ -433,7 +465,7 @@
             <Image Source="avares://SONORA/Assets/sonora.png" Stretch="Uniform" Margin="4"/>
           </Border>
           <StackPanel VerticalAlignment="Center" Spacing="0">
-            <TextBlock Text="SONORA" FontSize="17" FontWeight="Bold" LetterSpacing="1.4"/>
+            <TextBlock Text="SONORA" FontSize="17" FontWeight="Bold" LetterSpacing="1.4" FontFamily="avares://SONORA/Assets/WidockTrialBold.otf#Widock"/>
             <TextBlock Text="MUSIC PLAYER" FontSize="8" Foreground="#64758D" LetterSpacing="2"/>
           </StackPanel>
         </StackPanel>
