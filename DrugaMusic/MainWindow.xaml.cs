@@ -193,7 +193,7 @@ public partial class MainWindow : Window
   var playlistTracks=new ListBox{Background=new SolidColorBrush(Color.FromRgb(17,24,39)),Foreground=Brushes.White,BorderThickness=new Thickness(0),DisplayMemberPath="Title"};
   var trackActions=new StackPanel{Orientation=Orientation.Horizontal,HorizontalAlignment=HorizontalAlignment.Right,Margin=new Thickness(0,10,0,0)};
   var removeTrack=new Button{Content="Убрать трек",Padding=new Thickness(12,7,12,7)};
-  var play=new Button{Content="▶ Играть плейлист",Padding=new Thickness(12,7),Margin=new Thickness(8,0,0,0)};
+  var play=new Button{Content="▶ Играть плейлист",Padding=new Thickness(12,7,12,7),Margin=new Thickness(8,0,0,0)};
   trackActions.Children.Add(removeTrack);trackActions.Children.Add(play);
   DockPanel.SetDock(trackActions,Dock.Bottom);right.Children.Add(trackActions);right.Children.Add(playlistTracks);
   playlistList.SelectionChanged+=(_,_)=>{
