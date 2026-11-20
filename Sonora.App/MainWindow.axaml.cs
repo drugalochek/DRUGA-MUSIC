@@ -101,6 +101,32 @@ public partial class MainWindow : Window
     private void ClosePlayer_Click(object? sender, RoutedEventArgs e) => NowPlayingOverlay.IsVisible = false;
     private void CloseMini_Click(object? sender, RoutedEventArgs e) => viewModel.StopAndClearCurrentTrack();
 
+    private async void Avatar_Click(object? sender, RoutedEventArgs e)
+    {
+        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Выбрать аватар",
+            AllowMultiple = false,
+            FileTypeFilter =
+            [
+                new FilePickerFileType("Изображения")
+                {
+                    Patterns = ["*.png", "*.jpg", "*.jpeg", "*.webp"]
+                }
+            ]
+        });
+
+        if (files.Count == 0) return;
+        try
+        {
+            await viewModel.SetAvatarAsync(files[0].Path.LocalPath);
+        }
+        catch (Exception ex)
+        {
+            viewModel.AuthMessage = "Не удалось установить аватар: " + ex.Message;
+        }
+    }
+
     private async void SaveProfile_Click(object? sender, RoutedEventArgs e) =>
         await viewModel.SaveProfileAsync();
 
