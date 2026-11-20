@@ -354,7 +354,7 @@
       </ScrollViewer>
 
       <!-- Full player overlay, still inside the same window -->
-      <Border x:Name="NowPlayingOverlay" IsVisible="False" Background="#080B14" Panel.ZIndex="20">
+      <Border x:Name="NowPlayingOverlay" IsVisible="False" Background="#080B14">
         <Grid RowDefinitions="Auto,*,Auto" Margin="24">
           <Button Classes="icon-button" Content="⌄" HorizontalAlignment="Left" Click="ClosePlayer_Click"/>
           <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="16" MaxWidth="420">
