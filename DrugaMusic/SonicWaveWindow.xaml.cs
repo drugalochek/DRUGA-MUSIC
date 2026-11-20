@@ -62,10 +62,16 @@ public partial class SonicWaveWindow : Window
                     }
                     if (type != "google-sign-in") return;
 
-                    await accountAuth.SignInWithGoogleAsync();
+                    var link = message.RootElement.TryGetProperty("link", out var linkValue) &&
+                        linkValue.ValueKind == JsonValueKind.True;
+                    if (link)
+                        await accountAuth.AcquireGoogleAccessTokenAsync();
+                    else
+                        await accountAuth.SignInWithGoogleAsync();
+
                     Browser.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(new
                     {
-                        type = "google-sign-in-result",
+                        type = link ? "google-link-result" : "google-sign-in-result",
                         accessToken = accountAuth.GoogleAccessToken
                     }));
                 }
