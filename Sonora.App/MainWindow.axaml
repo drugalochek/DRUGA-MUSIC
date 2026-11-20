@@ -339,20 +339,32 @@
       <ScrollViewer x:Name="ProfilePage" IsVisible="False" VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="22,20,22,30" Spacing="14">
           <TextBlock Text="Профиль" FontSize="30" FontWeight="Bold"/>
-          <Border Classes="music-card" Padding="20">
-            <StackPanel Orientation="Horizontal" Spacing="15">
-              <Border Width="74" Height="74" CornerRadius="37" Background="#2868D8" ClipToBounds="True">
+          <Border CornerRadius="18" BorderBrush="#294B72" BorderThickness="1" Padding="22">
+            <Border.Background>
+              <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                <GradientStop Color="#142943" Offset="0"/>
+                <GradientStop Color="#101B2B" Offset="1"/>
+              </LinearGradientBrush>
+            </Border.Background>
+            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="18">
+              <Border Width="82" Height="82" CornerRadius="41" Background="#1C385B" BorderBrush="#4D8ACB" BorderThickness="2" ClipToBounds="True">
                 <Grid>
-                  <TextBlock Text="♙" FontSize="32" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding ShowProfileAvatarPlaceholder}"/>
+                  <TextBlock Text="◎" FontSize="31" Foreground="#9DCBFF" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding ShowProfileAvatarPlaceholder}"/>
                   <Image Source="{Binding ProfileAvatar}" Stretch="UniformToFill" IsVisible="{Binding HasProfileAvatar}"/>
                 </Grid>
               </Border>
-              <StackPanel VerticalAlignment="Center" Spacing="5">
-                <TextBlock Text="{Binding ProfileName}" FontSize="17" FontWeight="Bold"/>
-                <TextBlock Text="{Binding AccountStatusText}" FontSize="11" Foreground="#82829A"/>
-                <TextBlock Text="{Binding Email}" FontSize="11" Foreground="#82829A"/>
+              <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="5">
+                <TextBlock Text="SONORA LISTENER" FontSize="9" FontWeight="Bold" Foreground="#8DB8E8" LetterSpacing="1.7"/>
+                <TextBlock Text="{Binding ProfileName}" FontSize="22" FontWeight="Bold"/>
+                <TextBlock Text="{Binding AccountStatusText}" FontSize="11" Foreground="#A2B4C9"/>
+                <TextBlock Text="{Binding Email}" FontSize="11" Foreground="#7D91AA"/>
               </StackPanel>
-            </StackPanel>
+              <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" Spacing="4">
+                <TextBlock Text="{Binding TrackCountText}" FontSize="17" FontWeight="Bold" HorizontalAlignment="Right"/>
+                <TextBlock Text="В БИБЛИОТЕКЕ" FontSize="8" Foreground="#7D91AA" LetterSpacing="1.2"/>
+                <TextBlock Text="{Binding FavoriteCountText}" FontSize="11" Foreground="#9CB6D3" HorizontalAlignment="Right" Margin="0,7,0,0"/>
+              </StackPanel>
+            </Grid>
           </Border>
           <TextBlock Text="Настройки профиля" FontSize="16" FontWeight="Bold"/>
           <TextBox Classes="search-box" PlaceholderText="Твой никнейм" Text="{Binding Nickname, Mode=TwoWay}"/>
