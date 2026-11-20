@@ -20,6 +20,7 @@ public partial class NowPlayingWindow : Window
  private readonly Func<Track?> currentTrackProvider;
  private string? shownTrackId;
  private readonly Func<int,Track?> playQueueIndex;
+ private readonly Action<float> volumeChanged;
  private readonly Func<int,int,Track?> moveQueueItem;
  private readonly Func<int,Track?> removeQueueItem;
  private readonly ObservableCollection<Track> queueItems;
@@ -29,7 +30,7 @@ public partial class NowPlayingWindow : Window
  private bool changingQueue;
 
  public NowPlayingWindow(Track? current, PlaybackService playback, IReadOnlyList<Track> queue,
-  int currentIndex, float initialVolume, Func<Track?> previous, Func<Track?> next, Func<Track?> currentTrackProvider, Func<int,Track?> playQueueIndex, Func<int,int,Track?> moveQueueItem, Func<int,Track?> removeQueueItem)
+  int currentIndex, float initialVolume, Func<Track?> previous, Func<Track?> next, Func<Track?> currentTrackProvider, Func<int,Track?> playQueueIndex, Action<float> volumeChanged, Func<int,int,Track?> moveQueueItem, Func<int,Track?> removeQueueItem)
  {
   InitializeComponent();
   this.playback=playback;
@@ -37,6 +38,7 @@ public partial class NowPlayingWindow : Window
   this.next=next;
   this.currentTrackProvider=currentTrackProvider;
   this.playQueueIndex=playQueueIndex;
+  this.volumeChanged=volumeChanged;
   this.moveQueueItem=moveQueueItem;
   this.removeQueueItem=removeQueueItem;
   queueItems=new ObservableCollection<Track>(queue);
@@ -78,7 +80,7 @@ public partial class NowPlayingWindow : Window
  private void Seek_ValueChanged(object sender,RoutedPropertyChangedEventArgs<double> e){if(playback is not null&&!updating&&!seeking&&playback.Duration>TimeSpan.Zero)playback.Seek(TimeSpan.FromSeconds(e.NewValue));}
  private void Seek_MouseDown(object sender,MouseButtonEventArgs e)=>seeking=true;
  private void Seek_MouseUp(object sender,MouseButtonEventArgs e){seeking=false;if(playback.Duration>TimeSpan.Zero)playback.Seek(TimeSpan.FromSeconds(Seek.Value));}
- private void Volume_ValueChanged(object sender,RoutedPropertyChangedEventArgs<double> e){if(playback is not null)playback.SetVolume((float)e.NewValue);}
+ private void Volume_ValueChanged(object sender,RoutedPropertyChangedEventArgs<double> e){if(playback is not null)volumeChanged((float)e.NewValue);}
  private void Play_Click(object sender,RoutedEventArgs e){playback.Pause();PlayButton.Content=playback.IsPlaying?"Ⅱ":"▶";}
  private void Previous_Click(object sender,RoutedEventArgs e)=>ShowTrack(previous());
  private void Next_Click(object sender,RoutedEventArgs e)=>ShowTrack(next());
