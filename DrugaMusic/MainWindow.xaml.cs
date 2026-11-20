@@ -19,6 +19,7 @@ public partial class MainWindow : Window
 {
  private readonly ObservableCollection<Track> tracks = new();
  private readonly ObservableCollection<Playlist> playlists = new();
+ private readonly ObservableCollection<ArtistTile> artistTiles = new();
  private readonly ICollectionView tracksView;
  private readonly PlaybackService playback = new();
  private readonly FirebaseAuthService accountAuth;
@@ -37,6 +38,8 @@ public partial class MainWindow : Window
  public MainWindow()
  {
   InitializeComponent();
+  ArtistsList.ItemsSource=artistTiles;
+  PlaylistCards.ItemsSource=playlists;
   accountAuth = new FirebaseAuthService(dataDir);
   accountSessionRestore = accountAuth.RestoreSessionAsync();
   var legacyDir=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"DrugaMusic");
@@ -85,7 +88,24 @@ public partial class MainWindow : Window
   }
   SaveLibrary();RefreshLibrary();if(added==0)MessageBox.Show("Новых поддерживаемых аудиофайлов не найдено.","SONORA");
  }
- private void RefreshLibrary(){TrackCountText.Text=$"{tracks.Count} треков";EmptyStateText.Visibility=tracks.Count==0?Visibility.Visible:Visibility.Collapsed;FavoriteCountText.Text=$"{tracks.Count(t=>t.IsFavorite)} избранных";}
+ private void RefreshLibrary()
+ {
+  TrackCountText.Text=$"{tracks.Count} треков";
+  EmptyStateText.Visibility=tracks.Count==0?Visibility.Visible:Visibility.Collapsed;
+  FavoriteCountText.Text=$"{tracks.Count(t=>t.IsFavorite)} избранных";
+  artistTiles.Clear();
+  foreach(var group in tracks.Where(t=>!string.IsNullOrWhiteSpace(t.Artist))
+   .GroupBy(t=>t.Artist.Trim(),StringComparer.OrdinalIgnoreCase)
+   .OrderBy(g=>g.Key,StringComparer.CurrentCultureIgnoreCase).Take(24))
+  {
+   artistTiles.Add(new ArtistTile
+   {
+    Name=group.Key,
+    ArtworkPath=group.Select(t=>t.ArtworkPath).FirstOrDefault(p=>!string.IsNullOrWhiteSpace(p)&&File.Exists(p))??"",
+    TrackCountText=$"{group.Count()} треков"
+   });
+  }
+ }
  private void TracksList_DoubleClick(object sender,MouseButtonEventArgs e){if(TracksList.SelectedItem is Track t)StartQueue(t);}
  private void StartQueue(Track track)
  {
@@ -326,4 +346,10 @@ public partial class MainWindow : Window
   window.ShowDialog();
  }
  private void SetHeader(string title,string subtitle){GreetingText.Text=title;SubtitleText.Text=subtitle;}
+ private sealed class ArtistTile
+ {
+  public string Name { get; set; } = "";
+  public string ArtworkPath { get; set; } = "";
+  public string TrackCountText { get; set; } = "";
+ }
 }
