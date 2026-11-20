@@ -1,0 +1,72 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Styles.Resources>
+    <SolidColorBrush x:Key="AppBackground" Color="#0A0A12" />
+    <SolidColorBrush x:Key="PanelBackground" Color="#11111B" />
+    <SolidColorBrush x:Key="CardBackground" Color="#171722" />
+    <SolidColorBrush x:Key="CardHover" Color="#202033" />
+    <SolidColorBrush x:Key="TextPrimary" Color="#F5F5F8" />
+    <SolidColorBrush x:Key="TextMuted" Color="#85859B" />
+    <SolidColorBrush x:Key="AccentBlue" Color="#4B91FF" />
+    <SolidColorBrush x:Key="AccentBlueLight" Color="#69C4FF" />
+    <SolidColorBrush x:Key="Stroke" Color="#28283A" />
+  </Styles.Resources>
+
+  <Style Selector="Button.nav-item">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="#9292A8" />
+    <Setter Property="HorizontalContentAlignment" Value="Left" />
+    <Setter Property="Padding" Value="14,11" />
+    <Setter Property="CornerRadius" Value="11" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Cursor" Value="Hand" />
+  </Style>
+  <Style Selector="Button.nav-item:pointerover">
+    <Setter Property="Background" Value="#1B1B2B" />
+    <Setter Property="Foreground" Value="#F5F5F8" />
+  </Style>
+  <Style Selector="Button.nav-item.active">
+    <Setter Property="Background" Value="#24243A" />
+    <Setter Property="Foreground" Value="#75B7FF" />
+  </Style>
+  <Style Selector="Button.action">
+    <Setter Property="Background" Value="#347FEA" />
+    <Setter Property="Foreground" Value="White" />
+    <Setter Property="Padding" Value="16,10" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Cursor" Value="Hand" />
+  </Style>
+  <Style Selector="Button.action:pointerover">
+    <Setter Property="Background" Value="#56A5FF" />
+  </Style>
+  <Style Selector="Button.icon-button">
+    <Setter Property="Background" Value="#1A1A28" />
+    <Setter Property="Foreground" Value="#D7D7E5" />
+    <Setter Property="Width" Value="38" />
+    <Setter Property="Height" Value="38" />
+    <Setter Property="CornerRadius" Value="19" />
+    <Setter Property="BorderBrush" Value="#303044" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Cursor" Value="Hand" />
+  </Style>
+  <Style Selector="Button.icon-button:pointerover">
+    <Setter Property="Background" Value="#292940" />
+  </Style>
+  <Style Selector="TextBox.search-box">
+    <Setter Property="Background" Value="#171722" />
+    <Setter Property="Foreground" Value="#F5F5F8" />
+    <Setter Property="BorderBrush" Value="#303044" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="Padding" Value="14,10" />
+  </Style>
+  <Style Selector="Border.music-card">
+    <Setter Property="Background" Value="#171722" />
+    <Setter Property="CornerRadius" Value="15" />
+    <Setter Property="BorderBrush" Value="#28283A" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
+</Styles>
