@@ -1665,11 +1665,17 @@ function openAuthModal(mode){
   $('authModal').classList.add('show');
 }
 async function loginWithGoogle(){
-  const provider = new GoogleAuthProvider(); provider.setCustomParameters({ prompt: 'select_account' });
-  const btn = $('authGoogle'); btn.disabled = true;
-  try { await signInWithRedirect(auth, provider); try { await update(ref(db, 'users/'+result.user.uid), { email: result.user.email || null, photoURL: result.user.photoURL || null }); } catch(e){} $('authModal').classList.remove('show'); $('welcomeModal').classList.remove('show'); renderProfile(); renderAll(); }
-  catch(e){ console.error(e); toast((e.code||e.message),'err'); }
-  finally { btn.disabled = false; }
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: 'select_account' });
+  const btn = $('authGoogle');
+  btn.disabled = true;
+  try {
+    await signInWithRedirect(auth, provider);
+  } catch(e) {
+    console.error(e);
+    toast((e.code||e.message),'err');
+    btn.disabled = false;
+  }
 }
 async function loginWithEmail(){
   const email = $('authEmail').value.trim(); const password = $('authPassword').value;
