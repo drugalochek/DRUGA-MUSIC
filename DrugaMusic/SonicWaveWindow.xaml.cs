@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Threading.Tasks;
+using System.Text.Json;
 using System.Windows;
 using Microsoft.Web.WebView2.Core;
 
@@ -9,6 +10,8 @@ namespace DrugaMusic;
 public partial class SonicWaveWindow : Window
 {
     private bool initialized;
+    private readonly FirebaseAuthService accountAuth = new(Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SONORA"));
 
     public SonicWaveWindow()
     {
@@ -42,6 +45,33 @@ public partial class SonicWaveWindow : Window
             // while the actual files remain packaged with the desktop application.
             Browser.CoreWebView2.SetVirtualHostNameToFolderMapping(
                 "localhost", root, CoreWebView2HostResourceAccessKind.Allow);
+
+            Browser.CoreWebView2.WebMessageReceived += async (_, args) =>
+            {
+                try
+                {
+                    using var message = JsonDocument.Parse(args.WebMessageAsJson);
+                    var type = message.RootElement.TryGetProperty("type", out var typeValue)
+                        ? typeValue.GetString()
+                        : null;
+                    if (type != "google-sign-in") return;
+
+                    await accountAuth.SignInWithGoogleAsync();
+                    Browser.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(new
+                    {
+                        type = "google-sign-in-result",
+                        accessToken = accountAuth.GoogleAccessToken
+                    }));
+                }
+                catch (Exception ex)
+                {
+                    Browser.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(new
+                    {
+                        type = "google-sign-in-error",
+                        message = ex.Message
+                    }));
+                }
+            };
 
             // Keep all navigation inside the single application window.
             Browser.CoreWebView2.NewWindowRequested += (_, args) =>
