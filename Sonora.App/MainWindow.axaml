@@ -82,14 +82,11 @@
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
                   <StackPanel Width="94" Margin="6,5,6,8" Spacing="7">
-                    <Border Width="84" Height="84" CornerRadius="42" HorizontalAlignment="Center" ClipToBounds="True">
-                      <Border.Background>
-                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                          <GradientStop Color="#3478EF" Offset="0"/>
-                          <GradientStop Color="#0CAED5" Offset="1"/>
-                        </LinearGradientBrush>
-                      </Border.Background>
-                      <TextBlock Text="{Binding Initial}" FontSize="28" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="White"/>
+                    <Border Width="84" Height="84" CornerRadius="42" HorizontalAlignment="Center" ClipToBounds="True" Background="#172B46" BorderBrush="#2A4568" BorderThickness="1">
+                      <Grid>
+                        <controls:TrackArtwork ArtworkPath="{Binding ArtworkPath}"/>
+                        <TextBlock Text="{Binding Initial}" IsVisible="{Binding ShowInitial}" FontSize="27" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#C6DFFF"/>
+                      </Grid>
                     </Border>
                     <TextBlock Text="{Binding Name}" FontSize="11" TextAlignment="Center" TextTrimming="CharacterEllipsis" MaxLines="2"/>
                   </StackPanel>
