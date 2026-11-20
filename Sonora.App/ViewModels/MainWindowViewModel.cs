@@ -59,6 +59,17 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     private string avatarData = "";
     private string avatarContentType = "";
 
+    public string CurrentSectionTitle => CurrentSection switch
+    {
+        "home" => "Главная",
+        "explore" => "Обзор",
+        "favorites" => "Избранное",
+        "search" => "Поиск",
+        "profile" => "Профиль",
+        "accounts" => "Аккаунты",
+        "settings" => "Настройки",
+        _ => "SONORA"
+    };
     public string CurrentTrackTitle => CurrentTrack?.Title ?? "Выбери музыку";
     public string CurrentTrackArtist => CurrentTrack?.Artist ?? "SONORA";
     public string PlayButtonGlyph => IsPlaying ? "Ⅱ" : "▶";
@@ -114,6 +125,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     }
 
     partial void OnIsPlayingChanged(bool value) => OnPropertyChanged(nameof(PlayButtonGlyph));
+    partial void OnCurrentSectionChanged(string value) => OnPropertyChanged(nameof(CurrentSectionTitle));
     partial void OnProfileAvatarChanged(Bitmap? value)
     {
         OnPropertyChanged(nameof(HasProfileAvatar));
