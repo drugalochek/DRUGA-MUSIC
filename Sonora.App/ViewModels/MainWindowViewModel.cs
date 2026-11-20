@@ -20,6 +20,13 @@ public sealed class ArtistTile
     public bool ShowInitial => !HasArtwork;
 }
 
+public sealed class GenreTile
+{
+    public string Name { get; init; } = "";
+    public string CountText { get; init; } = "";
+    public string? ArtworkPath { get; init; }
+}
+
 public partial class MainWindowViewModel : ObservableObject, IDisposable
 {
     private readonly string dataDirectory = Path.Combine(
@@ -35,6 +42,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     public ObservableCollection<Track> VisibleTracks { get; } = [];
     public ObservableCollection<Track> FavoriteTracks { get; } = [];
     public ObservableCollection<ArtistTile> Artists { get; } = [];
+    public ObservableCollection<GenreTile> Genres { get; } = [];
 
     [ObservableProperty] private Track? currentTrack;
     [ObservableProperty] private bool isPlaying;
@@ -75,6 +83,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     public string PlayButtonGlyph => IsPlaying ? "Ⅱ" : "▶";
     public string TrackCountText => $"{Tracks.Count} треков";
     public string ArtistCountText => $"{Artists.Count} исполнителей";
+    public string GenreCountText => $"{Genres.Count} жанров";
+    public bool IsGenreEmpty => Genres.Count == 0;
     public string FavoriteCountText => $"{FavoriteTracks.Count} треков";
     private ArtistTile? ForYouArtist => Artists.OrderByDescending(a => Tracks.Count(t => string.Equals(t.Artist?.Trim(), a.Name, StringComparison.OrdinalIgnoreCase))).FirstOrDefault();
     public string ForYouArtistName => ForYouArtist?.Name ?? "Добавь музыку в библиотеку";
@@ -368,8 +378,21 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                      .OrderBy(g => g.Key, StringComparer.CurrentCultureIgnoreCase).Take(24))
             Artists.Add(new ArtistTile { Name = group.Key, CountText = $"{group.Count()} треков", ArtworkPath = group.FirstOrDefault(t => !string.IsNullOrWhiteSpace(t.ArtworkPath))?.ArtworkPath });
 
+        Genres.Clear();
+        foreach (var group in filtered.Where(t => !string.IsNullOrWhiteSpace(t.Genre))
+                     .GroupBy(t => t.Genre.Trim(), StringComparer.OrdinalIgnoreCase)
+                     .OrderByDescending(g => g.Count()).ThenBy(g => g.Key, StringComparer.CurrentCultureIgnoreCase).Take(8))
+            Genres.Add(new GenreTile
+            {
+                Name = group.Key,
+                CountText = $"{group.Count()} треков",
+                ArtworkPath = group.FirstOrDefault(t => !string.IsNullOrWhiteSpace(t.ArtworkPath))?.ArtworkPath
+            });
+
         OnPropertyChanged(nameof(TrackCountText));
         OnPropertyChanged(nameof(ArtistCountText));
+        OnPropertyChanged(nameof(GenreCountText));
+        OnPropertyChanged(nameof(IsGenreEmpty));
         OnPropertyChanged(nameof(FavoriteCountText));
         OnPropertyChanged(nameof(ForYouArtistName));
         OnPropertyChanged(nameof(ForYouTrackCountText));
