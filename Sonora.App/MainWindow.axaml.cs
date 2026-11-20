@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Input;
 using Avalonia.Platform.Storage;
 using Avalonia.VisualTree;
 using Sonora.ViewModels;
@@ -54,18 +55,54 @@ public partial class MainWindow : Window
 
     private void Nav_Click(object? sender, RoutedEventArgs e)
     {
-        if (sender is not Button { Tag: string section })
-            return;
+        if (sender is not Button { Tag: string section }) return;
+        ShowPage(section);
+    }
 
-        viewModel.Navigate(section);
-        PageTitle.Text = viewModel.PageTitle;
-        PageSubtitle.Text = viewModel.PageSubtitle;
+    private void Profile_Click(object? sender, RoutedEventArgs e) => ShowPage("profile");
+    private void Accounts_Click(object? sender, RoutedEventArgs e) => ShowPage("accounts");
+    private void Settings_Click(object? sender, RoutedEventArgs e) => ShowPage("settings");
+
+    private void ShowPage(string section)
+    {
+        HomePage.IsVisible = section == "home";
+        ExplorePage.IsVisible = section == "explore";
+        FavoritesPage.IsVisible = section == "favorites";
+        SearchPage.IsVisible = section == "search";
+        ProfilePage.IsVisible = section == "profile";
+        AccountsPage.IsVisible = section == "accounts";
+        SettingsPage.IsVisible = section == "settings";
+        NowPlayingOverlay.IsVisible = false;
+        viewModel.CurrentSection = section;
 
         foreach (var button in this.GetVisualDescendants().OfType<Button>().Where(b => b.Tag is string))
         {
             button.Classes.Remove("active");
-            if (Equals(button.Tag, section))
-                button.Classes.Add("active");
+            if (Equals(button.Tag, section)) button.Classes.Add("active");
         }
     }
+
+    private void MiniPlayer_PointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (e.Source is Button) return;
+        NowPlayingOverlay.IsVisible = true;
+        e.Handled = true;
+    }
+
+    private void ClosePlayer_Click(object? sender, RoutedEventArgs e) => NowPlayingOverlay.IsVisible = false;
+    private void CloseMini_Click(object? sender, RoutedEventArgs e) => viewModel.StopAndClearCurrentTrack();
+
+    private async void SaveProfile_Click(object? sender, RoutedEventArgs e) =>
+        await viewModel.SaveProfileAsync();
+
+    private async void SignIn_Click(object? sender, RoutedEventArgs e) =>
+        await viewModel.SignInAsync(EmailBox.Text ?? "", PasswordBox.Text ?? "");
+
+    private async void Register_Click(object? sender, RoutedEventArgs e) =>
+        await viewModel.RegisterAsync(EmailBox.Text ?? "", PasswordBox.Text ?? "");
+
+    private async void GoogleSignIn_Click(object? sender, RoutedEventArgs e) =>
+        await viewModel.GoogleSignInAsync();
+
+    private void SignOut_Click(object? sender, RoutedEventArgs e) => viewModel.SignOut();
 }
