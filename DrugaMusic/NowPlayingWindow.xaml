@@ -46,7 +46,14 @@
       </Border>
      </DataTemplate></ListBox.ItemTemplate>
     </ListBox>
-    <TextBlock DockPanel.Dock="Bottom" Text="Выбери композицию в очереди, чтобы начать воспроизведение." Foreground="#64748B" FontSize="11" TextWrapping="Wrap" Margin="0,12,0,0"/>
+    <StackPanel DockPanel.Dock="Bottom" Margin="0,12,0,0">
+     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+      <Button Content="↑" Width="34" Click="MoveUp_Click" Background="#172235"/>
+      <Button Content="↓" Width="34" Margin="5,0,0,0" Click="MoveDown_Click" Background="#172235"/>
+      <Button Content="Убрать" Padding="10,5" Margin="8,0,0,0" Click="Remove_Click" Background="#263449"/>
+     </StackPanel>
+     <TextBlock Text="Выбирай трек, меняй порядок или убирай лишнее из очереди." Foreground="#64748B" FontSize="11" TextWrapping="Wrap" Margin="0,10,0,0"/>
+    </StackPanel>
    </DockPanel>
   </Border>
  </Grid>
