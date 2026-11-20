@@ -18,7 +18,7 @@
           <TextBlock Text="{Binding CurrentSectionTitle}" FontSize="16" FontWeight="SemiBold"/>
           <TextBlock Text="{Binding StatusText}" FontSize="10" Foreground="#71839B"/>
         </StackPanel>
-        <TextBox x:Name="HeaderSearchBox" Grid.Column="1" Classes="search-box" Width="410" Height="40" HorizontalAlignment="Center" VerticalContentAlignment="Center" Text="{Binding SearchQuery, Mode=TwoWay}" PlaceholderText="Поиск музыки, альбомов и исполнителей" TextChanged="HeaderSearchBox_TextChanged"/>
+        <TextBox x:Name="HeaderSearchBox" Grid.Column="1" Classes="search-box" Width="360" Height="40" HorizontalAlignment="Center" VerticalContentAlignment="Center" Text="{Binding SearchQuery, Mode=TwoWay}" PlaceholderText="Поиск музыки, альбомов и исполнителей" TextChanged="HeaderSearchBox_TextChanged"/>
         <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
           <Button Classes="icon-button" Content="＋" Click="Import_Click" ToolTip.Tip="Добавить музыку"/>
           <Border Width="1" Height="26" Background="#263348" Margin="3,0"/>
@@ -441,11 +441,11 @@
       <Border x:Name="NowPlayingOverlay" IsVisible="False" Background="#080B12">
         <Grid RowDefinitions="Auto,*" Margin="24,22">
           <Button Classes="icon-button" Content="⌄" HorizontalAlignment="Left" Click="ClosePlayer_Click"/>
-          <Grid Grid.Row="1" ColumnDefinitions="*,Auto,Auto,*" ColumnSpacing="24" VerticalAlignment="Center">
-            <Border Grid.Column="1" Width="300" Height="300" CornerRadius="18" Background="#14243A" BorderBrush="#2C4B70" BorderThickness="1" ClipToBounds="True">
+          <Grid Grid.Row="1" ColumnDefinitions="*,Auto,Auto,*" ColumnSpacing="22" VerticalAlignment="Center">
+            <Border Grid.Column="1" Width="290" Height="290" CornerRadius="18" Background="#14243A" BorderBrush="#2C4B70" BorderThickness="1" ClipToBounds="True">
               <controls:TrackArtwork ArtworkPath="{Binding CurrentTrack.ArtworkPath}"/>
             </Border>
-            <StackPanel Grid.Column="2" Width="300" VerticalAlignment="Center" Spacing="17">
+            <StackPanel Grid.Column="2" Width="290" VerticalAlignment="Center" Spacing="17">
               <StackPanel Spacing="5">
                 <TextBlock Text="NOW PLAYING" FontSize="9" FontWeight="Bold" Foreground="#77B7FF" LetterSpacing="2.2"/>
                 <TextBlock Text="Текущий трек" FontSize="12" Foreground="#7F91A9"/>
