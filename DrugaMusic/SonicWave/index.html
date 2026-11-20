@@ -1730,7 +1730,7 @@ async function loginWithEmail(){
 async function logoutUser(){
   const ok = await showConfirm(t('confirm_logout'), t('confirm_logout_t'), t('confirm_yes_logout'), t('confirm_no'));
   if (!ok) return;
-  try { await signOut(auth); renderProfile(); renderAll(); } catch(e){}
+  try { await signOut(auth); if (window.chrome && window.chrome.webview) window.chrome.webview.postMessage({ type: 'google-sign-out' }); renderProfile(); renderAll(); } catch(e){}
 }
 
 document.querySelectorAll('.nbtn').forEach(b=>b.addEventListener('click', ()=>switchView(b.dataset.v)));
