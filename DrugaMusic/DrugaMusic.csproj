@@ -6,8 +6,10 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>DrugaMusic</RootNamespace>
-    <AssemblyName>DrugaMusic</AssemblyName>
-    <Version>0.1.0</Version>
+    <AssemblyName>SONORA</AssemblyName>
+    <Product>SONORA</Product>
+    <ApplicationIcon>Assets\sonora.ico</ApplicationIcon>
+    <Version>0.2.0</Version>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="NAudio" Version="2.2.1" />
