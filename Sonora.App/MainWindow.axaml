@@ -92,19 +92,36 @@
             <TextBlock Text="Жанр часа" FontSize="19" FontWeight="Bold"/>
             <TextBlock Grid.Column="1" Text="Обновляется автоматически" Foreground="#82829A" FontSize="10" VerticalAlignment="Center"/>
           </Grid>
+          <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,8">
+            <TextBlock Text="{Binding GenreCountText}" Grid.Column="1" Foreground="#8190A5" FontSize="10" VerticalAlignment="Center"/>
+          </Grid>
           <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" Margin="-6,0,-6,12">
-            <StackPanel Orientation="Horizontal" Spacing="10">
-              <Border Width="170" Height="96" CornerRadius="13" Padding="14" Background="#284B9B">
-                <TextBlock Text="Из твоих жанров" FontSize="16" FontWeight="Bold" VerticalAlignment="Bottom"/>
-              </Border>
-              <Border Width="170" Height="96" CornerRadius="13" Padding="14" Background="#126A92">
-                <TextBlock Text="Свежее звучание" FontSize="16" FontWeight="Bold" VerticalAlignment="Bottom"/>
-              </Border>
-              <Border Width="170" Height="96" CornerRadius="13" Padding="14" Background="#254A65">
-                <TextBlock Text="На повторе" FontSize="16" FontWeight="Bold" VerticalAlignment="Bottom"/>
-              </Border>
-            </StackPanel>
+            <ItemsControl ItemsSource="{Binding Genres}">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Border Width="220" Height="116" CornerRadius="13" Margin="6,3,6,8" ClipToBounds="True" BorderBrush="#29405C" BorderThickness="1">
+                    <Grid Background="#122239">
+                      <controls:TrackArtwork ArtworkPath="{Binding ArtworkPath}"/>
+                      <Border>
+                        <Border.Background>
+                          <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                            <GradientStop Color="#151B2A22" Offset="0"/>
+                            <GradientStop Color="#E508101D" Offset="1"/>
+                          </LinearGradientBrush>
+                        </Border.Background>
+                      </Border>
+                      <StackPanel Margin="13" VerticalAlignment="Bottom" Spacing="3">
+                        <TextBlock Text="{Binding Name}" FontSize="16" FontWeight="Bold" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Text="{Binding CountText}" FontSize="9" Foreground="#C2D0E2"/>
+                      </StackPanel>
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
           </ScrollViewer>
+          <TextBlock Text="Добавь треки с жанрами в метаданных — здесь появятся твои музыкальные направления." IsVisible="{Binding IsGenreEmpty}" Foreground="#8190A5" FontSize="11" Margin="0,0,0,12"/>
 
           <Grid ColumnDefinitions="*,Auto" Margin="0,7,0,8">
             <TextBlock Text="Миксы для тебя" FontSize="19" FontWeight="Bold"/>
