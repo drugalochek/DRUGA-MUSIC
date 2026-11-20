@@ -2,7 +2,7 @@ name: Build SONORA
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, sonora-native-avalonia ]
   pull_request:
     branches: [ main ]
   workflow_dispatch:
@@ -16,17 +16,14 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 8.0.x
-      - name: Generate SONORA icon from repository artwork
-        shell: pwsh
-        run: ./scripts/create-icon.ps1
+          dotnet-version: 10.0.x
       - name: Restore
-        run: dotnet restore DrugaMusic.sln
+        run: dotnet restore Sonora.App/Sonora.App.csproj
       - name: Build
-        run: dotnet build DrugaMusic.sln --configuration Release --no-restore
+        run: dotnet build Sonora.App/Sonora.App.csproj --configuration Release --no-restore
       - name: Publish self-contained Windows x64 app
         if: github.event_name != 'pull_request'
-        run: dotnet publish DrugaMusic/DrugaMusic.csproj --configuration Release --runtime win-x64 --self-contained true /p:PublishSingleFile=true --output publish
+        run: dotnet publish Sonora.App/Sonora.App.csproj --configuration Release --runtime win-x64 --self-contained true /p:PublishSingleFile=true --output publish
       - name: Upload Windows build
         if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v4
