@@ -1,15 +1,24 @@
 <Application x:Class="DrugaMusic.App" StartupUri="MainWindow.xaml" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
  <Application.Resources>
-  <Color x:Key="AccentColor">#176BFF</Color>
+  <Color x:Key="AccentColor">#287BFF</Color>
   <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource AccentColor}"/>
-  <SolidColorBrush x:Key="WindowBrush" Color="#000000"/>
-  <SolidColorBrush x:Key="PanelBrush" Color="#050505"/>
-  <SolidColorBrush x:Key="TextBrush" Color="#F5F7FA"/>
-  <SolidColorBrush x:Key="MutedBrush" Color="#777F8C"/>
+  <LinearGradientBrush x:Key="AccentGradient" StartPoint="0,0" EndPoint="1,1">
+   <GradientStop Color="#1557D8" Offset="0"/>
+   <GradientStop Color="#287BFF" Offset="0.52"/>
+   <GradientStop Color="#63B5FF" Offset="1"/>
+  </LinearGradientBrush>
+  <LinearGradientBrush x:Key="AccentGradientSoft" StartPoint="0,0" EndPoint="1,0">
+   <GradientStop Color="#102B59" Offset="0"/>
+   <GradientStop Color="#0B1424" Offset="1"/>
+  </LinearGradientBrush>
+  <SolidColorBrush x:Key="WindowBrush" Color="#07090E"/>
+  <SolidColorBrush x:Key="PanelBrush" Color="#0D111A"/>
+  <SolidColorBrush x:Key="TextBrush" Color="#F5F7FC"/>
+  <SolidColorBrush x:Key="MutedBrush" Color="#8994A8"/>
   <Style TargetType="Button">
    <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
-   <Setter Property="Background" Value="#080808"/>
-   <Setter Property="BorderBrush" Value="#242A33"/>
+   <Setter Property="Background" Value="#101722"/>
+   <Setter Property="BorderBrush" Value="#26344A"/>
    <Setter Property="BorderThickness" Value="1"/>
    <Setter Property="Padding" Value="14,9"/>
    <Setter Property="Cursor" Value="Hand"/>
@@ -19,8 +28,8 @@
      <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
     </Border>
     <ControlTemplate.Triggers>
-     <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="bd" Property="BorderBrush" Value="#176BFF"/><Setter TargetName="bd" Property="Background" Value="#080D17"/></Trigger>
-     <Trigger Property="IsPressed" Value="True"><Setter TargetName="bd" Property="Background" Value="#101D33"/></Trigger>
+     <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="bd" Property="BorderBrush" Value="#438FFF"/><Setter TargetName="bd" Property="Background" Value="#14243B"/></Trigger>
+     <Trigger Property="IsPressed" Value="True"><Setter TargetName="bd" Property="Background" Value="#1A3152"/></Trigger>
      <Trigger Property="IsEnabled" Value="False"><Setter TargetName="bd" Property="Opacity" Value="0.35"/></Trigger>
     </ControlTemplate.Triggers>
    </ControlTemplate></Setter.Value></Setter>
@@ -28,18 +37,18 @@
   <Style x:Key="NavButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
    <Setter Property="Background" Value="Transparent"/>
    <Setter Property="BorderThickness" Value="0"/>
-   <Setter Property="Foreground" Value="#9299A5"/>
+   <Setter Property="Foreground" Value="#9AA6B9"/>
    <Setter Property="HorizontalContentAlignment" Value="Left"/>
    <Setter Property="Padding" Value="14,12"/>
-   <Setter Property="Margin" Value="0,1"/>
-   <Setter Property="FontSize" Value="14"/>
+   <Setter Property="Margin" Value="0,2"/>
+   <Setter Property="FontSize" Value="13"/>
    <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button">
     <Border x:Name="nav" Background="{TemplateBinding Background}" BorderBrush="Transparent" BorderThickness="3,0,0,0" Padding="{TemplateBinding Padding}">
      <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center"/>
     </Border>
     <ControlTemplate.Triggers>
-     <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="nav" Property="Background" Value="#080D17"/><Setter TargetName="nav" Property="BorderBrush" Value="#176BFF"/><Setter Property="Foreground" Value="White"/></Trigger>
-     <Trigger Property="IsPressed" Value="True"><Setter TargetName="nav" Property="Background" Value="#101D33"/></Trigger>
+     <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="nav" Property="Background" Value="#101B2B"/><Setter TargetName="nav" Property="BorderBrush" Value="#438FFF"/><Setter Property="Foreground" Value="White"/></Trigger>
+     <Trigger Property="IsPressed" Value="True"><Setter TargetName="nav" Property="Background" Value="#172B48"/></Trigger>
     </ControlTemplate.Triggers>
    </ControlTemplate></Setter.Value></Setter>
   </Style>
