@@ -333,7 +333,15 @@
               <Button Classes="action" Content="{Binding GoogleButtonText}" IsEnabled="{Binding CanLinkGoogle}" HorizontalAlignment="Left" Click="GoogleSignIn_Click"/>
             </StackPanel>
           </Border>
-          <Border Classes="music-card" Padding="18">
+          <Border Classes="music-card" Padding="18" IsVisible="{Binding CanAddPassword}">
+            <StackPanel Spacing="10">
+              <TextBlock Text="Добавить пароль к текущему аккаунту" FontSize="16" FontWeight="Bold"/>
+              <TextBlock Text="{Binding PasswordProviderStatusText}" FontSize="11" Foreground="#82829A"/>
+              <TextBox x:Name="LinkPasswordBox" Classes="search-box" PasswordChar="●" PlaceholderText="Новый пароль (минимум 6 символов)"/>
+              <Button Classes="action" Content="Добавить пароль" HorizontalAlignment="Left" Click="AddPassword_Click"/>
+            </StackPanel>
+          </Border>
+          <Border Classes="music-card" Padding="18" IsVisible="{Binding ShowSignInOptions}">
             <StackPanel Spacing="10">
               <TextBlock Text="Почта и пароль" FontSize="16" FontWeight="Bold"/>
               <TextBox x:Name="EmailBox" Classes="search-box" PlaceholderText="Электронная почта"/>
@@ -345,8 +353,8 @@
             </StackPanel>
           </Border>
           <TextBlock Text="{Binding AuthMessage}" Foreground="#79B8FF" FontSize="11" TextWrapping="Wrap"/>
-          <Button Classes="settings-row" Content="Выйти из аккаунта" Click="SignOut_Click"/>
-          <TextBlock Text="Если ты уже вошёл через почту, кнопка Google привяжет его к этой же учётной записи. Если ещё не вошёл — выполнит обычный вход через Google." Foreground="#82829A" FontSize="10" TextWrapping="Wrap"/>
+          <Button Classes="settings-row" Content="Выйти из аккаунта" IsVisible="{Binding IsSignedIn}" Click="SignOut_Click"/>
+          <TextBlock Text="{Binding PasswordProviderStatusText}" Foreground="#82829A" FontSize="10" TextWrapping="Wrap"/>
         </StackPanel>
       </ScrollViewer>
 
