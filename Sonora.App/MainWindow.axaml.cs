@@ -139,5 +139,8 @@ public partial class MainWindow : Window
     private async void GoogleSignIn_Click(object? sender, RoutedEventArgs e) =>
         await viewModel.GoogleSignInAsync();
 
+    private async void AddPassword_Click(object? sender, RoutedEventArgs e) =>
+        await viewModel.AddPasswordAsync(LinkPasswordBox.Text ?? "");
+
     private void SignOut_Click(object? sender, RoutedEventArgs e) => viewModel.SignOut();
 }
