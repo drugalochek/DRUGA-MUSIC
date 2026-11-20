@@ -25,7 +25,7 @@
           </Border>
           <TextBlock Text="SONORA" FontSize="19" FontWeight="Bold" VerticalAlignment="Center"/>
         </StackPanel>
-        <TextBox x:Name="HeaderSearchBox" Grid.Column="1" Classes="search-box" Width="410" Height="40" HorizontalAlignment="Center" VerticalContentAlignment="Center" PlaceholderText="Поиск музыки, альбомов и исполнителей" TextChanged="HeaderSearchBox_TextChanged"/>
+        <TextBox x:Name="HeaderSearchBox" Grid.Column="1" Classes="search-box" Width="410" Height="40" HorizontalAlignment="Center" VerticalContentAlignment="Center" Text="{Binding SearchQuery, Mode=TwoWay}" PlaceholderText="Поиск музыки, альбомов и исполнителей" TextChanged="HeaderSearchBox_TextChanged"/>
         <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
           <Button Classes="icon-button" Content="＋" Click="Import_Click" ToolTip.Tip="Добавить музыку"/>
           <Border Width="1" Height="26" Background="#263348" Margin="3,0"/>
@@ -313,7 +313,7 @@
       <ScrollViewer x:Name="SearchPage" IsVisible="False" VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="22,20,22,30" Spacing="12">
           <TextBlock Text="Поиск" FontSize="30" FontWeight="Bold"/>
-          <TextBox x:Name="SearchBox" Classes="search-box" PlaceholderText="Трек, исполнитель или альбом" TextChanged="SearchBox_TextChanged"/>
+          <TextBox x:Name="SearchBox" Classes="search-box" Text="{Binding SearchQuery, Mode=TwoWay}" PlaceholderText="Трек, исполнитель или альбом" TextChanged="SearchBox_TextChanged"/>
           <TextBlock Text="Результаты" FontSize="17" FontWeight="Bold"/>
           <ItemsControl ItemsSource="{Binding VisibleTracks}">
             <ItemsControl.ItemTemplate>
@@ -332,7 +332,7 @@
               </DataTemplate>
             </ItemsControl.ItemTemplate>
           </ItemsControl>
-          <TextBlock Text="Ничего не найдено. Добавь музыку в библиотеку или измени запрос." IsVisible="{Binding IsLibraryEmpty}" Foreground="#82829A" FontSize="12"/>
+          <TextBlock Text="Ничего не найдено. Добавь музыку в библиотеку или измени запрос." IsVisible="{Binding IsSearchEmpty}" Foreground="#82829A" FontSize="12"/>
         </StackPanel>
       </ScrollViewer>
 
