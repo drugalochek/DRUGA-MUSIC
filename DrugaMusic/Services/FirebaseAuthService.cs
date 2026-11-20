@@ -101,13 +101,13 @@ public sealed class FirebaseAuthService
             throw new InvalidOperationException("Google не выдал токен: " + ReadGoogleError(tokenBody));
 
         using var googleJson = JsonDocument.Parse(tokenBody);
-        if (!googleJson.RootElement.TryGetProperty("id_token", out var googleIdTokenElement))
-            throw new InvalidOperationException("Google не вернул ID token. Попробуй войти ещё раз.");
-        var googleIdToken = googleIdTokenElement.GetString();
-        if (string.IsNullOrWhiteSpace(googleIdToken))
-            throw new InvalidOperationException("Google вернул пустой ID token.");
+        if (!googleJson.RootElement.TryGetProperty("access_token", out var googleAccessTokenElement))
+            throw new InvalidOperationException("Google не вернул токен доступа. Попробуй войти ещё раз.");
+        var googleAccessToken = googleAccessTokenElement.GetString();
+        if (string.IsNullOrWhiteSpace(googleAccessToken))
+            throw new InvalidOperationException("Google вернул пустой токен доступа.");
 
-        var postBody = $"id_token={Uri.EscapeDataString(googleIdToken)}&providerId=google.com";
+        var postBody = $"access_token={Uri.EscapeDataString(googleAccessToken)}&providerId=google.com";
         using var firebaseResponse = await Http.PostAsJsonAsync(
             $"https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key={ApiKey}",
             new
