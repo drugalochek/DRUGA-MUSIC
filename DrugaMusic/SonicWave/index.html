@@ -753,7 +753,7 @@ main{padding:0 16px calc(60px + env(safe-area-inset-bottom))}
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithRedirect, getRedirectResult, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithRedirect, signInWithCredential, getRedirectResult, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getDatabase, ref, set, get, update, remove, push, onValue, off } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
 const firebaseConfig = {apiKey:"AIzaSyCgBtQNo-cebuAoJ7u9vkOGHHpHI0DxSWQ",authDomain:"sonora-ab012.firebaseapp.com",projectId:"sonora-ab012",storageBucket:"sonora-ab012.firebasestorage.app",messagingSenderId:"614449855011",appId:"1:614449855011:web:5a1fd491dd53448067cf96",measurementId:"G-KZSCTKZDQG",databaseURL:"https://sonora-ab012-default-rtdb.firebaseio.com"};
@@ -1670,6 +1670,10 @@ async function loginWithGoogle(){
   provider.setCustomParameters({ prompt: 'select_account' });
   const btn = $('authGoogle');
   btn.disabled = true;
+  if (window.chrome && window.chrome.webview) {
+    window.chrome.webview.postMessage({ type: 'google-sign-in' });
+    return;
+  }
   try {
     await signInWithRedirect(auth, provider);
   } catch(e) {
@@ -1677,6 +1681,35 @@ async function loginWithGoogle(){
     toast((e.code||e.message),'err');
     btn.disabled = false;
   }
+}
+if (window.chrome && window.chrome.webview) {
+  window.chrome.webview.addEventListener('message', async event => {
+    const message = event.data || {};
+    const btn = $('authGoogle');
+    if (message.type === 'google-sign-in-error') {
+      toast(message.message || 'Не удалось войти через Google.','err');
+      btn.disabled = false;
+      return;
+    }
+    if (message.type !== 'google-sign-in-result' || !message.accessToken) return;
+    try {
+      const credential = GoogleAuthProvider.credential(null, message.accessToken);
+      const result = await signInWithCredential(auth, credential);
+      await update(ref(db, 'users/' + result.user.uid), {
+        email: result.user.email || null,
+        photoURL: result.user.photoURL || null
+      });
+      $('authModal').classList.remove('show');
+      $('welcomeModal').classList.remove('show');
+      renderProfile();
+      renderAll();
+    } catch(e) {
+      console.error(e);
+      toast((e.code||e.message),'err');
+    } finally {
+      btn.disabled = false;
+    }
+  });
 }
 async function loginWithEmail(){
   const email = $('authEmail').value.trim(); const password = $('authPassword').value;
