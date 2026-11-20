@@ -22,6 +22,7 @@ public sealed class FirebaseAuthService
     public string? Email { get; private set; }
     public string? IdToken { get; private set; }
     public string? GooglePhotoUrl { get; private set; }
+    public string? GoogleAccessToken { get; private set; }
     public string? GoogleDisplayName { get; private set; }
     public bool HasPasswordProvider { get; private set; }
     private string? refreshToken;
@@ -79,6 +80,7 @@ public sealed class FirebaseAuthService
         refreshToken = root.GetProperty("refreshToken").GetString();
         HasPasswordProvider = true;
         GooglePhotoUrl = null;
+        GoogleAccessToken = null;
         GoogleDisplayName = null;
         await SaveSessionAsync();
     }
@@ -106,6 +108,7 @@ public sealed class FirebaseAuthService
         var googleAccessToken = googleAccessTokenElement.GetString();
         if (string.IsNullOrWhiteSpace(googleAccessToken))
             throw new InvalidOperationException("Google вернул пустой токен доступа.");
+        GoogleAccessToken = googleAccessToken;
 
         var postBody = $"access_token={Uri.EscapeDataString(googleAccessToken)}&providerId=google.com";
         using var firebaseResponse = await Http.PostAsJsonAsync(
@@ -301,6 +304,7 @@ public sealed class FirebaseAuthService
         IdToken = null;
         refreshToken = null;
         GooglePhotoUrl = null;
+        GoogleAccessToken = null;
         GoogleDisplayName = null;
         HasPasswordProvider = false;
     }
