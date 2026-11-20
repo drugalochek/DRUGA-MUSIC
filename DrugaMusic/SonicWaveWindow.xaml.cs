@@ -54,6 +54,11 @@ public partial class SonicWaveWindow : Window
                     var type = message.RootElement.TryGetProperty("type", out var typeValue)
                         ? typeValue.GetString()
                         : null;
+                    if (type == "google-sign-out")
+                    {
+                        accountAuth.SignOut();
+                        return;
+                    }
                     if (type != "google-sign-in") return;
 
                     await accountAuth.SignInWithGoogleAsync();
