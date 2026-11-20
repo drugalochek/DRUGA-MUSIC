@@ -50,6 +50,13 @@ public partial class MainWindow : Window
             viewModel.PlayTrack(track);
     }
 
+    private void Mix_Click(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string mix }) return;
+        if (mix == "daily") viewModel.PlayDailyMix();
+        else if (mix == "weekly") viewModel.PlayWeeklyMix();
+    }
+
     private void ForYou_Click(object? sender, RoutedEventArgs e) => viewModel.PlayForYouArtist();
 
     private void PlayPause_Click(object? sender, RoutedEventArgs e) => viewModel.TogglePlayback();
