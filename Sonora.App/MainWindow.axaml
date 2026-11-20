@@ -127,8 +127,8 @@
           <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" Margin="-6,0,-6,14">
             <StackPanel Orientation="Horizontal" Spacing="14">
               <StackPanel Width="200" Spacing="5">
-                <Border Width="200" Height="200" CornerRadius="15" ClipToBounds="True" BorderBrush="#315B91" BorderThickness="1">
-                  <Grid Background="#10233B">
+                <Button Width="200" Height="200" Classes="mix-artwork" Tag="daily" Click="Mix_Click">
+                  <Grid Background="#10233B" ClipToBounds="True">
                     <Border Width="172" Height="172" CornerRadius="86" BorderBrush="#3E75B4" BorderThickness="1" Opacity="0.65" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,-55,0"/>
                     <Border Width="128" Height="128" CornerRadius="64" BorderBrush="#4D8BD0" BorderThickness="1" Opacity="0.55" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,-32,0"/>
                     <StackPanel Margin="17" VerticalAlignment="Bottom" Spacing="4">
@@ -140,13 +140,13 @@
                       <TextBlock Text="▶" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
                   </Grid>
-                </Border>
+                </Button>
                 <TextBlock Text="Микс дня" FontSize="13" FontWeight="SemiBold"/>
                 <TextBlock Text="Подборка на сегодня" FontSize="11" Foreground="#82829A"/>
               </StackPanel>
               <StackPanel Width="200" Spacing="5">
-                <Border Width="200" Height="200" CornerRadius="15" ClipToBounds="True" BorderBrush="#294A70" BorderThickness="1">
-                  <Grid Background="#101B2B">
+                <Button Width="200" Height="200" Classes="mix-artwork" Tag="weekly" Click="Mix_Click">
+                  <Grid Background="#101B2B" ClipToBounds="True">
                     <StackPanel Orientation="Horizontal" Spacing="7" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,18,0">
                       <Border Width="5" Height="45" CornerRadius="3" Background="#3D77B6"/>
                       <Border Width="5" Height="82" CornerRadius="3" Background="#5D9DDB"/>
@@ -160,7 +160,7 @@
                       <TextBlock Text="THE SOUND OF YOUR WEEK" FontSize="7" Foreground="#8097B4" LetterSpacing="1"/>
                     </StackPanel>
                   </Grid>
-                </Border>
+                </Button>
                 <TextBlock Text="Микс недели" FontSize="13" FontWeight="SemiBold"/>
                 <TextBlock Text="Твои прослушивания за неделю" FontSize="11" Foreground="#82829A"/>
               </StackPanel>
