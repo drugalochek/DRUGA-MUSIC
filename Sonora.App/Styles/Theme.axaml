@@ -1,72 +1,123 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <Styles.Resources>
-    <SolidColorBrush x:Key="AppBackground" Color="#0A0A12" />
-    <SolidColorBrush x:Key="PanelBackground" Color="#11111B" />
-    <SolidColorBrush x:Key="CardBackground" Color="#171722" />
-    <SolidColorBrush x:Key="CardHover" Color="#202033" />
-    <SolidColorBrush x:Key="TextPrimary" Color="#F5F5F8" />
-    <SolidColorBrush x:Key="TextMuted" Color="#85859B" />
-    <SolidColorBrush x:Key="AccentBlue" Color="#4B91FF" />
-    <SolidColorBrush x:Key="AccentBlueLight" Color="#69C4FF" />
-    <SolidColorBrush x:Key="Stroke" Color="#28283A" />
+    <SolidColorBrush x:Key="AppBackground" Color="#0A0A12"/>
+    <SolidColorBrush x:Key="PanelBackground" Color="#0F0F1A"/>
+    <SolidColorBrush x:Key="CardBackground" Color="#16161F"/>
+    <SolidColorBrush x:Key="CardHover" Color="#1E1E2A"/>
+    <SolidColorBrush x:Key="TextPrimary" Color="#F5F5F8"/>
+    <SolidColorBrush x:Key="TextMuted" Color="#82829A"/>
+    <SolidColorBrush x:Key="AccentBlue" Color="#397BFF"/>
+    <SolidColorBrush x:Key="AccentCyan" Color="#06B6D4"/>
+    <SolidColorBrush x:Key="Stroke" Color="#FFFFFF12"/>
   </Styles.Resources>
 
+  <Style Selector="Button">
+    <Setter Property="Foreground" Value="#F5F5F8"/>
+    <Setter Property="FontFamily" Value="avares://SONORA/Assets/WidockTrialBold.otf#Widock"/>
+    <Setter Property="Cursor" Value="Hand"/>
+  </Style>
+
   <Style Selector="Button.nav-item">
-    <Setter Property="Background" Value="Transparent" />
-    <Setter Property="Foreground" Value="#9292A8" />
-    <Setter Property="HorizontalContentAlignment" Value="Left" />
-    <Setter Property="Padding" Value="14,11" />
-    <Setter Property="CornerRadius" Value="11" />
-    <Setter Property="FontSize" Value="13" />
-    <Setter Property="BorderThickness" Value="0" />
-    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="Foreground" Value="#82829A"/>
+    <Setter Property="HorizontalContentAlignment" Value="Center"/>
+    <Setter Property="VerticalContentAlignment" Value="Center"/>
+    <Setter Property="Padding" Value="18,12"/>
+    <Setter Property="CornerRadius" Value="12"/>
+    <Setter Property="BorderThickness" Value="0"/>
+    <Setter Property="FontSize" Value="12"/>
+    <Setter Property="MinWidth" Value="112"/>
   </Style>
   <Style Selector="Button.nav-item:pointerover">
-    <Setter Property="Background" Value="#1B1B2B" />
-    <Setter Property="Foreground" Value="#F5F5F8" />
+    <Setter Property="Background" Value="#1E1E2A"/>
+    <Setter Property="Foreground" Value="#F5F5F8"/>
   </Style>
   <Style Selector="Button.nav-item.active">
-    <Setter Property="Background" Value="#24243A" />
-    <Setter Property="Foreground" Value="#75B7FF" />
+    <Setter Property="Background" Value="#182D52"/>
+    <Setter Property="Foreground" Value="#72B5FF"/>
   </Style>
+
   <Style Selector="Button.action">
-    <Setter Property="Background" Value="#347FEA" />
-    <Setter Property="Foreground" Value="White" />
-    <Setter Property="Padding" Value="16,10" />
-    <Setter Property="CornerRadius" Value="12" />
-    <Setter Property="BorderThickness" Value="0" />
-    <Setter Property="FontWeight" Value="SemiBold" />
-    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Background" Value="#397BFF"/>
+    <Setter Property="Foreground" Value="White"/>
+    <Setter Property="Padding" Value="16,10"/>
+    <Setter Property="CornerRadius" Value="12"/>
+    <Setter Property="BorderThickness" Value="0"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
   </Style>
   <Style Selector="Button.action:pointerover">
-    <Setter Property="Background" Value="#56A5FF" />
+    <Setter Property="Background" Value="#16A9E0"/>
   </Style>
+
   <Style Selector="Button.icon-button">
-    <Setter Property="Background" Value="#1A1A28" />
-    <Setter Property="Foreground" Value="#D7D7E5" />
-    <Setter Property="Width" Value="38" />
-    <Setter Property="Height" Value="38" />
-    <Setter Property="CornerRadius" Value="19" />
-    <Setter Property="BorderBrush" Value="#303044" />
-    <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Background" Value="#16161F"/>
+    <Setter Property="Foreground" Value="#D7D7E5"/>
+    <Setter Property="Width" Value="38"/>
+    <Setter Property="Height" Value="38"/>
+    <Setter Property="CornerRadius" Value="19"/>
+    <Setter Property="BorderBrush" Value="#FFFFFF12"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="Padding" Value="0"/>
   </Style>
   <Style Selector="Button.icon-button:pointerover">
-    <Setter Property="Background" Value="#292940" />
+    <Setter Property="Background" Value="#242B3B"/>
+    <Setter Property="BorderBrush" Value="#397BFF"/>
   </Style>
+  <Style Selector="Button.profile-button">
+    <Setter Property="Background" Value="#1D3764"/>
+    <Setter Property="BorderBrush" Value="#397BFF"/>
+  </Style>
+
   <Style Selector="TextBox.search-box">
-    <Setter Property="Background" Value="#171722" />
-    <Setter Property="Foreground" Value="#F5F5F8" />
-    <Setter Property="BorderBrush" Value="#303044" />
-    <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="12" />
-    <Setter Property="Padding" Value="14,10" />
+    <Setter Property="Background" Value="#16161F"/>
+    <Setter Property="Foreground" Value="#F5F5F8"/>
+    <Setter Property="BorderBrush" Value="#FFFFFF18"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="CornerRadius" Value="12"/>
+    <Setter Property="Padding" Value="14,11"/>
+    <Setter Property="FontSize" Value="12"/>
+    <Setter Property="FontFamily" Value="avares://SONORA/Assets/WidockTrialBold.otf#Widock"/>
   </Style>
+  <Style Selector="TextBox.search-box:focus">
+    <Setter Property="BorderBrush" Value="#397BFF"/>
+  </Style>
+
   <Style Selector="Border.music-card">
-    <Setter Property="Background" Value="#171722" />
-    <Setter Property="CornerRadius" Value="15" />
-    <Setter Property="BorderBrush" Value="#28283A" />
-    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Background" Value="#16161F"/>
+    <Setter Property="CornerRadius" Value="15"/>
+    <Setter Property="BorderBrush" Value="#FFFFFF12"/>
+    <Setter Property="BorderThickness" Value="1"/>
+  </Style>
+
+  <Style Selector="Button.track-row">
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="Foreground" Value="#F5F5F8"/>
+    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+    <Setter Property="CornerRadius" Value="11"/>
+    <Setter Property="FontSize" Value="12"/>
+    <Setter Property="BorderThickness" Value="0"/>
+  </Style>
+  <Style Selector="Button.track-row:pointerover">
+    <Setter Property="Background" Value="#1E1E2A"/>
+  </Style>
+
+  <Style Selector="Button.settings-row">
+    <Setter Property="Background" Value="#16161F"/>
+    <Setter Property="Foreground" Value="#F5F5F8"/>
+    <Setter Property="HorizontalContentAlignment" Value="Left"/>
+    <Setter Property="Padding" Value="16,14"/>
+    <Setter Property="CornerRadius" Value="12"/>
+    <Setter Property="BorderBrush" Value="#FFFFFF12"/>
+    <Setter Property="BorderThickness" Value="1"/>
+  </Style>
+  <Style Selector="Button.settings-row:pointerover">
+    <Setter Property="Background" Value="#1E1E2A"/>
+    <Setter Property="BorderBrush" Value="#397BFF"/>
+  </Style>
+
+  <Style Selector="Slider">
+    <Setter Property="Foreground" Value="#397BFF"/>
+    <Setter Property="MinHeight" Value="22"/>
   </Style>
 </Styles>
