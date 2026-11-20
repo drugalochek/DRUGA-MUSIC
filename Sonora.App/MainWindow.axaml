@@ -15,7 +15,7 @@
       <Grid Margin="30,0,34,0" ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
         <StackPanel VerticalAlignment="Center" Spacing="2">
           <TextBlock Text="{Binding CurrentSectionTitle}" FontSize="16" FontWeight="SemiBold"/>
-          <TextBlock Text="{Binding GreetingText}" FontSize="10" Foreground="#71839B"/>
+          <TextBlock Text="{Binding StatusText}" FontSize="10" Foreground="#71839B"/>
         </StackPanel>
         <TextBox x:Name="HeaderSearchBox" Grid.Column="1" Classes="search-box" Width="410" Height="40" HorizontalAlignment="Center" VerticalContentAlignment="Center" Text="{Binding SearchQuery, Mode=TwoWay}" PlaceholderText="Поиск музыки, альбомов и исполнителей" TextChanged="HeaderSearchBox_TextChanged"/>
         <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
