@@ -13,7 +13,7 @@ New-Item -ItemType Directory -Force -Path $assets | Out-Null
 
 $inputImage = [System.Drawing.Image]::FromFile($source)
 try {
-    $bitmap = New-Object System.Drawing.Bitmap 256, 256, ([System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
+    $bitmap = [System.Drawing.Bitmap]::new(256, 256, [System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
     try {
         $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
         try {
@@ -23,8 +23,8 @@ try {
             $side = [Math]::Min($inputImage.Width, $inputImage.Height)
             $left = [int](($inputImage.Width - $side) / 2)
             $top = [int](($inputImage.Height - $side) / 2)
-            $sourceRect = New-Object System.Drawing.Rectangle $left, $top, $side, $side
-            $destRect = New-Object System.Drawing.Rectangle 0, 0, 256, 256
+            $sourceRect = [System.Drawing.Rectangle]::new($left, $top, $side, $side)
+            $destRect = [System.Drawing.Rectangle]::new(0, 0, 256, 256)
             $graphics.DrawImage($inputImage, $destRect, $sourceRect, [System.Drawing.GraphicsUnit]::Pixel)
         } finally { $graphics.Dispose() }
 
@@ -34,7 +34,7 @@ try {
             $stream = [System.IO.File]::Create($target)
             try { $icon.Save($stream) } finally { $stream.Dispose() }
         } finally {
-            [void][SONORA.NativeMethods]::DestroyIcon($handle)
+            [void][NativeMethods]::DestroyIcon($handle)
         }
     } finally { $bitmap.Dispose() }
 } finally { $inputImage.Dispose() }
