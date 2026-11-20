@@ -147,9 +147,9 @@ public sealed class FirebaseAuthService
         var port = ((IPEndPoint)portProbe.LocalEndpoint).Port;
         portProbe.Stop();
 
-        var redirectUri = $"http://127.0.0.1:{port}/";
+        var redirectUri = $"http://127.0.0.1:{port}";
         using var listener = new HttpListener();
-        listener.Prefixes.Add(redirectUri);
+        listener.Prefixes.Add(redirectUri + "/");
         listener.Start();
 
         var query = new Dictionary<string, string>
