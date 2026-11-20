@@ -14,16 +14,16 @@ namespace DrugaMusic;
 public partial class NowPlayingWindow : Window
 {
  private readonly PlaybackService playback;
- private readonly Action previous;
- private readonly Action next;
- private readonly Action<int> playQueueIndex;
+ private readonly Func<Track?> previous;
+ private readonly Func<Track?> next;
+ private readonly Func<int,Track?> playQueueIndex;
  private readonly DispatcherTimer timer;
  private bool seeking;
  private bool updating;
  private bool changingQueue;
 
  public NowPlayingWindow(Track? current, PlaybackService playback, IReadOnlyList<Track> queue,
-  int currentIndex, Action previous, Action next, Action<int> playQueueIndex)
+  int currentIndex, Func<Track?> previous, Func<Track?> next, Func<int,Track?> playQueueIndex)
  {
   InitializeComponent();
   this.playback=playback;
@@ -68,7 +68,7 @@ public partial class NowPlayingWindow : Window
  private void Seek_MouseUp(object sender,MouseButtonEventArgs e){seeking=false;if(playback.Duration>TimeSpan.Zero)playback.Seek(TimeSpan.FromSeconds(Seek.Value));}
  private void Volume_ValueChanged(object sender,RoutedPropertyChangedEventArgs<double> e)=>playback.SetVolume((float)e.NewValue);
  private void Play_Click(object sender,RoutedEventArgs e){playback.Pause();PlayButton.Content=playback.IsPlaying?"Ⅱ":"▶";}
- private void Previous_Click(object sender,RoutedEventArgs e)=>previous();
- private void Next_Click(object sender,RoutedEventArgs e)=>next();
- private void QueueList_SelectionChanged(object sender,SelectionChangedEventArgs e){if(!changingQueue&&QueueList.SelectedIndex>=0)playQueueIndex(QueueList.SelectedIndex);}
+ private void Previous_Click(object sender,RoutedEventArgs e)=>ShowTrack(previous());
+ private void Next_Click(object sender,RoutedEventArgs e)=>ShowTrack(next());
+ private void QueueList_SelectionChanged(object sender,SelectionChangedEventArgs e){if(!changingQueue&&QueueList.SelectedIndex>=0)ShowTrack(playQueueIndex(QueueList.SelectedIndex));}
 }
