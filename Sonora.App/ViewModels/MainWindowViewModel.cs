@@ -71,6 +71,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     public string? ForYouArtworkPath => ForYouArtist?.ArtworkPath;
     public bool HasForYouArtist => ForYouArtist is not null;
     public bool IsLibraryEmpty => Tracks.Count == 0;
+    public bool IsSearchEmpty => VisibleTracks.Count == 0;
     public bool IsFavoritesEmpty => FavoriteTracks.Count == 0;
     public bool HasCurrentTrack => CurrentTrack is not null;
     public bool HasProfileAvatar => ProfileAvatar is not null;
@@ -363,6 +364,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(ForYouArtworkPath));
         OnPropertyChanged(nameof(HasForYouArtist));
         OnPropertyChanged(nameof(IsLibraryEmpty));
+        OnPropertyChanged(nameof(IsSearchEmpty));
         OnPropertyChanged(nameof(IsFavoritesEmpty));
         OnPropertyChanged(nameof(EmptyLibraryText));
         OnPropertyChanged(nameof(EmptyFavoritesText));
