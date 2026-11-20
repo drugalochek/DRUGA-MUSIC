@@ -71,6 +71,11 @@ public partial class NowPlayingWindow : Window
  private void UpdatePosition()
  {
   var active=currentTrackProvider();if(active?.Id!=shownTrackId)ShowTrack(active);
+  var activeIndex=active is null?-1:queueItems.ToList().FindIndex(t=>t.Id==active.Id);
+  if(activeIndex>=0&&QueueList.SelectedIndex!=activeIndex)
+  {
+   changingQueue=true;QueueList.SelectedIndex=activeIndex;changingQueue=false;
+  }
   PositionText.Text=playback.Position.ToString(@"m\:ss");
   if(!seeking && playback.Duration>TimeSpan.Zero){
    updating=true;Seek.Maximum=Math.Max(1,playback.Duration.TotalSeconds);Seek.Value=Math.Clamp(playback.Position.TotalSeconds,0,Seek.Maximum);updating=false;
