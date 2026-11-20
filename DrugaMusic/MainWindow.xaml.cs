@@ -172,14 +172,40 @@ public partial class MainWindow : Window
  }
  private void Playlists_Click(object sender,RoutedEventArgs e)
  {
-  var w=new Window{Title="Плейлисты SONORA",Owner=this,Width=430,Height=480,WindowStartupLocation=WindowStartupLocation.CenterOwner,Background=new SolidColorBrush(Color.FromRgb(8,11,18)),Foreground=Brushes.White};
-  var root=new DockPanel{Margin=new Thickness(16)};var list=new ListBox{ItemsSource=playlists,DisplayMemberPath="Name",Background=new SolidColorBrush(Color.FromRgb(17,24,39)),Foreground=Brushes.White};
-  var name=new TextBox{Width=190,Height=32,Padding=new Thickness(7),Background=new SolidColorBrush(Color.FromRgb(17,24,39)),Foreground=Brushes.White};
-  var actions=new StackPanel{Orientation=Orientation.Horizontal,Margin=new Thickness(0,10,0,0)};
-  var add=new Button{Content="Создать"};add.Click+=(_,_)=>{if(string.IsNullOrWhiteSpace(name.Text))return;var p=new Playlist{Name=name.Text.Trim()};playlists.Add(p);SavePlaylists();list.SelectedItem=p;name.Clear();};
-  var remove=new Button{Content="Удалить",Margin=new Thickness(8,0,0,0)};remove.Click+=(_,_)=>{if(list.SelectedItem is Playlist p){playlists.Remove(p);SavePlaylists();}};
-  var play=new Button{Content="▶ Играть",Margin=new Thickness(8,0,0,0)};play.Click+=(_,_)=>{if(list.SelectedItem is Playlist p){queue=p.TrackIds.Where(id=>tracks.Any(t=>t.Id==id)).ToList();queueIndex=queue.Count>0?0:-1;if(queueIndex>=0)PlayCurrent();w.Close();}};
-  actions.Children.Add(name);actions.Children.Add(add);actions.Children.Add(remove);actions.Children.Add(play);DockPanel.SetDock(actions,Dock.Bottom);root.Children.Add(actions);root.Children.Add(list);w.Content=root;w.ShowDialog();
+  var w=new Window{Title="Плейлисты SONORA",Owner=this,Width=760,Height=520,MinWidth=650,MinHeight=420,WindowStartupLocation=WindowStartupLocation.CenterOwner,Background=new SolidColorBrush(Color.FromRgb(8,11,18)),Foreground=Brushes.White};
+  var root=new Grid{Margin=new Thickness(18)};
+  root.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(240)});
+  root.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(1,GridUnitType.Star)});
+  var left=new DockPanel{Margin=new Thickness(0,0,16,0)};
+  var playlistList=new ListBox{ItemsSource=playlists,DisplayMemberPath="Name",Background=new SolidColorBrush(Color.FromRgb(17,24,39)),Foreground=Brushes.White,BorderThickness=new Thickness(0)};
+  var leftActions=new StackPanel{Orientation=Orientation.Vertical,Margin=new Thickness(0,10,0,0)};
+  var name=new TextBox{Height=34,Padding=new Thickness(8),Background=new SolidColorBrush(Color.FromRgb(17,24,39)),Foreground=Brushes.White};
+  var create=new Button{Content="＋ Создать",Margin=new Thickness(0,8,0,0)};
+  var rename=new Button{Content="Переименовать",Margin=new Thickness(0,6,0,0)};
+  var delete=new Button{Content="Удалить плейлист",Margin=new Thickness(0,6,0,0)};
+  leftActions.Children.Add(name);leftActions.Children.Add(create);leftActions.Children.Add(rename);leftActions.Children.Add(delete);
+  DockPanel.SetDock(leftActions,Dock.Bottom);left.Children.Add(leftActions);left.Children.Add(playlistList);
+  var right=new DockPanel();
+  var heading=new StackPanel{Margin=new Thickness(0,0,0,12)};
+  heading.Children.Add(new TextBlock{Text="Содержимое плейлиста",FontSize=21,FontWeight=FontWeights.SemiBold});
+  heading.Children.Add(new TextBlock{Text="Управляй треками и порядком своей подборки.",Foreground=new SolidColorBrush(Color.FromRgb(141,155,176)),FontSize=12,Margin=new Thickness(0,5,0,0)});
+  DockPanel.SetDock(heading,Dock.Top);right.Children.Add(heading);
+  var playlistTracks=new ListBox{Background=new SolidColorBrush(Color.FromRgb(17,24,39)),Foreground=Brushes.White,BorderThickness=new Thickness(0),DisplayMemberPath="Title"};
+  var trackActions=new StackPanel{Orientation=Orientation.Horizontal,HorizontalAlignment=HorizontalAlignment.Right,Margin=new Thickness(0,10,0,0)};
+  var removeTrack=new Button{Content="Убрать трек",Padding=new Thickness(12,7)};
+  var play=new Button{Content="▶ Играть плейлист",Padding=new Thickness(12,7),Margin=new Thickness(8,0,0,0)};
+  trackActions.Children.Add(removeTrack);trackActions.Children.Add(play);
+  DockPanel.SetDock(trackActions,Dock.Bottom);right.Children.Add(trackActions);right.Children.Add(playlistTracks);
+  playlistList.SelectionChanged+=(_,_)=>{
+   if(playlistList.SelectedItem is Playlist p){name.Text=p.Name;playlistTracks.ItemsSource=p.TrackIds.Select(id=>tracks.FirstOrDefault(t=>t.Id==id)).Where(t=>t is not null).ToList();}
+   else{name.Clear();playlistTracks.ItemsSource=null;}
+  };
+  create.Click+=(_,_)=>{if(string.IsNullOrWhiteSpace(name.Text))return;var p=new Playlist{Name=name.Text.Trim()};playlists.Add(p);SavePlaylists();playlistList.SelectedItem=p;name.Clear();};
+  rename.Click+=(_,_)=>{if(playlistList.SelectedItem is not Playlist p||string.IsNullOrWhiteSpace(name.Text))return;p.Name=name.Text.Trim();SavePlaylists();playlistList.Items.Refresh();};
+  delete.Click+=(_,_)=>{if(playlistList.SelectedItem is Playlist p){playlists.Remove(p);SavePlaylists();playlistTracks.ItemsSource=null;name.Clear();}};
+  removeTrack.Click+=(_,_)=>{if(playlistList.SelectedItem is not Playlist p||playlistTracks.SelectedItem is not Track t)return;p.TrackIds.Remove(t.Id);SavePlaylists();playlistTracks.ItemsSource=p.TrackIds.Select(id=>tracks.FirstOrDefault(x=>x.Id==id)).Where(x=>x is not null).ToList();};
+  play.Click+=(_,_)=>{if(playlistList.SelectedItem is not Playlist p)return;queue=p.TrackIds.Where(id=>tracks.Any(t=>t.Id==id)).ToList();queueIndex=queue.Count>0?0:-1;if(queueIndex>=0){PlayCurrent();w.Close();}};
+  Grid.SetColumn(right,1);root.Children.Add(left);root.Children.Add(right);w.Content=root;w.ShowDialog();
  }
  private void OpenNowPlaying_Click(object sender,RoutedEventArgs e)
  {
