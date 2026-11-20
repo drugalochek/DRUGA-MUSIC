@@ -425,31 +425,40 @@
 
       <!-- Full player overlay, still inside the same window -->
       <Border x:Name="NowPlayingOverlay" IsVisible="False" Background="#080B12">
-        <Grid RowDefinitions="Auto,*,Auto" Margin="24">
+        <Grid RowDefinitions="Auto,*" Margin="38,28">
           <Button Classes="icon-button" Content="⌄" HorizontalAlignment="Left" Click="ClosePlayer_Click"/>
-          <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="16" MaxWidth="420">
-            <Border Width="360" Height="360" CornerRadius="18" Background="#1B3766" ClipToBounds="True">
+          <Grid Grid.Row="1" ColumnDefinitions="*,Auto,Auto,*" ColumnSpacing="54" VerticalAlignment="Center">
+            <Border Grid.Column="1" Width="390" Height="390" CornerRadius="18" Background="#14243A" BorderBrush="#2C4B70" BorderThickness="1" ClipToBounds="True">
               <Image Source="{Binding CurrentArtwork}" Stretch="UniformToFill"/>
             </Border>
-            <TextBlock Text="{Binding CurrentTrackTitle}" FontSize="22" FontWeight="Bold" TextAlignment="Center"/>
-            <TextBlock Text="{Binding CurrentTrackArtist}" FontSize="14" Foreground="#82829A" TextAlignment="Center"/>
-            <StackPanel Spacing="4">
-              <Slider x:Name="PlayerSeek" Minimum="0" Maximum="100" Value="{Binding Progress}" PointerReleased="Seek_Released"/>
-              <Grid ColumnDefinitions="*,Auto">
-                <TextBlock Text="{Binding CurrentTimeText}" FontSize="10" Foreground="#82829A"/>
-                <TextBlock Grid.Column="1" Text="{Binding DurationText}" FontSize="10" Foreground="#82829A"/>
-              </Grid>
+            <StackPanel Grid.Column="2" Width="390" VerticalAlignment="Center" Spacing="17">
+              <StackPanel Spacing="5">
+                <TextBlock Text="NOW PLAYING" FontSize="9" FontWeight="Bold" Foreground="#77B7FF" LetterSpacing="2.2"/>
+                <TextBlock Text="Текущий трек" FontSize="12" Foreground="#7F91A9"/>
+              </StackPanel>
+              <StackPanel Spacing="6">
+                <TextBlock Text="{Binding CurrentTrackTitle}" FontSize="27" FontWeight="Bold" TextWrapping="Wrap"/>
+                <TextBlock Text="{Binding CurrentTrackArtist}" FontSize="15" Foreground="#91A3B9"/>
+              </StackPanel>
+              <StackPanel Spacing="7">
+                <Slider x:Name="PlayerSeek" Minimum="0" Maximum="100" Value="{Binding Progress}" PointerReleased="Seek_Released"/>
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Text="{Binding CurrentTimeText}" FontSize="10" Foreground="#8294AA"/>
+                  <TextBlock Grid.Column="1" Text="{Binding DurationText}" FontSize="10" Foreground="#8294AA"/>
+                </Grid>
+              </StackPanel>
+              <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Spacing="18">
+                <Button Classes="icon-button" Content="|◀" Click="Previous_Click"/>
+                <Button Classes="action" Width="54" Height="54" Content="{Binding PlayButtonGlyph}" Click="PlayPause_Click"/>
+                <Button Classes="icon-button" Content="▶|" Click="Next_Click"/>
+              </StackPanel>
+              <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,7,0,0">
+                <TextBlock Text="♫" FontSize="14" Foreground="#7891AE" VerticalAlignment="Center"/>
+                <Slider Width="170" Minimum="0" Maximum="1" Value="{Binding Volume, Mode=TwoWay}"/>
+                <TextBlock Text="Громкость" FontSize="10" Foreground="#8294AA" VerticalAlignment="Center"/>
+              </StackPanel>
             </StackPanel>
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="8">
-              <TextBlock Text="Громкость" FontSize="10" Foreground="#82829A" VerticalAlignment="Center"/>
-              <Slider Width="150" Minimum="0" Maximum="1" Value="{Binding Volume, Mode=TwoWay}"/>
-            </StackPanel>
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="22">
-              <Button Classes="icon-button" Content="|◀" Click="Previous_Click"/>
-              <Button Classes="action" Width="54" Height="54" Content="{Binding PlayButtonGlyph}" Click="PlayPause_Click"/>
-              <Button Classes="icon-button" Content="▶|" Click="Next_Click"/>
-            </StackPanel>
-          </StackPanel>
+          </Grid>
         </Grid>
       </Border>
     </Grid>
