@@ -27,7 +27,12 @@ public partial class SonicWaveWindow : Window
             if (!File.Exists(page))
                 throw new FileNotFoundException("Не найден встроенный интерфейс Sonic Wave.", page);
 
-            await Browser.EnsureCoreWebView2Async();
+            var userData = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "SONORA", "WebView2");
+            Directory.CreateDirectory(userData);
+            var environment = await CoreWebView2Environment.CreateAsync(null, userData);
+            await Browser.EnsureCoreWebView2Async(environment);
             Browser.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
             Browser.CoreWebView2.Settings.IsStatusBarEnabled = false;
             Browser.CoreWebView2.Settings.IsZoomControlEnabled = false;
