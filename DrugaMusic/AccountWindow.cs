@@ -158,7 +158,6 @@ public sealed class AccountWindow : Window
             bitmap.BeginInit();
             bitmap.CacheOption = BitmapCacheOption.OnLoad;
             bitmap.DecodePixelWidth = 256;
-            bitmap.DecodePixelHeight = 256;
             bitmap.UriSource = new Uri(dialog.FileName);
             bitmap.EndInit();
             bitmap.Freeze();
