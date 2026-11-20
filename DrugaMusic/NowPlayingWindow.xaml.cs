@@ -27,7 +27,7 @@ public partial class NowPlayingWindow : Window
  private bool changingQueue;
 
  public NowPlayingWindow(Track? current, PlaybackService playback, IReadOnlyList<Track> queue,
-  int currentIndex, Func<Track?> previous, Func<Track?> next, Func<int,Track?> playQueueIndex, Func<int,int,Track?> moveQueueItem, Func<int,Track?> removeQueueItem)
+  int currentIndex, float initialVolume, Func<Track?> previous, Func<Track?> next, Func<int,Track?> playQueueIndex, Func<int,int,Track?> moveQueueItem, Func<int,Track?> removeQueueItem)
  {
   InitializeComponent();
   this.playback=playback;
@@ -42,7 +42,7 @@ public partial class NowPlayingWindow : Window
   if(currentIndex>=0 && currentIndex<queue.Count) QueueList.SelectedIndex=currentIndex;
   changingQueue=false;
   ShowTrack(current);
-  Volume.Value=0.75;
+  Volume.Value=initialVolume;
   timer=new DispatcherTimer{Interval=TimeSpan.FromMilliseconds(200)};
   timer.Tick+=(_,_)=>UpdatePosition();
   timer.Start();
@@ -70,10 +70,10 @@ public partial class NowPlayingWindow : Window
   }
   PlayButton.Content=playback.IsPlaying?"Ⅱ":"▶";
  }
- private void Seek_ValueChanged(object sender,RoutedPropertyChangedEventArgs<double> e){if(!updating&&!seeking&&playback.Duration>TimeSpan.Zero)playback.Seek(TimeSpan.FromSeconds(e.NewValue));}
+ private void Seek_ValueChanged(object sender,RoutedPropertyChangedEventArgs<double> e){if(playback is not null&&!updating&&!seeking&&playback.Duration>TimeSpan.Zero)playback.Seek(TimeSpan.FromSeconds(e.NewValue));}
  private void Seek_MouseDown(object sender,MouseButtonEventArgs e)=>seeking=true;
  private void Seek_MouseUp(object sender,MouseButtonEventArgs e){seeking=false;if(playback.Duration>TimeSpan.Zero)playback.Seek(TimeSpan.FromSeconds(Seek.Value));}
- private void Volume_ValueChanged(object sender,RoutedPropertyChangedEventArgs<double> e)=>playback.SetVolume((float)e.NewValue);
+ private void Volume_ValueChanged(object sender,RoutedPropertyChangedEventArgs<double> e){if(playback is not null)playback.SetVolume((float)e.NewValue);}
  private void Play_Click(object sender,RoutedEventArgs e){playback.Pause();PlayButton.Content=playback.IsPlaying?"Ⅱ":"▶";}
  private void Previous_Click(object sender,RoutedEventArgs e)=>ShowTrack(previous());
  private void Next_Click(object sender,RoutedEventArgs e)=>ShowTrack(next());
