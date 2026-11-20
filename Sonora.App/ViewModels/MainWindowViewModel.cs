@@ -65,6 +65,11 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     public string TrackCountText => $"{Tracks.Count} треков";
     public string ArtistCountText => $"{Artists.Count} исполнителей";
     public string FavoriteCountText => $"{FavoriteTracks.Count} треков";
+    private ArtistTile? ForYouArtist => Artists.OrderByDescending(a => Tracks.Count(t => string.Equals(t.Artist?.Trim(), a.Name, StringComparison.OrdinalIgnoreCase))).FirstOrDefault();
+    public string ForYouArtistName => ForYouArtist?.Name ?? "Добавь музыку в библиотеку";
+    public string ForYouTrackCountText => ForYouArtist is null ? "Твой персональный микс появится здесь" : $"{Tracks.Count(t => string.Equals(t.Artist?.Trim(), ForYouArtist.Name, StringComparison.OrdinalIgnoreCase))} треков этого исполнителя";
+    public string? ForYouArtworkPath => ForYouArtist?.ArtworkPath;
+    public bool HasForYouArtist => ForYouArtist is not null;
     public bool IsLibraryEmpty => Tracks.Count == 0;
     public bool IsFavoritesEmpty => FavoriteTracks.Count == 0;
     public bool HasCurrentTrack => CurrentTrack is not null;
@@ -181,6 +186,16 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         SaveLibrary();
         RefreshArtistsAndLibrary();
         StatusText = added == 0 ? "Новых поддерживаемых файлов не найдено" : $"Добавлено треков: {added}";
+    }
+
+    public void PlayForYouArtist()
+    {
+        var artist = ForYouArtist;
+        if (artist is null) return;
+        queue = Tracks.Where(t => string.Equals(t.Artist?.Trim(), artist.Name, StringComparison.OrdinalIgnoreCase))
+            .Select(t => t.Id).ToList();
+        queueIndex = 0;
+        StartCurrentTrack();
     }
 
     public void PlayTrack(Track track)
@@ -343,6 +358,10 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(TrackCountText));
         OnPropertyChanged(nameof(ArtistCountText));
         OnPropertyChanged(nameof(FavoriteCountText));
+        OnPropertyChanged(nameof(ForYouArtistName));
+        OnPropertyChanged(nameof(ForYouTrackCountText));
+        OnPropertyChanged(nameof(ForYouArtworkPath));
+        OnPropertyChanged(nameof(HasForYouArtist));
         OnPropertyChanged(nameof(IsLibraryEmpty));
         OnPropertyChanged(nameof(IsFavoritesEmpty));
         OnPropertyChanged(nameof(EmptyLibraryText));
