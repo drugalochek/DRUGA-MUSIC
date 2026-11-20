@@ -1,0 +1,130 @@
+<Window x:Class="DrugaMusic.MainWindow"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ Title="Druga Music" Width="1280" Height="820" MinWidth="940" MinHeight="620"
+ WindowStartupLocation="CenterScreen" Background="{StaticResource WindowBrush}" Foreground="{StaticResource TextBrush}">
+ <Grid>
+  <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="92"/></Grid.RowDefinitions>
+  <Grid Grid.Row="0">
+   <Grid.ColumnDefinitions><ColumnDefinition Width="226"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+   <Border Grid.Column="0" Background="#0C111B" BorderBrush="#1B2637" BorderThickness="0,0,1,0">
+    <DockPanel Margin="18,24,18,18">
+     <StackPanel DockPanel.Dock="Top">
+      <StackPanel Orientation="Horizontal" Margin="8,0,0,34">
+       <TextBlock Text="DRUGA" FontSize="25" FontWeight="Bold" Foreground="White" CharacterSpacing="2"/>
+       <TextBlock Text=" MUSIC" FontSize="15" FontWeight="SemiBold" Foreground="#438DFF" VerticalAlignment="Bottom" Margin="7,0,0,3"/>
+      </StackPanel>
+      <Button Style="{StaticResource NavButton}" Content="⌂   Главная" Click="Home_Click"/>
+      <Button Style="{StaticResource NavButton}" Content="⌕   Поиск" Click="Search_Click"/>
+      <Button Style="{StaticResource NavButton}" Content="▤   Моя музыка" Click="Library_Click"/>
+      <Button Style="{StaticResource NavButton}" Content="♫   Плейлисты" Click="Playlists_Click"/>
+      <TextBlock Text="ТВОЯ КОЛЛЕКЦИЯ" FontSize="10" FontWeight="Bold" Foreground="#63738A" Margin="14,30,0,10" CharacterSpacing="1.5"/>
+      <Button Style="{StaticResource NavButton}" Content="＋   Добавить музыку" Click="AddMusic_Click"/>
+      <Button Style="{StaticResource NavButton}" Content="⚙   Сервисы" Click="Services_Click"/>
+     </StackPanel>
+     <StackPanel DockPanel.Dock="Bottom" Margin="8,0,0,0">
+      <Border Height="1" Background="#202B3B" Margin="0,0,0,14"/>
+      <TextBlock Text="DRUGA MUSIC" Foreground="#63738A" FontSize="10" FontWeight="Bold"/>
+      <TextBlock Text="Desktop preview · 0.1.0" Foreground="#63738A" FontSize="10" Margin="0,4,0,0"/>
+     </StackPanel>
+    </DockPanel>
+   </Border>
+   <Grid Grid.Column="1" Margin="34,26,34,24">
+    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+    <Grid Grid.Row="0" Margin="0,0,0,26">
+     <StackPanel>
+      <TextBlock x:Name="GreetingText" Text="Твоя музыка. Твоё пространство." FontSize="28" FontWeight="Bold"/>
+      <TextBlock x:Name="SubtitleText" Text="Собери всё, что любишь слушать, в одном месте." Foreground="{StaticResource MutedBrush}" Margin="0,7,0,0" FontSize="13"/>
+     </StackPanel>
+     <Border HorizontalAlignment="Right" Background="#111827" CornerRadius="18" Padding="13,8" VerticalAlignment="Center">
+      <TextBlock Text="●  LOCAL LIBRARY" Foreground="#8CB8FF" FontSize="10" FontWeight="Bold" CharacterSpacing="1"/>
+     </Border>
+    </Grid>
+    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+     <StackPanel>
+      <Border Background="#12233D" CornerRadius="18" Padding="26" Margin="0,0,0,28">
+       <Grid>
+        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="170"/></Grid.ColumnDefinitions>
+        <StackPanel VerticalAlignment="Center">
+         <TextBlock Text="YOUR MUSIC, YOUR WAY" Foreground="#80B3FF" FontSize="10" FontWeight="Bold" CharacterSpacing="2"/>
+         <TextBlock Text="Вся твоя музыка." FontSize="27" FontWeight="Bold" Margin="0,10,0,4"/>
+         <TextBlock Text="Локальная коллекция — первый шаг к единому музыкальному пространству." Foreground="#B6C9E5" TextWrapping="Wrap" MaxWidth="540" FontSize="13"/>
+         <Button Content="＋  Добавить треки" Background="#287BFF" Padding="18,11" HorizontalAlignment="Left" Margin="0,20,0,0" Click="AddMusic_Click"/>
+        </StackPanel>
+        <Border Grid.Column="1" Width="130" Height="130" CornerRadius="18" Background="#287BFF" HorizontalAlignment="Right" VerticalAlignment="Center">
+         <TextBlock Text="♫" FontSize="70" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        </Border>
+       </Grid>
+      </Border>
+      <Grid Margin="0,0,0,14">
+       <TextBlock Text="Твоя библиотека" FontSize="20" FontWeight="SemiBold"/>
+       <TextBlock x:Name="TrackCountText" Text="0 треков" Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="12"/>
+      </Grid>
+      <TextBox x:Name="SearchBox" Height="40" Padding="12,8" Background="#111827" Foreground="White" BorderThickness="0" FontSize="13" Margin="0,0,0,12" ToolTip="Поиск по локальной библиотеке" TextChanged="SearchBox_TextChanged"/>
+      <Border Background="#111827" CornerRadius="14" Padding="8">
+       <ListView x:Name="TracksList" Background="Transparent" BorderThickness="0" Foreground="White"
+                 SelectionMode="Single" MouseDoubleClick="TracksList_DoubleClick"
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+        <ListView.ItemContainerStyle>
+         <Style TargetType="ListViewItem">
+          <Setter Property="Padding" Value="10,9"/><Setter Property="Margin" Value="0,1"/>
+          <Setter Property="Background" Value="Transparent"/><Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+          <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ListViewItem">
+           <Border x:Name="itemBorder" Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}"><ContentPresenter/></Border>
+           <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="itemBorder" Property="Background" Value="#1A2638"/></Trigger>
+            <Trigger Property="IsSelected" Value="True"><Setter TargetName="itemBorder" Property="Background" Value="#1B3152"/></Trigger>
+           </ControlTemplate.Triggers>
+          </ControlTemplate></Setter.Value></Setter>
+         </Style>
+        </ListView.ItemContainerStyle>
+        <ListView.ItemTemplate><DataTemplate>
+         <Grid MinHeight="38">
+          <Grid.ColumnDefinitions><ColumnDefinition Width="2.2*"/><ColumnDefinition Width="1.4*"/><ColumnDefinition Width="1.2*"/><ColumnDefinition Width="55"/></Grid.ColumnDefinitions>
+          <StackPanel VerticalAlignment="Center">
+           <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+           <TextBlock Text="{Binding FilePath}" Foreground="#77879D" FontSize="10" TextTrimming="CharacterEllipsis"/>
+          </StackPanel>
+          <TextBlock Grid.Column="1" Text="{Binding Artist}" Foreground="#B3C0D1" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+          <TextBlock Grid.Column="2" Text="{Binding Album}" Foreground="#B3C0D1" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+          <TextBlock Grid.Column="3" Text="{Binding DurationText}" Foreground="#8292A8" VerticalAlignment="Center"/>
+         </Grid>
+        </DataTemplate></ListView.ItemTemplate>
+       </ListView>
+      </Border>
+      <TextBlock x:Name="EmptyStateText" Text="Пока здесь пусто. Нажми «Добавить треки», чтобы импортировать свою музыку." Foreground="{StaticResource MutedBrush}" TextAlignment="Center" Margin="0,18,0,0" FontSize="12"/>
+     </StackPanel>
+    </ScrollViewer>
+   </Grid>
+  </Grid>
+  <Border Grid.Row="1" Background="#0E1520" BorderBrush="#202B3B" BorderThickness="0,1,0,0" Padding="22,12">
+   <Grid>
+    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="2*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+     <Border Width="46" Height="46" CornerRadius="8" Background="#1A2B44"><TextBlock Text="♫" FontSize="23" Foreground="#78ABFF" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+     <StackPanel VerticalAlignment="Center" Margin="12,0,0,0">
+      <TextBlock x:Name="NowPlayingTitle" Text="Ничего не воспроизводится" FontWeight="SemiBold" FontSize="12"/>
+      <TextBlock x:Name="NowPlayingArtist" Text="Выбери трек из своей библиотеки" Foreground="{StaticResource MutedBrush}" FontSize="10" Margin="0,3,0,0"/>
+     </StackPanel>
+    </StackPanel>
+    <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center" Width="360">
+     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+      <Button Content="⏮" Background="Transparent" Padding="12,4" Click="Previous_Click"/>
+      <Button x:Name="PlayPauseButton" Content="▶" Background="#287BFF" Padding="17,7" Margin="12,0" Click="PlayPause_Click"/>
+      <Button Content="⏭" Background="Transparent" Padding="12,4" Click="Next_Click"/>
+     </StackPanel>
+     <Grid Margin="0,7,0,0">
+      <Grid.ColumnDefinitions><ColumnDefinition Width="38"/><ColumnDefinition Width="*"/><ColumnDefinition Width="38"/></Grid.ColumnDefinitions>
+      <TextBlock x:Name="CurrentTimeText" Text="0:00" FontSize="9" Foreground="#8292A8" VerticalAlignment="Center"/>
+      <ProgressBar x:Name="PlaybackProgress" Grid.Column="1" Height="3" Maximum="100" Value="0" VerticalAlignment="Center" Background="#283548" Foreground="#287BFF"/>
+      <TextBlock x:Name="DurationText" Grid.Column="2" Text="0:00" FontSize="9" Foreground="#8292A8" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+     </Grid>
+    </StackPanel>
+    <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+     <TextBlock Text="◖" Foreground="#AAB6C8" VerticalAlignment="Center" Margin="0,0,8,0"/>
+     <Slider x:Name="VolumeSlider" Width="110" Minimum="0" Maximum="1" Value="0.75" ValueChanged="VolumeSlider_ValueChanged"/>
+    </StackPanel>
+   </Grid>
+  </Border>
+ </Grid>
+</Window>
