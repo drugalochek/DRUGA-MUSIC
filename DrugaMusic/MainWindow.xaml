@@ -60,6 +60,18 @@
       <Grid Margin="0,0,0,14">
        <StackPanel><TextBlock Text="Твоя библиотека" FontSize="20" FontWeight="SemiBold"/><TextBlock x:Name="TrackCountText" Text="0 треков" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,3,0,0"/></StackPanel>
        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+        <ComboBox x:Name="SortBox" Width="132" Height="32" SelectedIndex="0" Background="#111827" Foreground="White" BorderThickness="0" Margin="0,0,7,0" SelectionChanged="SortBox_SelectionChanged">
+         <ComboBoxItem Content="Сортировка: название"/>
+         <ComboBoxItem Content="Исполнитель"/>
+         <ComboBoxItem Content="Альбом"/>
+         <ComboBoxItem Content="Год"/>
+        </ComboBox>
+        <ComboBox x:Name="GroupBox" Width="118" Height="32" SelectedIndex="0" Background="#111827" Foreground="White" BorderThickness="0" Margin="0,0,10,0" SelectionChanged="GroupBox_SelectionChanged">
+         <ComboBoxItem Content="Без групп"/>
+         <ComboBoxItem Content="Исполнители"/>
+         <ComboBoxItem Content="Альбомы"/>
+         <ComboBoxItem Content="Жанры"/>
+        </ComboBox>
         <TextBlock x:Name="FavoriteCountText" Text="0 избранных" Foreground="{StaticResource MutedBrush}" FontSize="11" VerticalAlignment="Center" Margin="0,0,10,0"/>
         <Button x:Name="FavoriteButton" Content="♡ В избранное" Padding="10,7" Click="Favorite_Click"/>
         <Button Content="＋ В плейлист" Padding="10,7" Margin="7,0,0,0" Click="AddToPlaylist_Click"/>
