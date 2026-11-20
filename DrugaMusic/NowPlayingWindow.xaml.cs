@@ -17,6 +17,8 @@ public partial class NowPlayingWindow : Window
  private readonly PlaybackService playback;
  private readonly Func<Track?> previous;
  private readonly Func<Track?> next;
+ private readonly Func<Track?> currentTrackProvider;
+ private string? shownTrackId;
  private readonly Func<int,Track?> playQueueIndex;
  private readonly Func<int,int,Track?> moveQueueItem;
  private readonly Func<int,Track?> removeQueueItem;
@@ -27,12 +29,13 @@ public partial class NowPlayingWindow : Window
  private bool changingQueue;
 
  public NowPlayingWindow(Track? current, PlaybackService playback, IReadOnlyList<Track> queue,
-  int currentIndex, float initialVolume, Func<Track?> previous, Func<Track?> next, Func<int,Track?> playQueueIndex, Func<int,int,Track?> moveQueueItem, Func<int,Track?> removeQueueItem)
+  int currentIndex, float initialVolume, Func<Track?> previous, Func<Track?> next, Func<Track?> currentTrackProvider, Func<int,Track?> playQueueIndex, Func<int,int,Track?> moveQueueItem, Func<int,Track?> removeQueueItem)
  {
   InitializeComponent();
   this.playback=playback;
   this.previous=previous;
   this.next=next;
+  this.currentTrackProvider=currentTrackProvider;
   this.playQueueIndex=playQueueIndex;
   this.moveQueueItem=moveQueueItem;
   this.removeQueueItem=removeQueueItem;
@@ -50,7 +53,8 @@ public partial class NowPlayingWindow : Window
  }
  private void ShowTrack(Track? track)
  {
-  if(track is null)return;
+  if(track is null){shownTrackId=null;TitleText.Text="Ничего не воспроизводится";ArtistText.Text="";AlbumText.Text="";Cover.Source=null;return;}
+  shownTrackId=track.Id;
   TitleText.Text=track.Title;
   ArtistText.Text=track.Artist;
   AlbumText.Text=string.IsNullOrWhiteSpace(track.Album)? "":track.Album;
@@ -64,6 +68,7 @@ public partial class NowPlayingWindow : Window
  }
  private void UpdatePosition()
  {
+  var active=currentTrackProvider();if(active?.Id!=shownTrackId)ShowTrack(active);
   PositionText.Text=playback.Position.ToString(@"m\:ss");
   if(!seeking && playback.Duration>TimeSpan.Zero){
    updating=true;Seek.Maximum=Math.Max(1,playback.Duration.TotalSeconds);Seek.Value=Math.Clamp(playback.Position.TotalSeconds,0,Seek.Maximum);updating=false;
