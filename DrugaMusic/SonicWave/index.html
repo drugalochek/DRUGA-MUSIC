@@ -755,7 +755,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithRedirect, getRedirectResult, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getDatabase, ref, set, get, update, remove, push, onValue, off } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-const firebaseConfig = {apiKey:"AIzaSyD0jALLWoEE775lxJAJbl5CF6TdSW9eaNg",authDomain:"sonic-563fa.firebaseapp.com",projectId:"sonic-563fa",storageBucket:"sonic-563fa.firebasestorage.app",messagingSenderId:"387934902778",appId:"1:387934902778:web:7a6c355090545682ac6c43",measurementId:"G-HBBDVLRCCZ",databaseURL:"https://sonic-563fa-default-rtdb.firebaseio.com"};
+const firebaseConfig = {apiKey:"AIzaSyCgBtQNo-cebuAoJ7u9vkOGHHpHI0DxSWQ",authDomain:"sonora-ab012.firebaseapp.com",projectId:"sonora-ab012",storageBucket:"sonora-ab012.firebasestorage.app",messagingSenderId:"614449855011",appId:"1:614449855011:web:5a1fd491dd53448067cf96",measurementId:"G-KZSCTKZDQG",databaseURL:"https://sonora-ab012-default-rtdb.firebaseio.com"};
 const fbApp = initializeApp(firebaseConfig);
 const auth = getAuth(fbApp);
 const db = getDatabase(fbApp);
@@ -965,7 +965,8 @@ function updateConnDot(on){ let d = document.getElementById('connDot'); if (!d){
 
 function subscribeTracks(){
   if (unsubTracks){ unsubTracks(); unsubTracks = null; }
-  const r = ref(db, 'tracks');
+  if (!firebaseUid){ tracks = []; renderAll(); return; }
+  const r = ref(db, 'users/' + firebaseUid + '/tracks');
   const cb = snap => {
     const v = snap.val()||{};
     const remote = Object.entries(v).map(([id, d])=>trackFromFB(id, d));
@@ -986,11 +987,11 @@ function subscribeTracks(){
   onValue(r, cb, err=>console.error(err));
   unsubTracks = () => off(r, 'value', cb);
 }
-function subscribeUserProfile(){ if (unsubProfile){ unsubProfile(); unsubProfile = null; } if (!firebaseUid) return; const r = ref(db, 'users/' + firebaseUid); const cb = snap => { const data = snap.val(); const u = auth.currentUser; profile.isAnonymous = !u; if (!data){ set(r, { name: (u && u.displayName)||'Гость', avatar: (u && u.photoURL)||null, email: (u && u.email)||null, musicianName:'', musicianGenre:'', musicianBio:'', country:'', link:'', verified:false, createdAt: Date.now() }).catch(e=>{}); renderProfile(); return; } profile.name = data.name || 'Гость'; profile.avatar = data.avatar || data.photoURL || null; profile.email = (u && u.email) || data.email || null; profile.musicianName = data.musicianName || ''; profile.musicianGenre = data.musicianGenre || ''; profile.musicianBio = data.musicianBio || ''; profile.country = data.country || ''; profile.link = data.link || ''; profile.verified = !!data.verified; renderProfile(); renderAll(); }; onValue(r, cb); unsubProfile = () => off(r, 'value', cb); }
-function subscribePlaylists(){ if (unsubPlaylists){ unsubPlaylists(); unsubPlaylists = null; } if (!firebaseUid) return; const r = ref(db, 'playlists/' + firebaseUid); const cb = snap => { const v = snap.val()||{}; playlists = Object.entries(v).map(([id, d])=>({ id, name: d.name||'Playlist', color: d.color||PALETTE[0], cover: d.cover||null, trackIds: d.trackIds?Object.keys(d.trackIds):[], createdAt: d.createdAt||0 })); playlists.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)); renderAll(); }; onValue(r, cb); unsubPlaylists = () => off(r, 'value', cb); }
-function subscribeFavorites(){ if (unsubFavorites){ unsubFavorites(); unsubFavorites = null; } if (!firebaseUid) return; const r = ref(db, 'favorites/' + firebaseUid); const cb = snap => { favIds = Object.keys(snap.val()||{}); renderAll(); updatePlayUI(); }; onValue(r, cb); unsubFavorites = () => off(r, 'value', cb); }
-function subscribeFavArtists(){ if (unsubFavArtists){ unsubFavArtists(); unsubFavArtists = null; } if (!firebaseUid) return; const r = ref(db, 'fav_artists/' + firebaseUid); const cb = snap => { favArtists = Object.keys(snap.val()||{}); renderAll(); }; onValue(r, cb); unsubFavArtists = () => off(r, 'value', cb); }
-async function saveUserProfile(){ if (!firebaseUid) return; const u = auth.currentUser; const payload = { name: (profile.name||'Гость').trim(), avatar: profile.avatar||null, email: (u && u.email)||profile.email||null, musicianName: (profile.musicianName||'').trim(), musicianGenre: (profile.musicianGenre||'').trim(), musicianBio: (profile.musicianBio||'').trim(), country: (profile.country||'').trim(), link: (profile.link||'').trim(), verified: !!profile.verified, updatedAt: Date.now() }; try { await update(ref(db, 'users/'+firebaseUid), payload); } catch(e){} }
+function subscribeUserProfile(){ if (unsubProfile){ unsubProfile(); unsubProfile = null; } if (!firebaseUid) return; const r = ref(db, 'users/' + firebaseUid + '/profile'); const cb = snap => { const data = snap.val(); const u = auth.currentUser; profile.isAnonymous = !u; if (!data){ set(r, { name: (u && u.displayName)||'Гость', avatar: (u && u.photoURL)||null, email: (u && u.email)||null, musicianName:'', musicianGenre:'', musicianBio:'', country:'', link:'', verified:false, createdAt: Date.now() }).catch(e=>{}); renderProfile(); return; } profile.name = data.name || 'Гость'; profile.avatar = data.avatar || data.photoURL || null; profile.email = (u && u.email) || data.email || null; profile.musicianName = data.musicianName || ''; profile.musicianGenre = data.musicianGenre || ''; profile.musicianBio = data.musicianBio || ''; profile.country = data.country || ''; profile.link = data.link || ''; profile.verified = !!data.verified; renderProfile(); renderAll(); }; onValue(r, cb); unsubProfile = () => off(r, 'value', cb); }
+function subscribePlaylists(){ if (unsubPlaylists){ unsubPlaylists(); unsubPlaylists = null; } if (!firebaseUid) return; const r = ref(db, 'users/' + firebaseUid + '/playlists'); const cb = snap => { const v = snap.val()||{}; playlists = Object.entries(v).map(([id, d])=>({ id, name: d.name||'Playlist', color: d.color||PALETTE[0], cover: d.cover||null, trackIds: d.trackIds?Object.keys(d.trackIds):[], createdAt: d.createdAt||0 })); playlists.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)); renderAll(); }; onValue(r, cb); unsubPlaylists = () => off(r, 'value', cb); }
+function subscribeFavorites(){ if (unsubFavorites){ unsubFavorites(); unsubFavorites = null; } if (!firebaseUid) return; const r = ref(db, 'users/' + firebaseUid + '/favorites'); const cb = snap => { favIds = Object.keys(snap.val()||{}); renderAll(); updatePlayUI(); }; onValue(r, cb); unsubFavorites = () => off(r, 'value', cb); }
+function subscribeFavArtists(){ if (unsubFavArtists){ unsubFavArtists(); unsubFavArtists = null; } if (!firebaseUid) return; const r = ref(db, 'users/' + firebaseUid + '/fav_artists'); const cb = snap => { favArtists = Object.keys(snap.val()||{}); renderAll(); }; onValue(r, cb); unsubFavArtists = () => off(r, 'value', cb); }
+async function saveUserProfile(){ if (!firebaseUid) return; const u = auth.currentUser; const payload = { name: (profile.name||'Гость').trim(), avatar: profile.avatar||null, email: (u && u.email)||profile.email||null, musicianName: (profile.musicianName||'').trim(), musicianGenre: (profile.musicianGenre||'').trim(), musicianBio: (profile.musicianBio||'').trim(), country: (profile.country||'').trim(), link: (profile.link||'').trim(), verified: !!profile.verified, updatedAt: Date.now() }; try { await update(ref(db, 'users/'+firebaseUid+'/profile'), payload); } catch(e){} }
 async function savePlaylistsToFB(){ if (!firebaseUid) return; try { const p = {}; playlists.forEach(pl=>{ p[pl.id] = { name: pl.name, color: pl.color, cover: pl.cover||null, trackIds: pl.trackIds.reduce((a,id)=>{a[id]=true;return a;},{}), createdAt: pl.createdAt||Date.now() }; }); await set(ref(db, 'playlists/'+firebaseUid), p); } catch(e){} }
 async function saveFavoritesToFB(){ if (!firebaseUid) return; try { const p = {}; favIds.forEach(id=>{ p[id]=true; }); await set(ref(db, 'favorites/'+firebaseUid), p); } catch(e){} }
 async function saveFavArtistsToFB(){ if (!firebaseUid) return; try { const p = {}; favArtists.forEach(a=>{ p[a]=true; }); await set(ref(db, 'fav_artists/'+firebaseUid), p); } catch(e){} }
@@ -1114,7 +1115,7 @@ async function deletePlaylist(plId){
   const pl = playlists.find(p=>p.id === plId); if (!pl) return;
   const ok = await showConfirm(t('confirm_delete_playlist'), t('confirm_delete_playlist_t'), t('confirm_yes'), t('confirm_no'));
   if (!ok) return;
-  try { await remove(ref(db, 'playlists/'+firebaseUid+'/'+plId)); } catch(e){}
+  try { await remove(ref(db, 'users/'+firebaseUid+'/playlists/'+plId)); } catch(e){}
   if (currentPlaylistId === plId){ currentPlaylistId = null; switchView('fav'); }
 }
 function openPlaylistPage(plId){ currentPlaylistId = plId; renderPlaylistPage(); switchView('playlist'); }
@@ -1462,7 +1463,7 @@ function renderStudio(){
           else if (act === 'del'){
             const ok = await showConfirm(t('confirm_delete_track'), t('confirm_delete_track_t'), t('confirm_yes'), t('confirm_no'));
             if (!ok) return;
-            try { await remove(ref(db, 'tracks/'+t2.id)); await remove(ref(db, 'audio/'+t2.id)); audioCache.delete(t2.id); } catch(e){}
+            try { await remove(ref(db, 'users/'+firebaseUid+'/tracks/'+t2.id)); await remove(ref(db, 'users/'+firebaseUid+'/audio/'+t2.id)); audioCache.delete(t2.id); } catch(e){}
             if (currentId === t2.id){ closeMiniPlayer(true); closeFs(); }
             renderStudio();
           }
@@ -1530,9 +1531,9 @@ async function publishRelease(){
       const cover = item.cover || null;
       const { base64, mime } = await fileToBase64AndMime(f);
       const dur = await new Promise(r=>{ const a = new Audio(); a.preload='metadata'; a.onloadedmetadata = ()=>r(a.duration||0); a.onerror = ()=>r(0); a.src = `data:${mime};base64,${base64}`; });
-      const newRef = push(ref(db, 'tracks')); const tid = newRef.key;
+      const newRef = push(ref(db, 'users/' + firebaseUid + '/tracks')); const tid = newRef.key;
       await set(newRef, { title, artist, ownerId: firebaseUid, ownerName: profile.name, album, genre, country, year, duration: dur, cover, lyrics, addedAt: Date.now(), verified: !!profile.verified, plays: 0, likes: 0, listenSec: 0 });
-      await set(ref(db, 'audio/'+tid), { data: base64, mime });
+      await set(ref(db, 'users/'+firebaseUid+'/audio/'+tid), { data: base64, mime });
       added++;
       pushNotif('n1', t('notif_new_release'), artist + ' — ' + title);
     } catch(e){ console.error(e); failed++; }
@@ -1607,7 +1608,7 @@ function playAt(idx){ if (!queue.length) return; if (shuffle && queue.length > 1
 async function bumpTrackField(tid, field, delta){
   if (!tid) return;
   try {
-    const r = ref(db, 'tracks/'+tid+'/'+field);
+    const r = ref(db, 'users/'+firebaseUid+'/tracks/'+tid+'/'+field);
     const snap = await get(r);
     const cur = snap.val() || 0;
     await set(r, Math.max(0, cur + delta));
@@ -1619,7 +1620,7 @@ function startListenTracking(tid){ _listenStartAt = audio.currentTime || 0; _lis
 function flushListenTracking(){ if (!_listenTrackId) return; const delta = Math.round((audio.currentTime || 0) - _listenStartAt); if (delta > 1){ bumpTrackField(_listenTrackId, 'listenSec', delta); _listenStartAt = audio.currentTime || 0; } else { _listenStartAt = audio.currentTime || 0; } }
 async function loadAndPlay(t2){
   currentId = t2.id; let src = audioCache.get(t2.id);
-  if (!src){ try { const snap = await get(ref(db, 'audio/'+t2.id)); const ad = snap.val(); if (!ad || !ad.data){ toast('—','err'); return; } src = `data:${ad.mime||'audio/mpeg'};base64,${ad.data}`; audioCache.set(t2.id, src); } catch(e){ return; } }
+  if (!src){ try { const snap = await get(ref(db, 'users/'+firebaseUid+'/audio/'+t2.id)); const ad = snap.val(); if (!ad || !ad.data){ toast('—','err'); return; } src = `data:${ad.mime||'audio/mpeg'};base64,${ad.data}`; audioCache.set(t2.id, src); } catch(e){ return; } }
   audio.src = src; audio.play().catch(()=>{});
   bumpTrackField(t2.id, 'plays', 1);
   startListenTracking(t2.id);
@@ -1715,7 +1716,7 @@ $('musicianCancel').addEventListener('click', ()=>$('musicianModal').classList.r
 $('musicianModal').addEventListener('click', e=>{ if (e.target === $('musicianModal')) e.target.classList.remove('show'); });
 $('musicianSave').addEventListener('click', ()=>{ const name = $('musicianName').value.trim(); if (!name){ profile.musicianName=''; profile.musicianGenre=''; profile.musicianBio=''; } else { profile.musicianName = name; profile.musicianGenre = $('musicianGenre').value.trim(); profile.musicianBio = $('musicianBio').value.trim(); } $('musicianModal').classList.remove('show'); renderProfile(); renderAll(); if ($('v-studio').classList.contains('active')) renderStudio(); saveUserProfile(); });
 $('themeSwitch').addEventListener('click', e=>{ const b = e.target.closest('button'); if (!b) return; theme = b.dataset.t; applyTheme(); savePrefs(); });
-$('profReset').addEventListener('click', async ()=>{ const ok = await showConfirm(t('confirm_delete_all'), t('confirm_delete_all_t'), t('confirm_yes'), t('confirm_no')); if (!ok) return; const myTracks = tracks.filter(t2=>t2.ownerId === firebaseUid && firebaseUid); for (const t2 of myTracks){ try { await remove(ref(db, 'tracks/'+t2.id)); await remove(ref(db, 'audio/'+t2.id)); audioCache.delete(t2.id); } catch(e){} } if (myTracks.some(t2=>t2.id === currentId)){ closeMiniPlayer(true); closeFs(); } });
+$('profReset').addEventListener('click', async ()=>{ const ok = await showConfirm(t('confirm_delete_all'), t('confirm_delete_all_t'), t('confirm_yes'), t('confirm_no')); if (!ok) return; const myTracks = tracks.filter(t2=>t2.ownerId === firebaseUid && firebaseUid); for (const t2 of myTracks){ try { await remove(ref(db, 'users/'+firebaseUid+'/tracks/'+t2.id)); await remove(ref(db, 'users/'+firebaseUid+'/audio/'+t2.id)); audioCache.delete(t2.id); } catch(e){} } if (myTracks.some(t2=>t2.id === currentId)){ closeMiniPlayer(true); closeFs(); } });
 
 $('miniPlay').addEventListener('click', e=>{ e.stopPropagation(); if (!currentTrack()){ if (!tracks.length) return; playTrackInList(tracks, 0); return; } if (audio.paused) audio.play().catch(()=>{}); else audio.pause(); });
 $('miniFav').addEventListener('click', e=>{ e.stopPropagation(); const t2 = currentTrack(); if (t2) toggleFav(t2.id); });
@@ -1800,7 +1801,7 @@ $('tmModal').addEventListener('click', async e=>{
   else if (a === 'newPl'){ closeTrackMenu(); openPlModal(); }
   else if (a === 'edit'){ closeTrackMenu(); openEdit(t2); }
   else if (a === 'share'){ shareTrack(t2); closeTrackMenu(); }
-  else if (a === 'del'){ if (!firebaseUid || !t2.ownerId || t2.ownerId !== firebaseUid) return; closeTrackMenu(); const ok = await showConfirm(t('confirm_delete_track'), t('confirm_delete_track_t'), t('confirm_yes'), t('confirm_no')); if (!ok) return; try { await remove(ref(db, 'tracks/'+t2.id)); await remove(ref(db, 'audio/'+t2.id)); audioCache.delete(t2.id); } catch(e){} if (currentId === t2.id){ closeMiniPlayer(true); closeFs(); } renderAll(); }
+  else if (a === 'del'){ if (!firebaseUid || !t2.ownerId || t2.ownerId !== firebaseUid) return; closeTrackMenu(); const ok = await showConfirm(t('confirm_delete_track'), t('confirm_delete_track_t'), t('confirm_yes'), t('confirm_no')); if (!ok) return; try { await remove(ref(db, 'users/'+firebaseUid+'/tracks/'+t2.id)); await remove(ref(db, 'users/'+firebaseUid+'/audio/'+t2.id)); audioCache.delete(t2.id); } catch(e){} if (currentId === t2.id){ closeMiniPlayer(true); closeFs(); } renderAll(); }
 });
 
 let editId = null, editCoverNew = undefined;
@@ -1826,7 +1827,7 @@ $('editModal').addEventListener('click', e=>{ if (e.target === $('editModal')) c
 $('editCoverClear').addEventListener('click', ()=>{ editCoverNew = null; $('editCoverPrev').innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>`; });
 $('editCoverPick').addEventListener('click', ()=>$('coverInput').click());
 $('coverInput').addEventListener('change', async e=>{ const f = e.target.files[0]; e.target.value = ''; if (!f) return; const d = await processCover(f); if (!d) return; editCoverNew = d; $('editCoverPrev').innerHTML = `<img src="${d}" alt="">`; });
-$('editSave').addEventListener('click', async ()=>{ if (!editId) return; const t2 = getTrack(editId); if (!t2) return; if (!firebaseUid || !t2.ownerId || t2.ownerId !== firebaseUid) return; const upd = { title: $('editTitle').value.trim() || t2.title, artist: $('editArtist').value.trim() || '—', album: $('editAlbum').value.trim(), genre: editGenreValue, country: editCountryValue, year: $('editYear').value.trim(), lyrics: $('editLyrics').value.trim() }; if (editCoverNew !== undefined) upd.cover = editCoverNew; try { await update(ref(db, 'tracks/'+t2.id), upd); } catch(e){ return; } closeEdit(); if ($('lyricsModal').classList.contains('show')) renderLyricsModal(); renderAll(); });
+$('editSave').addEventListener('click', async ()=>{ if (!editId) return; const t2 = getTrack(editId); if (!t2) return; if (!firebaseUid || !t2.ownerId || t2.ownerId !== firebaseUid) return; const upd = { title: $('editTitle').value.trim() || t2.title, artist: $('editArtist').value.trim() || '—', album: $('editAlbum').value.trim(), genre: editGenreValue, country: editCountryValue, year: $('editYear').value.trim(), lyrics: $('editLyrics').value.trim() }; if (editCoverNew !== undefined) upd.cover = editCoverNew; try { await update(ref(db, 'users/'+firebaseUid+'/tracks/'+t2.id), upd); } catch(e){ return; } closeEdit(); if ($('lyricsModal').classList.contains('show')) renderLyricsModal(); renderAll(); });
 
 let plColor = PALETTE[0];
 function openPlModal(){ $('plName').value = ''; plColor = PALETTE[playlists.length % PALETTE.length]; newPlCoverNew = undefined; $('newPlCoverPrev').innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>`; const cp = $('plColors'); cp.innerHTML = ''; PALETTE.forEach(c=>{ const d = document.createElement('button'); d.className = 'cdot' + (c === plColor ? ' active' : ''); d.style.background = `linear-gradient(135deg, ${c}, ${shade(c,-30)})`; d.addEventListener('click', ()=>{ plColor = c; cp.querySelectorAll('.cdot').forEach(x=>x.classList.toggle('active', x === d)); }); cp.appendChild(d); }); $('plModal').classList.add('show'); setTimeout(()=>$('plName').focus(), 100); }
