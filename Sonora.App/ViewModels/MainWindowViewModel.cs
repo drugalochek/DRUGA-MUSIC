@@ -72,6 +72,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     public bool CanLinkGoogle => !IsSignedIn || !IsGoogleLinked;
     public string PasswordProviderStatusText => IsPasswordLinked ? "Пароль привязан" : "Пароль не настроен";
     public bool CanAddPassword => IsSignedIn && !IsPasswordLinked;
+    public bool ShowSignInOptions => !IsSignedIn;
     public string EmptyLibraryText => "Пока здесь пусто. Добавь музыку — и SONORA соберёт твою коллекцию.";
     public string EmptyFavoritesText => "Здесь появятся треки, которые ты добавишь в избранное.";
     public string GreetingText => DateTime.Now.Hour switch
@@ -113,6 +114,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     {
         OnPropertyChanged(nameof(GoogleButtonText));
         OnPropertyChanged(nameof(CanLinkGoogle));
+        OnPropertyChanged(nameof(ShowSignInOptions));
     }
     partial void OnIsGoogleLinkedChanged(bool value)
     {
