@@ -386,9 +386,13 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                     ProfileAvatar?.Dispose();
                     ProfileAvatar = new Bitmap(stream);
                 }
-                else if (!string.IsNullOrWhiteSpace(profile.GooglePhotoUrl))
+                else
                 {
-                    await LoadGoogleAvatarAsync(profile.GooglePhotoUrl);
+                    var googleAvatarUrl = !string.IsNullOrWhiteSpace(profile.GooglePhotoUrl)
+                        ? profile.GooglePhotoUrl
+                        : auth.GooglePhotoUrl;
+                    if (!string.IsNullOrWhiteSpace(googleAvatarUrl))
+                        await LoadGoogleAvatarAsync(googleAvatarUrl);
                 }
             }
             else if (avatarType == "custom" && !string.IsNullOrWhiteSpace(avatarData))
