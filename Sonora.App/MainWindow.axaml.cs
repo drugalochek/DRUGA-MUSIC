@@ -54,6 +54,14 @@ public partial class MainWindow : Window
     private void Next_Click(object? sender, RoutedEventArgs e) => viewModel.NextTrack();
     private void Previous_Click(object? sender, RoutedEventArgs e) => viewModel.PreviousTrack();
 
+    private void HeaderSearchBox_TextChanged(object? sender, TextChangedEventArgs e)
+    {
+        if (sender is not TextBox box) return;
+        viewModel.SearchQuery = box.Text ?? "";
+        if (!string.IsNullOrWhiteSpace(viewModel.SearchQuery))
+            ShowPage("search");
+    }
+
     private void SearchBox_TextChanged(object? sender, TextChangedEventArgs e)
     {
         if (sender is TextBox box)
