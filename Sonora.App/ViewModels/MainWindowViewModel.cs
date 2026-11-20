@@ -50,6 +50,10 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     [ObservableProperty] private bool isSignedIn;
     [ObservableProperty] private bool isGoogleLinked;
     [ObservableProperty] private Bitmap? currentArtwork;
+    [ObservableProperty] private Bitmap? profileAvatar;
+    private string avatarType = "google";
+    private string avatarData = "";
+    private string avatarContentType = "";
 
     public string CurrentTrackTitle => CurrentTrack?.Title ?? "Выбери музыку";
     public string CurrentTrackArtist => CurrentTrack?.Artist ?? "SONORA";
@@ -60,6 +64,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     public bool IsLibraryEmpty => Tracks.Count == 0;
     public bool IsFavoritesEmpty => FavoriteTracks.Count == 0;
     public bool HasCurrentTrack => CurrentTrack is not null;
+    public bool HasProfileAvatar => ProfileAvatar is not null;
     public string GoogleProviderStatusText => IsGoogleLinked ? "Google привязан к этому аккаунту" : "Google ещё не привязан";
     public string GoogleButtonText => IsSignedIn ? (IsGoogleLinked ? "Google подключён" : "Привязать Google к аккаунту") : "Продолжить с Google";
     public bool CanLinkGoogle => !IsSignedIn || !IsGoogleLinked;
@@ -78,6 +83,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         Directory.CreateDirectory(dataDirectory);
         auth = new FirebaseAuthService(dataDirectory);
         LoadLibrary();
+        LoadLocalProfile();
         playback.TrackEnded += (_, _) => Dispatcher.UIThread.Post(NextTrack);
         timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
         timer.Tick += (_, _) => UpdateProgress();
@@ -94,6 +100,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     }
 
     partial void OnIsPlayingChanged(bool value) => OnPropertyChanged(nameof(PlayButtonGlyph));
+    partial void OnProfileAvatarChanged(Bitmap? value) => OnPropertyChanged(nameof(HasProfileAvatar));
     partial void OnIsSignedInChanged(bool value)
     {
         OnPropertyChanged(nameof(GoogleButtonText));
@@ -351,6 +358,21 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             {
                 Nickname = profile.Nickname;
                 if (!string.IsNullOrWhiteSpace(profile.Nickname)) ProfileName = profile.Nickname;
+                avatarType = profile.AvatarType;
+                avatarData = profile.AvatarData;
+                avatarContentType = profile.AvatarContentType;
+                if (string.Equals(profile.AvatarType, "custom", StringComparison.OrdinalIgnoreCase) &&
+                    !string.IsNullOrWhiteSpace(profile.AvatarData))
+                {
+                    var bytes = Convert.FromBase64String(profile.AvatarData);
+                    using var stream = new MemoryStream(bytes);
+                    ProfileAvatar?.Dispose();
+                    ProfileAvatar = new Bitmap(stream);
+                }
+                else if (!string.IsNullOrWhiteSpace(profile.GooglePhotoUrl))
+                {
+                    await LoadGoogleAvatarAsync(profile.GooglePhotoUrl);
+                }
             }
         }
         catch (Exception ex) { AuthMessage = "Профиль не загрузился: " + ex.Message; }
@@ -360,8 +382,17 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     {
         if (!auth.IsSignedIn || string.IsNullOrWhiteSpace(auth.UserId))
         {
-            ProfileName = string.IsNullOrWhiteSpace(Nickname) ? "Гость" : Nickname;
-            AuthMessage = "Профиль сохранён только локально. Войди в аккаунт для облачной синхронизации.";
+            ProfileName = string.IsNullOrWhiteSpace(Nickname) ? "Гость" : Nickname.Trim();
+            var localProfile = new UserProfile
+            {
+                Nickname = Nickname.Trim(),
+                AvatarType = avatarType,
+                AvatarData = avatarData,
+                AvatarContentType = avatarContentType
+            };
+            await File.WriteAllTextAsync(Path.Combine(dataDirectory, "profile.json"),
+                JsonSerializer.Serialize(localProfile));
+            AuthMessage = "Профиль сохранён на этом устройстве. Войди для облачной синхронизации.";
             return;
         }
 
@@ -370,14 +401,76 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             var profile = new UserProfile
             {
                 Nickname = Nickname.Trim(),
-                AvatarType = "google",
-                GooglePhotoUrl = auth.GooglePhotoUrl ?? ""
+                AvatarType = avatarType,
+                AvatarData = avatarData,
+                AvatarContentType = avatarContentType,
+                GooglePhotoUrl = avatarType == "google" ? auth.GooglePhotoUrl ?? "" : ""
             };
             await profiles.WriteAsync(auth.UserId, await auth.GetValidIdTokenAsync(), profile);
             ProfileName = string.IsNullOrWhiteSpace(Nickname) ? auth.GoogleDisplayName ?? Email : Nickname.Trim();
             AuthMessage = "Профиль сохранён.";
         }
         catch (Exception ex) { AuthMessage = "Не удалось сохранить профиль: " + ex.Message; }
+    }
+
+    public async Task SetAvatarAsync(string filePath)
+    {
+        var info = new FileInfo(filePath);
+        if (!info.Exists) throw new FileNotFoundException("Файл аватара не найден.");
+        if (info.Length > 3 * 1024 * 1024)
+            throw new InvalidOperationException("Аватар должен быть не больше 3 МБ.");
+
+        var bytes = await File.ReadAllBytesAsync(filePath);
+        using var stream = new MemoryStream(bytes);
+        var decoded = new Bitmap(stream);
+        ProfileAvatar?.Dispose();
+        ProfileAvatar = decoded;
+        avatarType = "custom";
+        avatarData = Convert.ToBase64String(bytes);
+        avatarContentType = Path.GetExtension(filePath).ToLowerInvariant() switch
+        {
+            ".png" => "image/png",
+            ".webp" => "image/webp",
+            _ => "image/jpeg"
+        };
+        await SaveProfileAsync();
+    }
+
+    private void LoadLocalProfile()
+    {
+        try
+        {
+            var path = Path.Combine(dataDirectory, "profile.json");
+            if (!File.Exists(path)) return;
+            var profile = JsonSerializer.Deserialize<UserProfile>(File.ReadAllText(path));
+            if (profile is null) return;
+            Nickname = profile.Nickname;
+            if (!string.IsNullOrWhiteSpace(profile.Nickname)) ProfileName = profile.Nickname;
+            avatarType = profile.AvatarType;
+            avatarData = profile.AvatarData;
+            avatarContentType = profile.AvatarContentType;
+            if (profile.AvatarType == "custom" && !string.IsNullOrWhiteSpace(profile.AvatarData))
+            {
+                using var stream = new MemoryStream(Convert.FromBase64String(profile.AvatarData));
+                ProfileAvatar = new Bitmap(stream);
+            }
+        }
+        catch (Exception ex) { AuthMessage = "Не удалось загрузить локальный профиль: " + ex.Message; }
+    }
+
+    private async Task LoadGoogleAvatarAsync(string url)
+    {
+        try
+        {
+            using var response = await new HttpClient().GetAsync(url);
+            response.EnsureSuccessStatusCode();
+            var bytes = await response.Content.ReadAsByteArrayAsync();
+            if (bytes.Length > 3 * 1024 * 1024) return;
+            using var stream = new MemoryStream(bytes);
+            ProfileAvatar?.Dispose();
+            ProfileAvatar = new Bitmap(stream);
+        }
+        catch { /* The profile remains usable if the provider image is unavailable. */ }
     }
 
     public async Task SignInAsync(string email, string password)
