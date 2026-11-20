@@ -161,6 +161,14 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         IsPlaying = playback.IsPlaying;
     }
 
+    public void SeekToPercent(double percent)
+    {
+        if (playback.Duration <= TimeSpan.Zero) return;
+        var clamped = Math.Clamp(percent, 0, 100);
+        playback.Seek(TimeSpan.FromMilliseconds(playback.Duration.TotalMilliseconds * clamped / 100d));
+        UpdateProgress();
+    }
+
     public void NextTrack()
     {
         if (queue.Count == 0) return;
