@@ -212,7 +212,7 @@ public partial class MainWindow : Window
   var queued=queue.Select(id=>tracks.FirstOrDefault(t=>t.Id==id)).Where(t=>t is not null).Cast<Track>().ToList();
   if(queued.Count==0 && Current is not null)queued.Add(Current);
   var index=Current is null?-1:queued.FindIndex(t=>t.Id==Current.Id);
-  var window=new NowPlayingWindow(Current,playback,queued,index,(float)VolumeSlider.Value,PreviousFromNowPlaying,NextFromNowPlaying,()=>Current,PlayQueueIndex,MoveQueueItem,RemoveQueueItem)
+  var window=new NowPlayingWindow(Current,playback,queued,index,(float)VolumeSlider.Value,PreviousFromNowPlaying,NextFromNowPlaying,()=>Current,PlayQueueIndex,v=>VolumeSlider.Value=v,MoveQueueItem,RemoveQueueItem)
   {Owner=this};
   window.Show();
  }
