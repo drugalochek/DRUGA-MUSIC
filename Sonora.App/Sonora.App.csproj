@@ -26,9 +26,9 @@
 
   <ItemGroup>
     <AvaloniaResource Include="Assets\**" />
+    <AvaloniaResource Include="..\DrugaMusic\Assets\WidockTrialBold.otf" Link="Assets\WidockTrialBold.otf" />
+    <AvaloniaResource Include="..\1795143870953.png" Link="Assets\sonora.png" />
     <Compile Include="..\DrugaMusic\Models\**\*.cs" Link="Core\Models\%(RecursiveDir)%(Filename)%(Extension)" />
     <Compile Include="..\DrugaMusic\Services\**\*.cs" Link="Core\Services\%(RecursiveDir)%(Filename)%(Extension)" />
-    <Content Include="..\DrugaMusic\Assets\WidockTrialBold.otf" Link="Assets\WidockTrialBold.otf" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="..\1795143870953.png" Link="Assets\sonora.png" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>
