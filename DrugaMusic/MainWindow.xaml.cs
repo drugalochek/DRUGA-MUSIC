@@ -29,6 +29,7 @@ public partial class MainWindow : Window
  private int queueIndex = -1;
  private bool updatingSeek, seeking, shuffle;
  private int repeat;
+ private bool favoritesOnly;
  private Track? Current => queueIndex >= 0 && queueIndex < queue.Count ? tracks.FirstOrDefault(t=>t.Id==queue[queueIndex]) : null;
  public MainWindow()
  {
@@ -120,12 +121,43 @@ public partial class MainWindow : Window
  private void SeekSlider_MouseDown(object sender,MouseButtonEventArgs e)=>seeking=true;
  private void SeekSlider_MouseUp(object sender,MouseButtonEventArgs e){seeking=false;if(playback.Duration>TimeSpan.Zero)playback.Seek(TimeSpan.FromSeconds(SeekSlider.Value));}
  private void VolumeSlider_ValueChanged(object sender,RoutedPropertyChangedEventArgs<double> e)=>playback.SetVolume((float)e.NewValue);
- private void SearchBox_TextChanged(object sender,TextChangedEventArgs e){var q=SearchBox.Text.Trim();tracksView.Filter=o=>o is Track t&&(q.Length==0||t.Title.Contains(q,StringComparison.OrdinalIgnoreCase)||t.Artist.Contains(q,StringComparison.OrdinalIgnoreCase)||t.Album.Contains(q,StringComparison.OrdinalIgnoreCase)||t.Genre.Contains(q,StringComparison.OrdinalIgnoreCase));}
- private void Favorite_Click(object sender,RoutedEventArgs e){if(TracksList.SelectedItem is not Track t)return;t.IsFavorite=!t.IsFavorite;FavoriteButton.Content=t.IsFavorite?"♥ В избранном":"♡ В избранное";SaveLibrary();RefreshLibrary();}
- private void Favorites_Click(object sender,RoutedEventArgs e){tracksView.Filter=o=>o is Track t&&t.IsFavorite;SetHeader("Избранное","Композиции, которые ты отметил.");}
- private void Home_Click(object sender,RoutedEventArgs e){tracksView.Filter=null;SetHeader("Твоя музыка. Твоё пространство.","Собери всё, что любишь слушать, в одном месте.");}
- private void Library_Click(object sender,RoutedEventArgs e){tracksView.Filter=null;SetHeader("Моя музыка","Твоя локальная коллекция и сохранённые композиции.");}
- private void Search_Click(object sender,RoutedEventArgs e){tracksView.Filter=null;SetHeader("Поиск музыки","Поиск по локальной библиотеке.");SearchBox.Focus();}
+ private void SearchBox_TextChanged(object sender,TextChangedEventArgs e)=>ApplyFilters();
+ private void ApplyFilters()
+ {
+  var q=SearchBox.Text.Trim();
+  tracksView.Filter=o=>o is Track t&&(!favoritesOnly||t.IsFavorite)&&
+   (q.Length==0||t.Title.Contains(q,StringComparison.OrdinalIgnoreCase)||
+    t.Artist.Contains(q,StringComparison.OrdinalIgnoreCase)||t.Album.Contains(q,StringComparison.OrdinalIgnoreCase)||
+    t.Genre.Contains(q,StringComparison.OrdinalIgnoreCase));
+ }
+ private void SortBox_SelectionChanged(object sender,SelectionChangedEventArgs e)
+ {
+  if(tracksView is null)return;
+  var property=SortBox.SelectedIndex switch{1=>nameof(Track.Artist),2=>nameof(Track.Album),3=>nameof(Track.Year),_=>nameof(Track.Title)};
+  tracksView.SortDescriptions.Clear();
+  tracksView.SortDescriptions.Add(new System.ComponentModel.SortDescription(property,System.ComponentModel.ListSortDirection.Ascending));
+ }
+ private void GroupBox_SelectionChanged(object sender,SelectionChangedEventArgs e)
+ {
+  if(tracksView is null)return;
+  tracksView.GroupDescriptions.Clear();
+  var property=GroupBox.SelectedIndex switch{1=>nameof(Track.Artist),2=>nameof(Track.Album),3=>nameof(Track.Genre),_=>null};
+  if(property is not null)tracksView.GroupDescriptions.Add(new PropertyGroupDescription(property));
+ }
+ private void Favorite_Click(object sender,RoutedEventArgs e)
+ {
+  if(TracksList.SelectedItem is not Track t)return;
+  t.IsFavorite=!t.IsFavorite;FavoriteButton.Content=t.IsFavorite?"♥ В избранном":"♡ В избранное";
+  SaveLibrary();RefreshLibrary();ApplyFilters();
+ }
+ private void Favorites_Click(object sender,RoutedEventArgs e)
+ {favoritesOnly=true;ApplyFilters();SetHeader("Избранное","Композиции, которые ты отметил.");}
+ private void Home_Click(object sender,RoutedEventArgs e)
+ {favoritesOnly=false;ApplyFilters();SetHeader("Твоя музыка. Твоё пространство.","Собери всё, что любишь слушать, в одном месте.");}
+ private void Library_Click(object sender,RoutedEventArgs e)
+ {favoritesOnly=false;ApplyFilters();SetHeader("Моя музыка","Твоя локальная коллекция и сохранённые композиции.");}
+ private void Search_Click(object sender,RoutedEventArgs e)
+ {favoritesOnly=false;ApplyFilters();SetHeader("Поиск музыки","Поиск по локальной библиотеке.");SearchBox.Focus();}
  private Playlist? PickPlaylist()
  {
   var w=new Window{Title="Выбрать плейлист",Owner=this,Width=340,Height=380,WindowStartupLocation=WindowStartupLocation.CenterOwner,Background=new SolidColorBrush(Color.FromRgb(8,11,18)),Foreground=Brushes.White};
