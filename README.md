@@ -1,52 +1,47 @@
-# DRUGA MUSIC
+# SONORA
 
-A modern Windows desktop music platform foundation. The visual direction combines the editorial feel of Spotify and Apple Music with a stable blue brand identity and artwork-adaptive secondary accents.
+SONORA is a Windows desktop music player focused on a fast, local-first music library.
 
-## Current milestone — 0.1.0
+## Current milestone — 0.3.0
 
-### Implemented
-- Windows desktop application using WPF / .NET 8
-- Dark interface with blue brand color
-- Main navigation and music-library view
-- Import multiple local audio files
-- Read basic title, artist and album metadata
-- Persistent local library in the user's AppData folder
-- Playback, pause/resume, next/previous and volume using NAudio
-- Local-library search
-- Provider abstraction for future streaming integrations
+### Working features
+- Windows desktop application built with WPF and .NET 8
+- Dark interface and SONORA Windows application icon
+- Import MP3, WAV, AIFF and AIF audio files
+- Read title, artist, album, genre and year metadata
+- Extract embedded album artwork into the local artwork cache
+- Persistent local library and favourite tracks
+- Create and delete playlists; add tracks and play a playlist
+- Search local tracks by title, artist, album and genre
+- Playback, pause/resume, previous/next and automatic next-track playback
+- Playback queue, shuffle and repeat modes
+- Seek through the current track
+- Volume control
 
-### Not implemented yet
-- Cloud accounts and synchronization
-- Deezer / Yandex Music / Spotify integrations
-- Streaming catalogue playback
-- Playlist editing and advanced search
-- Artwork extraction and dynamic artwork colors
-- Lyrics, recommendations and installer
+## Data storage
 
-Third-party service features will only be implemented through supported APIs and permitted playback mechanisms. A provider must explicitly declare its capabilities; the app must not pretend that a service supports playback when it does not.
+The library, playlists and extracted artwork are stored under:
+
+`%LocalAppData%\SONORA`
+
+On first launch after the rebrand, the application attempts to migrate the previous
+`%LocalAppData%\DrugaMusic` data directory so existing libraries are preserved.
 
 ## Build
 
-Requirements:
-- Windows 10/11
-- .NET 8 SDK
-- Visual Studio 2022 with the .NET desktop development workload
+Requirements: Windows 10/11 and .NET 8 SDK.
 
-Open DrugaMusic/DrugaMusic.csproj, restore NuGet packages and run.
+```powershell
+dotnet restore DrugaMusic.sln
+dotnet build DrugaMusic.sln --configuration Release
+dotnet publish DrugaMusic/DrugaMusic.csproj -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true
+```
 
-For a self-contained Windows x64 build:
+## Current scope
 
-    dotnet publish DrugaMusic/DrugaMusic.csproj -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true
+SONORA currently plays local audio files. Streaming integrations, cloud accounts,
+lyrics, recommendations, installer packaging and an audio equalizer are not included.
+The player includes a volume control; no equalizer is exposed in this milestone.
 
-## Architecture
-- Models — application domain models
-- Services — playback and provider abstractions
-- MainWindow — desktop shell and first local-library workflow
-
-## Roadmap
-1. Foundation and local playback
-2. Metadata, artwork extraction and polished library
-3. Playlists, search, favourites and persistence improvements
-4. Provider integrations, each validated against the service's current official API and terms
-5. Recommendations, adaptive artwork styling and richer player experience
-6. Packaging, QA and release
+Third-party services will only be integrated through supported official APIs and
+permitted playback mechanisms.
