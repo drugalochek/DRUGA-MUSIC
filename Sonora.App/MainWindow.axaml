@@ -165,8 +165,8 @@
                 <TextBlock Text="Твои прослушивания за неделю" FontSize="11" Foreground="#82829A"/>
               </StackPanel>
               <StackPanel Width="200" Spacing="5">
-                <Border Width="200" Height="200" CornerRadius="15" ClipToBounds="True" BorderBrush="#2B596E" BorderThickness="1">
-                  <Grid Background="#102731">
+                <Button Width="200" Height="200" Classes="mix-artwork" Click="ForYou_Click">
+                  <Grid Background="#102731" ClipToBounds="True">
                     <Border Width="155" Height="155" CornerRadius="78" BorderBrush="#397E91" BorderThickness="1" Opacity="0.7" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     <Border Width="112" Height="112" CornerRadius="56" BorderBrush="#58AFC1" BorderThickness="1" Opacity="0.65" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     <Border Width="66" Height="66" CornerRadius="33" Background="#1B5A6D" HorizontalAlignment="Center" VerticalAlignment="Center"/>
@@ -176,7 +176,7 @@
                       <TextBlock Text="MADE AROUND YOUR TASTE" FontSize="7" Foreground="#8EB6C1" LetterSpacing="0.8"/>
                     </StackPanel>
                   </Grid>
-                </Border>
+                </Button>
                 <TextBlock Text="Для тебя" FontSize="13" FontWeight="SemiBold"/>
                 <TextBlock Text="Музыка под твой вкус" FontSize="11" Foreground="#82829A"/>
               </StackPanel>
