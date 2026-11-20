@@ -186,7 +186,7 @@ public partial class MainWindow : Window
   var queued=queue.Select(id=>tracks.FirstOrDefault(t=>t.Id==id)).Where(t=>t is not null).Cast<Track>().ToList();
   if(queued.Count==0 && Current is not null)queued.Add(Current);
   var index=Current is null?-1:queued.FindIndex(t=>t.Id==Current.Id);
-  var window=new NowPlayingWindow(Current,playback,queued,index,PreviousFromNowPlaying,NextFromNowPlaying,PlayQueueIndex)
+  var window=new NowPlayingWindow(Current,playback,queued,index,PreviousFromNowPlaying,NextFromNowPlaying,PlayQueueIndex,MoveQueueItem,RemoveQueueItem)
   {Owner=this};
   window.Show();
  }
@@ -201,6 +201,31 @@ public partial class MainWindow : Window
  {
   if(index<0||index>=queue.Count)return Current;
   queueIndex=index;PlayCurrent();return Current;
+ }
+ private Track? MoveQueueItem(int from,int to)
+ {
+  if(from<0||to<0||from>=queue.Count||to>=queue.Count)return Current;
+  var moved=queue[from];queue.RemoveAt(from);queue.Insert(to,moved);
+  if(queueIndex==from)queueIndex=to;
+  else if(from<queueIndex&&to>=queueIndex)queueIndex--;
+  else if(from>queueIndex&&to<=queueIndex)queueIndex++;
+  return Current;
+ }
+ private Track? RemoveQueueItem(int index)
+ {
+  if(index<0||index>=queue.Count)return Current;
+  var removingCurrent=index==queueIndex;
+  queue.RemoveAt(index);
+  if(queue.Count==0)
+  {
+   queueIndex=-1;playback.Stop();NowPlayingTitle.Text="Ничего не воспроизводится";
+   NowPlayingArtist.Text="Выбери трек из своей библиотеки";NowPlayingArtwork.Source=null;
+   PlayPauseButton.Content="▶";CurrentTimeText.Text="0:00";DurationText.Text="0:00";
+   return null;
+  }
+  if(removingCurrent){queueIndex=Math.Min(index,queue.Count-1);PlayCurrent();}
+  else if(index<queueIndex)queueIndex--;
+  return Current;
  }
  private void Services_Click(object sender,RoutedEventArgs e)=>MessageBox.Show("Интеграции будут подключаться через официальные API и разрешённые механизмы воспроизведения.","SONORA");
  private void SetHeader(string title,string subtitle){GreetingText.Text=title;SubtitleText.Text=subtitle;}
