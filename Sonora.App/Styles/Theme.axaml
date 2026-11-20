@@ -71,6 +71,20 @@
     <Setter Property="BorderBrush" Value="#83B6FF"/>
   </Style>
 
+  <Style Selector="Button.mix-play-button">
+    <Setter Property="Background" Value="#EAF4FF"/>
+    <Setter Property="Foreground" Value="#10243C"/>
+    <Setter Property="Width" Value="40"/>
+    <Setter Property="Height" Value="40"/>
+    <Setter Property="CornerRadius" Value="20"/>
+    <Setter Property="BorderThickness" Value="0"/>
+    <Setter Property="FontSize" Value="14"/>
+    <Setter Property="Padding" Value="0"/>
+  </Style>
+  <Style Selector="Button.mix-play-button:pointerover">
+    <Setter Property="Background" Value="#8FC4FF"/>
+  </Style>
+
   <Style Selector="Button.sidebar-add">
     <Setter Property="Background" Value="#1D6FE8"/>
     <Setter Property="Foreground" Value="White"/>
