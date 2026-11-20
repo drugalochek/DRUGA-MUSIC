@@ -181,6 +181,27 @@ public partial class MainWindow : Window
   var play=new Button{Content="▶ Играть",Margin=new Thickness(8,0,0,0)};play.Click+=(_,_)=>{if(list.SelectedItem is Playlist p){queue=p.TrackIds.Where(id=>tracks.Any(t=>t.Id==id)).ToList();queueIndex=queue.Count>0?0:-1;if(queueIndex>=0)PlayCurrent();w.Close();}};
   actions.Children.Add(name);actions.Children.Add(add);actions.Children.Add(remove);actions.Children.Add(play);DockPanel.SetDock(actions,Dock.Bottom);root.Children.Add(actions);root.Children.Add(list);w.Content=root;w.ShowDialog();
  }
+ private void OpenNowPlaying_Click(object sender,RoutedEventArgs e)
+ {
+  var queued=queue.Select(id=>tracks.FirstOrDefault(t=>t.Id==id)).Where(t=>t is not null).Cast<Track>().ToList();
+  if(queued.Count==0 && Current is not null)queued.Add(Current);
+  var index=Current is null?-1:queued.FindIndex(t=>t.Id==Current.Id);
+  var window=new NowPlayingWindow(Current,playback,queued,index,PreviousFromNowPlaying,NextFromNowPlaying,PlayQueueIndex)
+  {Owner=this};
+  window.Show();
+ }
+ private Track? PreviousFromNowPlaying()
+ {
+  if(playback.Position>TimeSpan.FromSeconds(3)){playback.Seek(TimeSpan.Zero);return Current;}
+  if(queue.Count==0)return Current;
+  queueIndex=(queueIndex-1+queue.Count)%queue.Count;PlayCurrent();return Current;
+ }
+ private Track? NextFromNowPlaying(){Advance(false);return Current;}
+ private Track? PlayQueueIndex(int index)
+ {
+  if(index<0||index>=queue.Count)return Current;
+  queueIndex=index;PlayCurrent();return Current;
+ }
  private void Services_Click(object sender,RoutedEventArgs e)=>MessageBox.Show("Интеграции будут подключаться через официальные API и разрешённые механизмы воспроизведения.","SONORA");
  private void SetHeader(string title,string subtitle){GreetingText.Text=title;SubtitleText.Text=subtitle;}
 }
