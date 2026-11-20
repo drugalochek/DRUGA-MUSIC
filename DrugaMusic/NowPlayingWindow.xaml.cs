@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -17,20 +18,26 @@ public partial class NowPlayingWindow : Window
  private readonly Func<Track?> previous;
  private readonly Func<Track?> next;
  private readonly Func<int,Track?> playQueueIndex;
+ private readonly Func<int,int,Track?> moveQueueItem;
+ private readonly Func<int,Track?> removeQueueItem;
+ private readonly ObservableCollection<Track> queueItems;
  private readonly DispatcherTimer timer;
  private bool seeking;
  private bool updating;
  private bool changingQueue;
 
  public NowPlayingWindow(Track? current, PlaybackService playback, IReadOnlyList<Track> queue,
-  int currentIndex, Func<Track?> previous, Func<Track?> next, Func<int,Track?> playQueueIndex)
+  int currentIndex, Func<Track?> previous, Func<Track?> next, Func<int,Track?> playQueueIndex, Func<int,int,Track?> moveQueueItem, Func<int,Track?> removeQueueItem)
  {
   InitializeComponent();
   this.playback=playback;
   this.previous=previous;
   this.next=next;
   this.playQueueIndex=playQueueIndex;
-  QueueList.ItemsSource=queue;
+  this.moveQueueItem=moveQueueItem;
+  this.removeQueueItem=removeQueueItem;
+  queueItems=new ObservableCollection<Track>(queue);
+  QueueList.ItemsSource=queueItems;
   changingQueue=true;
   if(currentIndex>=0 && currentIndex<queue.Count) QueueList.SelectedIndex=currentIndex;
   changingQueue=false;
@@ -71,4 +78,23 @@ public partial class NowPlayingWindow : Window
  private void Previous_Click(object sender,RoutedEventArgs e)=>ShowTrack(previous());
  private void Next_Click(object sender,RoutedEventArgs e)=>ShowTrack(next());
  private void QueueList_SelectionChanged(object sender,SelectionChangedEventArgs e){if(!changingQueue&&QueueList.SelectedIndex>=0)ShowTrack(playQueueIndex(QueueList.SelectedIndex));}
+ private void MoveUp_Click(object sender,RoutedEventArgs e)=>MoveSelected(-1);
+ private void MoveDown_Click(object sender,RoutedEventArgs e)=>MoveSelected(1);
+ private void MoveSelected(int offset)
+ {
+  var from=QueueList.SelectedIndex;var to=from+offset;
+  if(from<0||to<0||to>=queueItems.Count)return;
+  var current=moveQueueItem(from,to);
+  queueItems.Move(from,to);
+  changingQueue=true;QueueList.SelectedIndex=to;changingQueue=false;
+  ShowTrack(current);
+ }
+ private void Remove_Click(object sender,RoutedEventArgs e)
+ {
+  var index=QueueList.SelectedIndex;if(index<0||index>=queueItems.Count)return;
+  var current=removeQueueItem(index);
+  queueItems.RemoveAt(index);
+  if(queueItems.Count>0){var selected=Math.Min(index,queueItems.Count-1);changingQueue=true;QueueList.SelectedIndex=selected;changingQueue=false;}
+  ShowTrack(current);
+ }
 }
