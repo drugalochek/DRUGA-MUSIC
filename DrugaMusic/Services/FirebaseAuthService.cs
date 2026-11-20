@@ -22,6 +22,7 @@ public sealed class FirebaseAuthService
     public string? Email { get; private set; }
     public string? IdToken { get; private set; }
     public string? GooglePhotoUrl { get; private set; }
+    public string? GoogleAccessToken { get; private set; }
     public string? GoogleDisplayName { get; private set; }
     public bool HasPasswordProvider { get; private set; }
     private string? refreshToken;
@@ -79,11 +80,14 @@ public sealed class FirebaseAuthService
         refreshToken = root.GetProperty("refreshToken").GetString();
         HasPasswordProvider = true;
         GooglePhotoUrl = null;
+        GoogleAccessToken = null;
         GoogleDisplayName = null;
         await SaveSessionAsync();
     }
 
-    public async Task SignInWithGoogleAsync()
+    private string? _lastGoogleRedirectUri;
+
+    public async Task<string> AcquireGoogleAccessTokenAsync()
     {
         var (code, redirectUri) = await GetGoogleAuthorizationCodeAsync();
         using var tokenResponse = await Http.PostAsync(
@@ -101,11 +105,22 @@ public sealed class FirebaseAuthService
             throw new InvalidOperationException("Google не выдал токен: " + ReadGoogleError(tokenBody));
 
         using var googleJson = JsonDocument.Parse(tokenBody);
-        if (!googleJson.RootElement.TryGetProperty("access_token", out var googleAccessTokenElement))
+        if (!googleJson.RootElement.TryGetProperty("access_token", out var accessTokenElement))
             throw new InvalidOperationException("Google не вернул токен доступа. Попробуй войти ещё раз.");
-        var googleAccessToken = googleAccessTokenElement.GetString();
-        if (string.IsNullOrWhiteSpace(googleAccessToken))
+
+        var accessToken = accessTokenElement.GetString();
+        if (string.IsNullOrWhiteSpace(accessToken))
             throw new InvalidOperationException("Google вернул пустой токен доступа.");
+
+        GoogleAccessToken = accessToken;
+        _lastGoogleRedirectUri = redirectUri;
+        return accessToken;
+    }
+
+    public async Task SignInWithGoogleAsync()
+    {
+        var googleAccessToken = await AcquireGoogleAccessTokenAsync();
+        var redirectUri = _lastGoogleRedirectUri!;
 
         var postBody = $"access_token={Uri.EscapeDataString(googleAccessToken)}&providerId=google.com";
         using var firebaseResponse = await Http.PostAsJsonAsync(
@@ -301,6 +316,7 @@ public sealed class FirebaseAuthService
         IdToken = null;
         refreshToken = null;
         GooglePhotoUrl = null;
+        GoogleAccessToken = null;
         GoogleDisplayName = null;
         HasPasswordProvider = false;
     }
