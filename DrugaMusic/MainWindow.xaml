@@ -52,8 +52,8 @@
          <TextBlock Text="Локальная коллекция — первый шаг к единому музыкальному пространству." Foreground="#B6C9E5" TextWrapping="Wrap" MaxWidth="540" FontSize="13"/>
          <Button Content="＋  Добавить треки" Background="#287BFF" Padding="18,11" HorizontalAlignment="Left" Margin="0,20,0,0" Click="AddMusic_Click"/>
         </StackPanel>
-        <Border Grid.Column="1" Width="130" Height="130" CornerRadius="18" Background="#287BFF" HorizontalAlignment="Right" VerticalAlignment="Center">
-         <TextBlock Text="S" FontSize="70" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        <Border Grid.Column="1" Width="130" Height="130" CornerRadius="18" Background="#080B12" HorizontalAlignment="Right" VerticalAlignment="Center" ClipToBounds="True">
+         <Image Source="/SONORA;component/Assets/sonora.png" Stretch="Uniform"/>
         </Border>
        </Grid>
       </Border>
