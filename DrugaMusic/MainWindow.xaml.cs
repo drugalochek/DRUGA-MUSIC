@@ -45,7 +45,7 @@ public partial class MainWindow : Window
                 foreach (var track in saved.Where(t => File.Exists(t.FilePath))) tracks.Add(track);
             }
         }
-        catch (Exception ex) { MessageBox.Show($"Не удалось загрузить библиотеку: {ex.Message}", "Druga Music"); }
+        catch (Exception ex) { MessageBox.Show($"Не удалось загрузить библиотеку: {ex.Message}", "SONORA"); }
         RefreshLibraryState();
     }
 
@@ -59,7 +59,7 @@ public partial class MainWindow : Window
     {
         var dialog = new OpenFileDialog
         {
-            Title = "Добавить музыку в Druga Music",
+            Title = "Добавить музыку в SONORA",
             Filter = "Поддерживаемые аудиофайлы|*.mp3;*.wav;*.aiff;*.aif|Все файлы|*.*",
             Multiselect = true
         };
@@ -86,7 +86,7 @@ public partial class MainWindow : Window
         }
         SaveLibrary();
         RefreshLibraryState();
-        if (added == 0) MessageBox.Show("Новых поддерживаемых аудиофайлов не найдено.", "Druga Music");
+        if (added == 0) MessageBox.Show("Новых поддерживаемых аудиофайлов не найдено.", "SONORA");
     }
 
     private void RefreshLibraryState()
@@ -117,7 +117,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Не удалось воспроизвести файл. Проверь формат и доступ к файлу.\n\n{ex.Message}", "Druga Music");
+            MessageBox.Show($"Не удалось воспроизвести файл. Проверь формат и доступ к файлу.\n\n{ex.Message}", "SONORA");
         }
     }
 
@@ -167,7 +167,7 @@ public partial class MainWindow : Window
         SearchBox.Focus();
     }
     private void Playlists_Click(object sender, RoutedEventArgs e) =>
-        MessageBox.Show("Редактор плейлистов — следующий этап разработки.", "Druga Music");
+        MessageBox.Show("Редактор плейлистов — следующий этап разработки.", "SONORA");
     private void Services_Click(object sender, RoutedEventArgs e) =>
         MessageBox.Show("Интеграции будут добавляться через отдельные провайдеры с учётом официальных API и правил воспроизведения каждого сервиса.", "Музыкальные сервисы");
     private void SetHeader(string title, string subtitle) { GreetingText.Text = title; SubtitleText.Text = subtitle; }
