@@ -31,7 +31,10 @@ public partial class MainWindow : Window
  private Track? Current => queueIndex >= 0 && queueIndex < queue.Count ? tracks.FirstOrDefault(t=>t.Id==queue[queueIndex]) : null;
  public MainWindow()
  {
-  InitializeComponent(); tracksView=CollectionViewSource.GetDefaultView(tracks); TracksList.ItemsSource=tracksView;
+  InitializeComponent();
+  var legacyDir=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"DrugaMusic");
+  if(!Directory.Exists(dataDir)&&Directory.Exists(legacyDir)) try{Directory.Move(legacyDir,dataDir);}catch{}
+  tracksView=CollectionViewSource.GetDefaultView(tracks); TracksList.ItemsSource=tracksView;
   LoadLibrary(); LoadPlaylists(); playback.TrackEnded += (_,_)=>Dispatcher.BeginInvoke(AdvanceAfterEnd);
   timer=new DispatcherTimer{Interval=TimeSpan.FromMilliseconds(250)}; timer.Tick+=(_,_)=>UpdateProgress(); timer.Start();
   Closed+=(_,_)=>{timer.Stop();playback.Dispose();};
