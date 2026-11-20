@@ -292,7 +292,7 @@ public sealed class FirebaseAuthService
             GoogleDisplayName = display.GetString();
         var providerList = user.TryGetProperty("providerUserInfo", out var providers)
             ? providers.EnumerateArray().ToArray()
-            : [];
+            : Array.Empty<JsonElement>();
         HasPasswordProvider = providerList.Any(provider =>
             provider.TryGetProperty("providerId", out var providerId) &&
             providerId.GetString() == "password");
