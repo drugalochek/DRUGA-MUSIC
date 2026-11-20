@@ -1,0 +1,53 @@
+<Window x:Class="DrugaMusic.NowPlayingWindow"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ Title="SONORA · Сейчас играет" Width="900" Height="620" MinWidth="760" MinHeight="540"
+ WindowStartupLocation="CenterOwner" Background="#080B12" Foreground="White">
+ <Grid Margin="28">
+  <Grid.ColumnDefinitions><ColumnDefinition Width="1.2*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+  <Grid Grid.Column="0" Margin="0,0,28,0">
+   <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+   <StackPanel VerticalAlignment="Center">
+    <Border Width="340" Height="340" CornerRadius="18" Background="#17263B" ClipToBounds="True" HorizontalAlignment="Center">
+     <Image x:Name="Cover" Stretch="UniformToFill"/>
+    </Border>
+    <TextBlock x:Name="TitleText" Text="Ничего не играет" FontSize="25" FontWeight="Bold" TextAlignment="Center" Margin="0,24,0,0" TextTrimming="CharacterEllipsis"/>
+    <TextBlock x:Name="ArtistText" Foreground="#8D9BB0" FontSize="15" TextAlignment="Center" Margin="0,7,0,0"/>
+    <TextBlock x:Name="AlbumText" Foreground="#64748B" FontSize="12" TextAlignment="Center" Margin="0,5,0,0"/>
+   </StackPanel>
+   <StackPanel Grid.Row="1" Margin="12,18,12,0">
+    <Grid>
+     <Grid.ColumnDefinitions><ColumnDefinition Width="42"/><ColumnDefinition Width="*"/><ColumnDefinition Width="42"/></Grid.ColumnDefinitions>
+     <TextBlock x:Name="PositionText" Text="0:00" Foreground="#8492A6" FontSize="10" VerticalAlignment="Center"/>
+     <Slider x:Name="Seek" Grid.Column="1" Minimum="0" Maximum="1" ValueChanged="Seek_ValueChanged" PreviewMouseLeftButtonDown="Seek_MouseDown" PreviewMouseLeftButtonUp="Seek_MouseUp"/>
+     <TextBlock x:Name="DurationText" Grid.Column="2" Text="0:00" Foreground="#8492A6" FontSize="10" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+    </Grid>
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,12,0,0">
+     <Button Content="⏮" Width="48" Height="40" Click="Previous_Click" Background="#172235"/>
+     <Button x:Name="PlayButton" Content="Ⅱ" Width="58" Height="40" Margin="12,0" Background="#287BFF" Click="Play_Click"/>
+     <Button Content="⏭" Width="48" Height="40" Click="Next_Click" Background="#172235"/>
+    </StackPanel>
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,16,0,0">
+     <TextBlock Text="Громкость" Foreground="#8D9BB0" VerticalAlignment="Center" Margin="0,0,10,0"/>
+     <Slider x:Name="Volume" Width="150" Minimum="0" Maximum="1" Value="0.75" ValueChanged="Volume_ValueChanged"/>
+    </StackPanel>
+   </StackPanel>
+  </Grid>
+  <Border Grid.Column="1" Background="#101827" CornerRadius="16" Padding="18">
+   <DockPanel>
+    <StackPanel DockPanel.Dock="Top" Margin="0,0,0,14">
+     <TextBlock Text="ОЧЕРЕДЬ ВОСПРОИЗВЕДЕНИЯ" Foreground="#7FAEFF" FontSize="10" FontWeight="Bold"/>
+     <TextBlock Text="Следующие треки" FontSize="21" FontWeight="SemiBold" Margin="0,7,0,0"/>
+    </StackPanel>
+    <ListBox x:Name="QueueList" Background="Transparent" BorderThickness="0" Foreground="White" SelectionChanged="QueueList_SelectionChanged">
+     <ListBox.ItemTemplate><DataTemplate>
+      <Border Padding="10" Margin="0,2" Background="#172235" CornerRadius="8">
+       <StackPanel><TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/><TextBlock Text="{Binding Artist}" Foreground="#8D9BB0" FontSize="11" Margin="0,3,0,0"/></StackPanel>
+      </Border>
+     </DataTemplate></ListBox.ItemTemplate>
+    </ListBox>
+    <TextBlock DockPanel.Dock="Bottom" Text="Выбери композицию в очереди, чтобы начать воспроизведение." Foreground="#64748B" FontSize="11" TextWrapping="Wrap" Margin="0,12,0,0"/>
+   </DockPanel>
+  </Border>
+ </Grid>
+</Window>
