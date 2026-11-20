@@ -1,7 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
-using Avalonia.Input;
+using Avalonia.VisualTree;
 using Sonora.ViewModels;
 
 namespace Sonora;
@@ -15,6 +15,7 @@ public partial class MainWindow : Window
         InitializeComponent();
         viewModel = new MainWindowViewModel();
         DataContext = viewModel;
+        Closed += (_, _) => viewModel.Dispose();
     }
 
     private async void Import_Click(object? sender, RoutedEventArgs e)
