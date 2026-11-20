@@ -296,7 +296,7 @@
             <StackPanel Orientation="Horizontal" Spacing="15">
               <Border Width="74" Height="74" CornerRadius="37" Background="#2868D8" ClipToBounds="True">
                 <Grid>
-                  <TextBlock Text="♙" FontSize="32" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding !HasProfileAvatar}"/>
+                  <TextBlock Text="♙" FontSize="32" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding ShowProfileAvatarPlaceholder}"/>
                   <Image Source="{Binding ProfileAvatar}" Stretch="UniformToFill" IsVisible="{Binding HasProfileAvatar}"/>
                 </Grid>
               </Border>
