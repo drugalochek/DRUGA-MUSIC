@@ -363,7 +363,17 @@
             </Border>
             <TextBlock Text="{Binding CurrentTrackTitle}" FontSize="22" FontWeight="Bold" TextAlignment="Center"/>
             <TextBlock Text="{Binding CurrentTrackArtist}" FontSize="14" Foreground="#82829A" TextAlignment="Center"/>
-            <Slider Minimum="0" Maximum="100" Value="{Binding Progress}" />
+            <StackPanel Spacing="4">
+              <Slider x:Name="PlayerSeek" Minimum="0" Maximum="100" Value="{Binding Progress}" PointerReleased="Seek_Released"/>
+              <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Text="{Binding CurrentTimeText}" FontSize="10" Foreground="#82829A"/>
+                <TextBlock Grid.Column="1" Text="{Binding DurationText}" FontSize="10" Foreground="#82829A"/>
+              </Grid>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="8">
+              <TextBlock Text="Громкость" FontSize="10" Foreground="#82829A" VerticalAlignment="Center"/>
+              <Slider Width="150" Minimum="0" Maximum="1" Value="{Binding Volume, Mode=TwoWay}"/>
+            </StackPanel>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="22">
               <Button Classes="icon-button" Content="|◀" Click="Previous_Click"/>
               <Button Classes="action" Width="54" Height="54" Content="{Binding PlayButtonGlyph}" Click="PlayPause_Click"/>
@@ -376,7 +386,7 @@
 
     <!-- Mini player -->
     <Border x:Name="MiniPlayer" Grid.Row="2" IsVisible="{Binding HasCurrentTrack}" Background="#171722" BorderBrush="#FFFFFF12" BorderThickness="1" CornerRadius="13" Margin="12,7" Padding="8" PointerPressed="MiniPlayer_PointerPressed">
-      <Grid ColumnDefinitions="44,*,Auto,Auto" ColumnSpacing="10">
+      <Grid RowDefinitions="*,2" ColumnDefinitions="44,*,Auto,Auto" ColumnSpacing="10">
         <Border Width="42" Height="42" CornerRadius="9" Background="#244D91">
           <Image Source="{Binding CurrentArtwork}" Stretch="UniformToFill"/>
         </Border>
@@ -386,6 +396,7 @@
         </StackPanel>
         <Button Grid.Column="2" Classes="icon-button" Content="{Binding PlayButtonGlyph}" Click="PlayPause_Click"/>
         <Button Grid.Column="3" Classes="icon-button" Content="×" Click="CloseMini_Click"/>
+        <ProgressBar Grid.Row="1" Grid.ColumnSpan="4" Height="2" Minimum="0" Maximum="100" Value="{Binding Progress}" Background="#FFFFFF18" Foreground="#397BFF"/>
       </Grid>
     </Border>
 
