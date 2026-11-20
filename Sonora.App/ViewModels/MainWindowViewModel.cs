@@ -38,7 +38,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     [ObservableProperty] private bool isPlaying;
     [ObservableProperty] private string searchQuery = "";
     [ObservableProperty] private string currentSection = "home";
-    [ObservableProperty] private double progress;
+    [ObservableProperty] private double progress;\n    [ObservableProperty] private double volume = 0.8;
     [ObservableProperty] private string currentTimeText = "0:00";
     [ObservableProperty] private string durationText = "0:00";
     [ObservableProperty] private string statusText = "Готово";
@@ -89,7 +89,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         LoadCurrentArtwork(value?.ArtworkPath);
     }
 
-    partial void OnIsPlayingChanged(bool value) => OnPropertyChanged(nameof(PlayButtonGlyph));
+    partial void OnIsPlayingChanged(bool value) => OnPropertyChanged(nameof(PlayButtonGlyph));\n    partial void OnVolumeChanged(double value) => playback.SetVolume((float)Math.Clamp(value, 0, 1));
     partial void OnSearchQueryChanged(string value) => RefreshArtistsAndLibrary();
 
     private void LoadCurrentArtwork(string? path)
