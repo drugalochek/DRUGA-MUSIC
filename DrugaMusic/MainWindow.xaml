@@ -11,7 +11,7 @@
     <DockPanel Margin="18,26,16,18">
      <StackPanel DockPanel.Dock="Top">
       <StackPanel Orientation="Horizontal" Margin="12,0,0,42">
-       <TextBlock Text="SONORA" FontSize="24" FontWeight="Bold" Foreground="White" CharacterSpacing="90"/>
+       <TextBlock Text="SONORA" FontSize="24" FontWeight="Bold" Foreground="White"/>
        <Border Width="5" Height="5" Background="#176BFF" Margin="7,0,0,2" VerticalAlignment="Bottom"/>
       </StackPanel>
       <TextBlock Text="РАЗДЕЛЫ" Foreground="#4F5968" FontSize="9" FontWeight="Bold" Margin="14,0,0,10"/>
