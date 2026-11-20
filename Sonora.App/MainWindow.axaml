@@ -25,12 +25,7 @@
           </Border>
           <TextBlock Text="SONORA" FontSize="19" FontWeight="Bold" VerticalAlignment="Center"/>
         </StackPanel>
-        <Border Grid.Column="1" Background="#111A29" BorderBrush="#FFFFFF12" BorderThickness="1" CornerRadius="12" Padding="13,8" MaxWidth="430" HorizontalAlignment="Center">
-          <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
-            <TextBlock Text="⌕" Foreground="#6F8BAF" FontSize="17" VerticalAlignment="Center"/>
-            <TextBlock Grid.Column="1" Text="Поиск музыки, альбомов и исполнителей" Foreground="#77869B" FontSize="12" VerticalAlignment="Center"/>
-          </Grid>
-        </Border>
+        <TextBox x:Name="HeaderSearchBox" Grid.Column="1" Classes="search-box" Width="410" Height="40" HorizontalAlignment="Center" VerticalContentAlignment="Center" PlaceholderText="Поиск музыки, альбомов и исполнителей" TextChanged="HeaderSearchBox_TextChanged"/>
         <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
           <Button Classes="icon-button" Content="＋" Click="Import_Click" ToolTip.Tip="Добавить музыку"/>
           <Border Width="1" Height="26" Background="#263348" Margin="3,0"/>
