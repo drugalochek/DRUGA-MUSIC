@@ -11,14 +11,14 @@
     <DockPanel Margin="18,24,18,18">
      <StackPanel DockPanel.Dock="Top">
       <StackPanel Orientation="Horizontal" Margin="8,0,0,34">
-       <TextBlock Text="DRUGA" FontSize="25" FontWeight="Bold" Foreground="White" CharacterSpacing="2"/>
+       <TextBlock Text="DRUGA" FontSize="25" FontWeight="Bold" Foreground="White"/>
        <TextBlock Text=" MUSIC" FontSize="15" FontWeight="SemiBold" Foreground="#438DFF" VerticalAlignment="Bottom" Margin="7,0,0,3"/>
       </StackPanel>
       <Button Style="{StaticResource NavButton}" Content="⌂   Главная" Click="Home_Click"/>
       <Button Style="{StaticResource NavButton}" Content="⌕   Поиск" Click="Search_Click"/>
       <Button Style="{StaticResource NavButton}" Content="▤   Моя музыка" Click="Library_Click"/>
       <Button Style="{StaticResource NavButton}" Content="♫   Плейлисты" Click="Playlists_Click"/>
-      <TextBlock Text="ТВОЯ КОЛЛЕКЦИЯ" FontSize="10" FontWeight="Bold" Foreground="#63738A" Margin="14,30,0,10" CharacterSpacing="1.5"/>
+      <TextBlock Text="ТВОЯ КОЛЛЕКЦИЯ" FontSize="10" FontWeight="Bold" Foreground="#63738A" Margin="14,30,0,10"/>
       <Button Style="{StaticResource NavButton}" Content="＋   Добавить музыку" Click="AddMusic_Click"/>
       <Button Style="{StaticResource NavButton}" Content="⚙   Сервисы" Click="Services_Click"/>
      </StackPanel>
@@ -37,7 +37,7 @@
       <TextBlock x:Name="SubtitleText" Text="Собери всё, что любишь слушать, в одном месте." Foreground="{StaticResource MutedBrush}" Margin="0,7,0,0" FontSize="13"/>
      </StackPanel>
      <Border HorizontalAlignment="Right" Background="#111827" CornerRadius="18" Padding="13,8" VerticalAlignment="Center">
-      <TextBlock Text="●  LOCAL LIBRARY" Foreground="#8CB8FF" FontSize="10" FontWeight="Bold" CharacterSpacing="1"/>
+      <TextBlock Text="●  LOCAL LIBRARY" Foreground="#8CB8FF" FontSize="10" FontWeight="Bold"/>
      </Border>
     </Grid>
     <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
@@ -46,7 +46,7 @@
        <Grid>
         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="170"/></Grid.ColumnDefinitions>
         <StackPanel VerticalAlignment="Center">
-         <TextBlock Text="YOUR MUSIC, YOUR WAY" Foreground="#80B3FF" FontSize="10" FontWeight="Bold" CharacterSpacing="2"/>
+         <TextBlock Text="YOUR MUSIC, YOUR WAY" Foreground="#80B3FF" FontSize="10" FontWeight="Bold"/>
          <TextBlock Text="Вся твоя музыка." FontSize="27" FontWeight="Bold" Margin="0,10,0,4"/>
          <TextBlock Text="Локальная коллекция — первый шаг к единому музыкальному пространству." Foreground="#B6C9E5" TextWrapping="Wrap" MaxWidth="540" FontSize="13"/>
          <Button Content="＋  Добавить треки" Background="#287BFF" Padding="18,11" HorizontalAlignment="Left" Margin="0,20,0,0" Click="AddMusic_Click"/>
