@@ -65,6 +65,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     public bool IsFavoritesEmpty => FavoriteTracks.Count == 0;
     public bool HasCurrentTrack => CurrentTrack is not null;
     public bool HasProfileAvatar => ProfileAvatar is not null;
+    public bool ShowProfileAvatarPlaceholder => ProfileAvatar is null;
     public string GoogleProviderStatusText => IsGoogleLinked ? "Google привязан к этому аккаунту" : "Google ещё не привязан";
     public string GoogleButtonText => IsSignedIn ? (IsGoogleLinked ? "Google подключён" : "Привязать Google к аккаунту") : "Продолжить с Google";
     public bool CanLinkGoogle => !IsSignedIn || !IsGoogleLinked;
@@ -100,7 +101,11 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     }
 
     partial void OnIsPlayingChanged(bool value) => OnPropertyChanged(nameof(PlayButtonGlyph));
-    partial void OnProfileAvatarChanged(Bitmap? value) => OnPropertyChanged(nameof(HasProfileAvatar));
+    partial void OnProfileAvatarChanged(Bitmap? value)
+    {
+        OnPropertyChanged(nameof(HasProfileAvatar));
+        OnPropertyChanged(nameof(ShowProfileAvatarPlaceholder));
+    }
     partial void OnIsSignedInChanged(bool value)
     {
         OnPropertyChanged(nameof(GoogleButtonText));
@@ -373,6 +378,16 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                 {
                     await LoadGoogleAvatarAsync(profile.GooglePhotoUrl);
                 }
+            }
+            else if (avatarType == "custom" && !string.IsNullOrWhiteSpace(avatarData))
+            {
+                using var stream = new MemoryStream(Convert.FromBase64String(avatarData));
+                ProfileAvatar?.Dispose();
+                ProfileAvatar = new Bitmap(stream);
+            }
+            else if (!string.IsNullOrWhiteSpace(auth.GooglePhotoUrl))
+            {
+                await LoadGoogleAvatarAsync(auth.GooglePhotoUrl);
             }
         }
         catch (Exception ex) { AuthMessage = "Профиль не загрузился: " + ex.Message; }
