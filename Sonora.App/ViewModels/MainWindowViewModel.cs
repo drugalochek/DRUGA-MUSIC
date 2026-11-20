@@ -211,6 +211,30 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         StatusText = added == 0 ? "Новых поддерживаемых файлов не найдено" : $"Добавлено треков: {added}";
     }
 
+    public void PlayDailyMix()
+    {
+        if (Tracks.Count == 0) return;
+        var random = new Random(DateOnly.FromDateTime(DateTime.Today).DayNumber);
+        queue = Tracks.OrderBy(_ => random.Next()).Select(t => t.Id).ToList();
+        queueIndex = 0;
+        StartCurrentTrack();
+    }
+
+    public void PlayWeeklyMix()
+    {
+        if (Tracks.Count == 0) return;
+        var topGenre = Genres.FirstOrDefault()?.Name;
+        var source = string.IsNullOrWhiteSpace(topGenre)
+            ? Tracks.ToList()
+            : Tracks.Where(t => string.Equals(t.Genre?.Trim(), topGenre, StringComparison.OrdinalIgnoreCase)).ToList();
+        if (source.Count == 0) source = Tracks.ToList();
+        var weekSeed = DateTime.Today.Year * 100 + System.Globalization.ISOWeek.GetWeekOfYear(DateTime.Today);
+        var random = new Random(weekSeed);
+        queue = source.OrderBy(_ => random.Next()).Select(t => t.Id).ToList();
+        queueIndex = 0;
+        StartCurrentTrack();
+    }
+
     public void PlayForYouArtist()
     {
         var artist = ForYouArtist;
