@@ -115,6 +115,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(GoogleButtonText));
         OnPropertyChanged(nameof(CanLinkGoogle));
         OnPropertyChanged(nameof(ShowSignInOptions));
+        OnPropertyChanged(nameof(CanAddPassword));
     }
     partial void OnIsGoogleLinkedChanged(bool value)
     {
