@@ -17,15 +17,16 @@ try {
     try {
         $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
         try {
-            $graphics.Clear([System.Drawing.Color]::Black)
+            $graphics.Clear([System.Drawing.Color]::Transparent)
             $graphics.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
             $graphics.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::HighQuality
-            $side = [Math]::Min($inputImage.Width, $inputImage.Height)
-            $left = [int](($inputImage.Width - $side) / 2)
-            $top = [int](($inputImage.Height - $side) / 2)
-            $sourceRect = [System.Drawing.Rectangle]::new($left, $top, $side, $side)
-            $destRect = [System.Drawing.Rectangle]::new(0, 0, 256, 256)
-            $graphics.DrawImage($inputImage, $destRect, $sourceRect, [System.Drawing.GraphicsUnit]::Pixel)
+            $scale = [Math]::Min(256.0 / $inputImage.Width, 256.0 / $inputImage.Height)
+            $width = [int][Math]::Round($inputImage.Width * $scale)
+            $height = [int][Math]::Round($inputImage.Height * $scale)
+            $x = [int]((256 - $width) / 2)
+            $y = [int]((256 - $height) / 2)
+            $destRect = [System.Drawing.Rectangle]::new($x, $y, $width, $height)
+            $graphics.DrawImage($inputImage, $destRect)
         } finally { $graphics.Dispose() }
 
         $handle = $bitmap.GetHicon()
@@ -39,4 +40,4 @@ try {
     } finally { $bitmap.Dispose() }
 } finally { $inputImage.Dispose() }
 
-Write-Host "Generated $target from repository artwork."
+Write-Host "Generated $target from the original SONORA artwork without cropping."
