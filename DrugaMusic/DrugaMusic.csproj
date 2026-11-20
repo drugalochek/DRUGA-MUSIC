@@ -13,6 +13,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Resource Include="Assets\sonora.ico" />
+    <Resource Include="..\1795143870953.png" Link="Assets\sonora.png" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="NAudio" Version="2.2.1" />
