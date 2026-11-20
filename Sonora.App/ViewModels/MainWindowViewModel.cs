@@ -49,6 +49,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     [ObservableProperty] private string accountStatusText = "Локальный профиль";
     [ObservableProperty] private bool isSignedIn;
     [ObservableProperty] private bool isGoogleLinked;
+    [ObservableProperty] private bool isPasswordLinked;
     [ObservableProperty] private Bitmap? currentArtwork;
     [ObservableProperty] private Bitmap? profileAvatar;
     private string avatarType = "google";
@@ -69,6 +70,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     public string GoogleProviderStatusText => IsGoogleLinked ? "Google привязан к этому аккаунту" : "Google ещё не привязан";
     public string GoogleButtonText => IsSignedIn ? (IsGoogleLinked ? "Google подключён" : "Привязать Google к аккаунту") : "Продолжить с Google";
     public bool CanLinkGoogle => !IsSignedIn || !IsGoogleLinked;
+    public string PasswordProviderStatusText => IsPasswordLinked ? "Пароль привязан" : "Пароль не настроен";
+    public bool CanAddPassword => IsSignedIn && !IsPasswordLinked;
     public string EmptyLibraryText => "Пока здесь пусто. Добавь музыку — и SONORA соберёт твою коллекцию.";
     public string EmptyFavoritesText => "Здесь появятся треки, которые ты добавишь в избранное.";
     public string GreetingText => DateTime.Now.Hour switch
@@ -116,6 +119,11 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(GoogleProviderStatusText));
         OnPropertyChanged(nameof(GoogleButtonText));
         OnPropertyChanged(nameof(CanLinkGoogle));
+    }
+    partial void OnIsPasswordLinkedChanged(bool value)
+    {
+        OnPropertyChanged(nameof(PasswordProviderStatusText));
+        OnPropertyChanged(nameof(CanAddPassword));
     }
     partial void OnVolumeChanged(double value) => playback.SetVolume((float)Math.Clamp(value, 0, 1));
     partial void OnSearchQueryChanged(string value) => RefreshArtistsAndLibrary();
@@ -343,6 +351,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             {
                 IsSignedIn = true;
                 IsGoogleLinked = auth.HasGoogleProvider;
+                IsPasswordLinked = auth.HasPasswordProvider;
                 Email = auth.Email ?? "";
                 ProfileName = auth.GoogleDisplayName ?? Email;
                 AccountStatusText = "Аккаунт SONORA подключён";
@@ -533,10 +542,22 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     {
         IsSignedIn = auth.IsSignedIn;
         IsGoogleLinked = auth.HasGoogleProvider;
+        IsPasswordLinked = auth.HasPasswordProvider;
         Email = auth.Email ?? "";
         ProfileName = auth.GoogleDisplayName ?? Email;
         AccountStatusText = "Аккаунт SONORA подключён";
         await LoadProfileAsync();
+    }
+
+    public async Task AddPasswordAsync(string password)
+    {
+        try
+        {
+            await auth.SetSonoraPasswordAsync(password);
+            IsPasswordLinked = auth.HasPasswordProvider;
+            AuthMessage = "Пароль добавлен к текущему аккаунту SONORA.";
+        }
+        catch (Exception ex) { AuthMessage = ex.Message; }
     }
 
     public void SignOut()
@@ -544,6 +565,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         auth.SignOut();
         IsSignedIn = false;
         IsGoogleLinked = false;
+        IsPasswordLinked = false;
         Email = "";
         Nickname = "";
         ProfileName = "Гость";
