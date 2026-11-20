@@ -50,6 +50,8 @@ public partial class MainWindow : Window
             viewModel.PlayTrack(track);
     }
 
+    private void ForYou_Click(object? sender, RoutedEventArgs e) => viewModel.PlayForYouArtist();
+
     private void PlayPause_Click(object? sender, RoutedEventArgs e) => viewModel.TogglePlayback();
     private void Next_Click(object? sender, RoutedEventArgs e) => viewModel.NextTrack();
     private void Previous_Click(object? sender, RoutedEventArgs e) => viewModel.PreviousTrack();
