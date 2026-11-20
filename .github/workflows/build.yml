@@ -2,7 +2,7 @@ name: Build SONORA
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, sonora-sonicwave-desktop ]
   pull_request:
     branches: [ main ]
   workflow_dispatch:
