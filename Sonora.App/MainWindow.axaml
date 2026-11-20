@@ -1,0 +1,243 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Sonora.MainWindow"
+        Title="SONORA"
+        Width="1360" Height="900"
+        MinWidth="1024" MinHeight="700"
+        WindowStartupLocation="CenterScreen"
+        Background="#0A0A12"
+        Foreground="#F5F5F8"
+        FontFamily="avares://Sonora.App/Assets/WidockTrialBold.otf#Widock">
+  <Grid RowDefinitions="76,*,76,82" Background="#0A0A12">
+    <!-- Sonic Wave-style top bar -->
+    <Border Grid.Row="0" Background="#0D0D17" BorderBrush="#252538" BorderThickness="0,0,0,1">
+      <Grid Margin="30,0" ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
+        <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+          <Border Width="34" Height="34" CornerRadius="11">
+            <Border.Background>
+              <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                <GradientStop Color="#367BFF" Offset="0"/>
+                <GradientStop Color="#56C8FF" Offset="1"/>
+              </LinearGradientBrush>
+            </Border.Background>
+            <Image Source="avares://Sonora.App/Assets/sonora.png" Stretch="Uniform" Margin="5"/>
+          </Border>
+          <TextBlock Text="SONORA" FontSize="21" FontWeight="Bold" VerticalAlignment="Center"/>
+        </StackPanel>
+
+        <TextBox Grid.Column="1" x:Name="SearchBox" Classes="search-box"
+                 Width="360" Watermark="Найти трек, исполнителя или альбом"
+                 HorizontalAlignment="Center" VerticalAlignment="Center"
+                 TextChanged="SearchBox_TextChanged"/>
+
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="9" VerticalAlignment="Center">
+          <Button Classes="icon-button" Content="＋" Click="Import_Click" ToolTip.Tip="Добавить музыку"/>
+          <Button Classes="icon-button" Content="♙" Tag="profile" Click="Nav_Click" ToolTip.Tip="Профиль"/>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <!-- Main page -->
+    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+      <StackPanel Margin="34,28,34,34" Spacing="0">
+        <TextBlock Text="ТВОЯ МУЗЫКА — ТВОЁ ПРОСТРАНСТВО" Foreground="#62AFFF" FontSize="10" LetterSpacing="1.2"/>
+        <TextBlock x:Name="PageTitle" Text="Главная" FontSize="30" FontWeight="Bold" Margin="0,6,0,3"/>
+        <TextBlock x:Name="PageSubtitle" Text="Открывай любимое и находи то, что захочется переслушать." Foreground="#85859B" FontSize="13" Margin="0,0,0,22"/>
+
+        <Border CornerRadius="19" Padding="28,24" Margin="0,0,0,24" MinHeight="174" ClipToBounds="True">
+          <Border.Background>
+            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+              <GradientStop Color="#15366D" Offset="0"/>
+              <GradientStop Color="#176BCB" Offset="0.55"/>
+              <GradientStop Color="#10203E" Offset="1"/>
+            </LinearGradientBrush>
+          </Border.Background>
+          <Grid ColumnDefinitions="*,190">
+            <StackPanel VerticalAlignment="Center" Spacing="7">
+              <TextBlock Text="SONORA  /  YOUR SOUNDTRACK" Foreground="#C7E4FF" FontSize="10" LetterSpacing="1"/>
+              <TextBlock Text="Музыка звучит лучше вместе с тобой." FontSize="27" FontWeight="Bold" TextWrapping="Wrap"/>
+              <TextBlock Text="Собери свою библиотеку, создавай плейлисты и возвращайся к любимым трекам." Foreground="#D6E9FF" FontSize="12" TextWrapping="Wrap" MaxWidth="660"/>
+              <Button Classes="action" Content="＋  ДОБАВИТЬ МУЗЫКУ" HorizontalAlignment="Left" Margin="0,8,0,0" Click="Import_Click"/>
+            </StackPanel>
+            <Grid Grid.Column="1" Width="150" Height="140" HorizontalAlignment="Right" VerticalAlignment="Center">
+              <Ellipse Fill="#4C9CFF" Opacity="0.22" Width="138" Height="138"/>
+              <Ellipse Fill="#80CEFF" Opacity="0.22" Width="104" Height="104" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+              <Image Source="avares://Sonora.App/Assets/sonora.png" Width="82" Height="82" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Grid>
+          </Grid>
+        </Border>
+
+        <!-- Artists -->
+        <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,10">
+          <StackPanel Spacing="3">
+            <TextBlock Text="ИЗ ТВОЕЙ БИБЛИОТЕКИ" Foreground="#62AFFF" FontSize="9" LetterSpacing="1"/>
+            <TextBlock Text="Исполнители" FontSize="20" FontWeight="Bold"/>
+          </StackPanel>
+          <TextBlock Grid.Column="1" Text="{Binding ArtistCountText}" Foreground="#85859B" FontSize="11" VerticalAlignment="Bottom"/>
+        </Grid>
+        <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" Margin="-5,0,-5,18">
+          <ItemsControl ItemsSource="{Binding Artists}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <StackPanel Width="112" Margin="5,7,8,8" Spacing="7">
+                  <Border Width="82" Height="82" CornerRadius="41" HorizontalAlignment="Center" ClipToBounds="True">
+                    <Border.Background>
+                      <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                        <GradientStop Color="#2C6ED1" Offset="0"/>
+                        <GradientStop Color="#42B9E8" Offset="1"/>
+                      </LinearGradientBrush>
+                    </Border.Background>
+                    <TextBlock Text="{Binding Initial}" FontSize="28" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="White"/>
+                  </Border>
+                  <TextBlock Text="{Binding Name}" FontSize="11" TextAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                  <TextBlock Text="{Binding CountText}" FontSize="9" Foreground="#85859B" TextAlignment="Center"/>
+                </StackPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+
+        <!-- Mixes -->
+        <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,10">
+          <StackPanel Spacing="3">
+            <TextBlock Text="ПОД ТВОЁ НАСТРОЕНИЕ" Foreground="#62AFFF" FontSize="9" LetterSpacing="1"/>
+            <TextBlock Text="Миксы" FontSize="20" FontWeight="Bold"/>
+          </StackPanel>
+          <Button Grid.Column="1" Classes="nav-item" Content="Все миксы  ›" Tag="mixes" Click="Nav_Click" VerticalAlignment="Bottom"/>
+        </Grid>
+        <Grid ColumnDefinitions="*,*,*" ColumnSpacing="14" Margin="0,0,0,22">
+          <Border Classes="music-card" Grid.Column="0" Padding="15">
+            <StackPanel Spacing="7">
+              <Border Height="112" CornerRadius="12" ClipToBounds="True">
+                <Border.Background>
+                  <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                    <GradientStop Color="#2563EB" Offset="0"/>
+                    <GradientStop Color="#38BDF8" Offset="1"/>
+                  </LinearGradientBrush>
+                </Border.Background>
+                <TextBlock Text="SONORA" FontSize="25" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+              </Border>
+              <TextBlock Text="Микс дня" FontSize="14" FontWeight="Bold"/>
+              <TextBlock Text="Треки, которые могут понравиться сегодня" FontSize="10" Foreground="#85859B" TextWrapping="Wrap"/>
+            </StackPanel>
+          </Border>
+          <Border Classes="music-card" Grid.Column="1" Padding="15">
+            <StackPanel Spacing="7">
+              <Border Height="112" CornerRadius="12" ClipToBounds="True">
+                <Border.Background>
+                  <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                    <GradientStop Color="#164E9A" Offset="0"/>
+                    <GradientStop Color="#67C8FF" Offset="1"/>
+                  </LinearGradientBrush>
+                </Border.Background>
+                <TextBlock Text="WEEKLY" FontSize="25" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+              </Border>
+              <TextBlock Text="Микс недели" FontSize="14" FontWeight="Bold"/>
+              <TextBlock Text="Подборка на основе твоих прослушиваний" FontSize="10" Foreground="#85859B" TextWrapping="Wrap"/>
+            </StackPanel>
+          </Border>
+          <Border Classes="music-card" Grid.Column="2" Padding="15">
+            <StackPanel Spacing="7">
+              <Border Height="112" CornerRadius="12" ClipToBounds="True">
+                <Border.Background>
+                  <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                    <GradientStop Color="#1D4ED8" Offset="0"/>
+                    <GradientStop Color="#0EA5E9" Offset="1"/>
+                  </LinearGradientBrush>
+                </Border.Background>
+                <TextBlock Text="FOR YOU" FontSize="25" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+              </Border>
+              <TextBlock Text="Для тебя" FontSize="14" FontWeight="Bold"/>
+              <TextBlock Text="Твоя музыка без лишних поисков" FontSize="10" Foreground="#85859B" TextWrapping="Wrap"/>
+            </StackPanel>
+          </Border>
+        </Grid>
+
+        <!-- Library tracks -->
+        <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,10">
+          <StackPanel Spacing="3">
+            <TextBlock Text="ТВОЯ КОЛЛЕКЦИЯ" Foreground="#62AFFF" FontSize="9" LetterSpacing="1"/>
+            <TextBlock Text="Недавно добавленные" FontSize="20" FontWeight="Bold"/>
+          </StackPanel>
+          <TextBlock Grid.Column="1" Text="{Binding TrackCountText}" Foreground="#85859B" FontSize="11" VerticalAlignment="Bottom"/>
+        </Grid>
+        <Border Classes="music-card" Padding="10">
+          <StackPanel>
+            <TextBlock Text="{Binding EmptyLibraryText}" Foreground="#85859B" FontSize="12" Margin="12,12,12,12" IsVisible="{Binding IsLibraryEmpty}"/>
+            <ItemsControl ItemsSource="{Binding Tracks}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Button Classes="track-row" Click="Track_Click" Background="Transparent" BorderThickness="0" Padding="8,9" HorizontalContentAlignment="Stretch">
+                    <Grid ColumnDefinitions="42,*,Auto" ColumnSpacing="12">
+                      <Border Grid.Column="0" Width="40" Height="40" CornerRadius="9" ClipToBounds="True">
+                        <Border.Background>
+                          <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                            <GradientStop Color="#2459A6" Offset="0"/>
+                            <GradientStop Color="#2F9FD7" Offset="1"/>
+                          </LinearGradientBrush>
+                        </Border.Background>
+                        <TextBlock Text="♫" FontSize="19" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                      </Border>
+                      <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="3">
+                        <TextBlock Text="{Binding Title}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Text="{Binding Artist}" FontSize="10" Foreground="#85859B" TextTrimming="CharacterEllipsis"/>
+                      </StackPanel>
+                      <TextBlock Grid.Column="2" Text="{Binding DurationText}" FontSize="10" Foreground="#85859B" VerticalAlignment="Center"/>
+                    </Grid>
+                  </Button>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Border>
+      </StackPanel>
+    </ScrollViewer>
+
+    <!-- Mini player -->
+    <Border Grid.Row="2" Background="#11111B" BorderBrush="#28283A" BorderThickness="0,1,0,1" Padding="26,9">
+      <Grid ColumnDefinitions="*,Auto,*" VerticalAlignment="Center">
+        <StackPanel Orientation="Horizontal" Spacing="11" VerticalAlignment="Center">
+          <Border Width="48" Height="48" CornerRadius="10" ClipToBounds="True">
+            <Border.Background>
+              <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                <GradientStop Color="#347BEB" Offset="0"/>
+                <GradientStop Color="#4CC5F4" Offset="1"/>
+              </LinearGradientBrush>
+            </Border.Background>
+            <TextBlock Text="♫" FontSize="22" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+          </Border>
+          <StackPanel VerticalAlignment="Center" Spacing="3">
+            <TextBlock Text="{Binding CurrentTrackTitle}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" MaxWidth="260"/>
+            <TextBlock Text="{Binding CurrentTrackArtist}" FontSize="10" Foreground="#85859B"/>
+          </StackPanel>
+        </StackPanel>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
+          <Button Classes="icon-button" Content="|◀" Click="Previous_Click"/>
+          <Button Classes="action" Width="42" Height="42" Padding="0" Content="{Binding PlayButtonGlyph}" Click="PlayPause_Click"/>
+          <Button Classes="icon-button" Content="▶|" Click="Next_Click"/>
+        </StackPanel>
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right" VerticalAlignment="Center">
+          <TextBlock Text="{Binding CurrentTimeText}" Foreground="#85859B" FontSize="10" VerticalAlignment="Center"/>
+          <ProgressBar Width="180" Height="4" Minimum="0" Maximum="100" Value="{Binding Progress}" VerticalAlignment="Center"/>
+          <TextBlock Text="{Binding DurationText}" Foreground="#85859B" FontSize="10" VerticalAlignment="Center"/>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <!-- Bottom navigation, matching the original Sonic Wave navigation model -->
+    <Border Grid.Row="3" Background="#0D0D17">
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12">
+        <Button Classes="nav-item active" Content="⌂   Главная" Tag="home" Click="Nav_Click"/>
+        <Button Classes="nav-item" Content="⌕   Поиск" Tag="search" Click="Nav_Click"/>
+        <Button Classes="nav-item" Content="▤   Моя музыка" Tag="library" Click="Nav_Click"/>
+        <Button Classes="nav-item" Content="♫   Миксы" Tag="mixes" Click="Nav_Click"/>
+        <Button Classes="nav-item" Content="♡   Избранное" Tag="favorites" Click="Nav_Click"/>
+        <Button Classes="nav-item" Content="♙   Профиль" Tag="profile" Click="Nav_Click"/>
+        <Button Classes="nav-item" Content="⇄   Аккаунты" Tag="accounts" Click="Nav_Click"/>
+      </StackPanel>
+    </Border>
+  </Grid>
+</Window>
