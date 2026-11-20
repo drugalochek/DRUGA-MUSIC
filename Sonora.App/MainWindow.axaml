@@ -7,7 +7,7 @@
         WindowStartupLocation="CenterScreen"
         Background="#0A0A12"
         Foreground="#F5F5F8"
-        FontFamily="avares://Sonora.App/Assets/WidockTrialBold.otf#Widock">
+        FontFamily="avares://SONORA/Assets/WidockTrialBold.otf#Widock">
   <Grid RowDefinitions="76,*,76,82" Background="#0A0A12">
     <!-- Sonic Wave-style top bar -->
     <Border Grid.Row="0" Background="#0D0D17" BorderBrush="#252538" BorderThickness="0,0,0,1">
@@ -20,13 +20,13 @@
                 <GradientStop Color="#56C8FF" Offset="1"/>
               </LinearGradientBrush>
             </Border.Background>
-            <Image Source="avares://Sonora.App/Assets/sonora.png" Stretch="Uniform" Margin="5"/>
+            <Image Source="avares://SONORA/Assets/sonora.png" Stretch="Uniform" Margin="5"/>
           </Border>
           <TextBlock Text="SONORA" FontSize="21" FontWeight="Bold" VerticalAlignment="Center"/>
         </StackPanel>
 
         <TextBox Grid.Column="1" x:Name="SearchBox" Classes="search-box"
-                 Width="360" Watermark="Найти трек, исполнителя или альбом"
+                 Width="360" PlaceholderText="Найти трек, исполнителя или альбом"
                  HorizontalAlignment="Center" VerticalAlignment="Center"
                  TextChanged="SearchBox_TextChanged"/>
 
@@ -62,7 +62,7 @@
             <Grid Grid.Column="1" Width="150" Height="140" HorizontalAlignment="Right" VerticalAlignment="Center">
               <Ellipse Fill="#4C9CFF" Opacity="0.22" Width="138" Height="138"/>
               <Ellipse Fill="#80CEFF" Opacity="0.22" Width="104" Height="104" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-              <Image Source="avares://Sonora.App/Assets/sonora.png" Width="82" Height="82" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+              <Image Source="avares://SONORA/Assets/sonora.png" Width="82" Height="82" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Grid>
           </Grid>
         </Border>
@@ -167,7 +167,7 @@
         <Border Classes="music-card" Padding="10">
           <StackPanel>
             <TextBlock Text="{Binding EmptyLibraryText}" Foreground="#85859B" FontSize="12" Margin="12,12,12,12" IsVisible="{Binding IsLibraryEmpty}"/>
-            <ItemsControl ItemsSource="{Binding Tracks}">
+            <ItemsControl ItemsSource="{Binding VisibleTracks}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
                   <Button Classes="track-row" Click="Track_Click" Background="Transparent" BorderThickness="0" Padding="8,9" HorizontalContentAlignment="Stretch">
