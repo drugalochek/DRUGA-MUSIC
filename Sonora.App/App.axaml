@@ -4,6 +4,6 @@
              RequestedThemeVariant="Dark">
   <Application.Styles>
     <FluentTheme />
-    <StyleInclude Source="avares://Sonora.App/Styles/Theme.axaml" />
+    <StyleInclude Source="avares://SONORA/Styles/Theme.axaml" />
   </Application.Styles>
 </Application>
