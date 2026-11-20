@@ -12,6 +12,9 @@
     <Version>0.2.0</Version>
   </PropertyGroup>
   <ItemGroup>
+    <Resource Include="Assets\sonora.ico" />
+  </ItemGroup>
+  <ItemGroup>
     <PackageReference Include="NAudio" Version="2.2.1" />
     <PackageReference Include="TagLibSharp" Version="2.3.0" />
   </ItemGroup>
