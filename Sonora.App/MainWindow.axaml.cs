@@ -37,6 +37,13 @@ public partial class MainWindow : Window
         viewModel.ImportFiles(files.Select(file => file.Path.LocalPath));
     }
 
+    private void Favorite_PointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (sender is Control { DataContext: DrugaMusic.Models.Track track })
+            viewModel.ToggleFavorite(track);
+        e.Handled = true;
+    }
+
     private void Track_Click(object? sender, RoutedEventArgs e)
     {
         if (sender is Control { DataContext: DrugaMusic.Models.Track track })
@@ -89,7 +96,9 @@ public partial class MainWindow : Window
         e.Handled = true;
     }
 
-    private void Seek_Released(object? sender, PointerReleasedEventArgs e) => viewModel.SeekToPercent(PlayerSeek.Value);\n\n    private void ClosePlayer_Click(object? sender, RoutedEventArgs e) => NowPlayingOverlay.IsVisible = false;
+    private void Seek_Released(object? sender, PointerReleasedEventArgs e) => viewModel.SeekToPercent(PlayerSeek.Value);
+
+    private void ClosePlayer_Click(object? sender, RoutedEventArgs e) => NowPlayingOverlay.IsVisible = false;
     private void CloseMini_Click(object? sender, RoutedEventArgs e) => viewModel.StopAndClearCurrentTrack();
 
     private async void SaveProfile_Click(object? sender, RoutedEventArgs e) =>
