@@ -398,7 +398,11 @@ public sealed class FirebaseAuthService
             {
                 "EMAIL_EXISTS" or "ACCOUNT_EXISTS_WITH_DIFFERENT_CREDENTIAL" =>
                     "Этот Google-адрес уже используется другим способом входа. Сначала войди в существующий аккаунт SONORA; автоматическое объединение пока не выполнено.",
-                "NEED_CONFIRMATION" => "Для этого адреса уже существует другой аккаунт. Нужно отдельно связать способы входа.",
+                "NEED_CONFIRMATION" => "Для этого адреса уже существует другой аккаунт. Войди в него и привяжи новый способ входа из раздела «Аккаунты».",
+                "CREDENTIAL_ALREADY_IN_USE" or "FEDERATED_USER_ID_ALREADY_LINKED" =>
+                    "Этот Google-аккаунт уже привязан к другой учётной записи SONORA.",
+                "PROVIDER_ALREADY_LINKED" => "Этот способ входа уже привязан к аккаунту SONORA.",
+                "USER_NOT_FOUND" => "Аккаунт не найден. Проверь данные для входа.",
                 "INVALID_EMAIL" => "Проверь адрес электронной почты.",
                 "WEAK_PASSWORD" => "Пароль слишком короткий. Нужно не менее 6 символов.",
                 "EMAIL_NOT_FOUND" or "INVALID_PASSWORD" or "INVALID_LOGIN_CREDENTIALS" => "Неверная почта или пароль.",
