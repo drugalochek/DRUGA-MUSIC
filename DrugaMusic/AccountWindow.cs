@@ -22,6 +22,8 @@ public sealed class AccountWindow : Window
     private readonly Image avatarImage;
     private readonly Button signInButton;
     private readonly Button registerButton;
+    private readonly Button googleButton;
+    private readonly Button setPasswordButton;
     private readonly Button signOutButton;
     private readonly Button syncButton;
     private readonly Button saveProfileButton;
@@ -63,6 +65,10 @@ public sealed class AccountWindow : Window
         registerButton.Margin = new Thickness(0, 8, 0, 0);
         registerButton.Click += async (_, _) => await RunAuthAsync(true);
         root.Children.Add(registerButton);
+        googleButton = MakeButton("Продолжить с Google", "#1A2638");
+        googleButton.Margin = new Thickness(0, 8, 0, 0);
+        googleButton.Click += async (_, _) => await RunGoogleAuthAsync();
+        root.Children.Add(googleButton);
 
         var profilePanel = new StackPanel { Margin = new Thickness(0, 20, 0, 0) };
         profilePanel.Children.Add(new TextBlock { Text = "ПРОФИЛЬ SONORA", Foreground = Brush("#63738A"), FontSize = 10, FontWeight = FontWeights.Bold });
@@ -87,6 +93,10 @@ public sealed class AccountWindow : Window
         profilePanel.Children.Add(saveProfileButton);
         profileStatusText = new TextBlock { Foreground = Brush("#93A1B5"), FontSize = 11, Margin = new Thickness(0, 8, 0, 0), TextWrapping = TextWrapping.Wrap };
         profilePanel.Children.Add(profileStatusText);
+        setPasswordButton = MakeButton("Задать пароль SONORA", "#1A2638");
+        setPasswordButton.Margin = new Thickness(0, 8, 0, 0);
+        setPasswordButton.Click += async (_, _) => await PromptForSonoraPasswordAsync();
+        profilePanel.Children.Add(setPasswordButton);
         root.Children.Add(profilePanel);
 
         var divider = new Border { Height = 1, Background = Brush("#202B3B"), Margin = new Thickness(0, 22, 0, 18) };
@@ -118,7 +128,7 @@ public sealed class AccountWindow : Window
             statusText.Text = "Введи почту и пароль.";
             return;
         }
-        signInButton.IsEnabled = registerButton.IsEnabled = false;
+        signInButton.IsEnabled = registerButton.IsEnabled = googleButton.IsEnabled = false;
         statusText.Text = register ? "Создаём аккаунт…" : "Выполняем вход…";
         try
         {
@@ -128,7 +138,65 @@ public sealed class AccountWindow : Window
             await LoadProfileAsync();
         }
         catch (Exception ex) { statusText.Text = ex.Message; }
-        finally { signInButton.IsEnabled = registerButton.IsEnabled = true; }
+        finally { signInButton.IsEnabled = registerButton.IsEnabled = googleButton.IsEnabled = true; }
+    }
+
+    private async Task RunGoogleAuthAsync()
+    {
+        signInButton.IsEnabled = registerButton.IsEnabled = googleButton.IsEnabled = false;
+        statusText.Text = "Открываем безопасный вход Google…";
+        try
+        {
+            await auth.SignInWithGoogleAsync();
+            UpdateState();
+            await LoadProfileAsync();
+            if (!auth.HasPasswordProvider)
+                await PromptForSonoraPasswordAsync();
+            statusText.Text = $"Выполнен вход через Google: {auth.Email}";
+        }
+        catch (Exception ex) { statusText.Text = ex.Message; }
+        finally { signInButton.IsEnabled = registerButton.IsEnabled = googleButton.IsEnabled = true; }
+    }
+
+    private async Task PromptForSonoraPasswordAsync()
+    {
+        if (!auth.IsSignedIn || auth.HasPasswordProvider) return;
+        var dialog = new Window
+        {
+            Title = "Пароль SONORA", Width = 360, Height = 270, ResizeMode = ResizeMode.NoResize,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner, Owner = this,
+            Background = Brush("#080B12"), Foreground = Brushes.White
+        };
+        var panel = new StackPanel { Margin = new Thickness(22) };
+        panel.Children.Add(new TextBlock { Text = "Придумай пароль SONORA", FontSize = 18, FontWeight = FontWeights.Bold });
+        panel.Children.Add(new TextBlock { Text = "Это отдельный пароль приложения. Пароль Google нам не передаётся.", Foreground = Brush("#93A1B5"), FontSize = 11, Margin = new Thickness(0, 7, 0, 12), TextWrapping = TextWrapping.Wrap });
+        var first = new PasswordBox { Height = 36, Padding = new Thickness(9), Background = Brush("#111827"), Foreground = Brushes.White, BorderThickness = new Thickness(0) };
+        var second = new PasswordBox { Height = 36, Padding = new Thickness(9), Background = Brush("#111827"), Foreground = Brushes.White, BorderThickness = new Thickness(0), Margin = new Thickness(0, 8, 0, 0) };
+        panel.Children.Add(first); panel.Children.Add(second);
+        var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 14, 0, 0) };
+        var later = MakeButton("Позже", "#1A2638"); later.Width = 100; later.Click += (_, _) => dialog.DialogResult = false;
+        var save = MakeButton("Сохранить", "#287BFF"); save.Width = 110; save.Margin = new Thickness(8, 0, 0, 0);
+        save.Click += (_, _) =>
+        {
+            if (first.Password.Length < 6) { MessageBox.Show(dialog, "Пароль должен содержать минимум 6 символов.", "SONORA"); return; }
+            if (first.Password != second.Password) { MessageBox.Show(dialog, "Пароли не совпадают.", "SONORA"); return; }
+            dialog.DialogResult = true;
+        };
+        buttons.Children.Add(later); buttons.Children.Add(save); panel.Children.Add(buttons); dialog.Content = panel;
+        if (dialog.ShowDialog() != true)
+        {
+            profileStatusText.Text = "Вход через Google выполнен. Пароль SONORA можно задать позже.";
+            return;
+        }
+        setPasswordButton.IsEnabled = false;
+        try
+        {
+            await auth.SetSonoraPasswordAsync(first.Password);
+            profileStatusText.Text = "Отдельный пароль SONORA сохранён.";
+            UpdateState();
+        }
+        catch (Exception ex) { profileStatusText.Text = "Не удалось сохранить пароль: " + ex.Message; }
+        finally { setPasswordButton.IsEnabled = auth.IsSignedIn && !auth.HasPasswordProvider; }
     }
 
     private async Task LoadProfileAsync()
@@ -136,14 +204,23 @@ public sealed class AccountWindow : Window
         try
         {
             var token = await auth.GetValidIdTokenAsync();
-            currentProfile = await profiles.ReadAsync(auth.UserId!, token) ?? new UserProfile
+            var existingProfile = await profiles.ReadAsync(auth.UserId!, token);
+            currentProfile = existingProfile ?? new UserProfile
             {
-                Nickname = auth.Email?.Split('@')[0] ?? "Пользователь"
+                Nickname = !string.IsNullOrWhiteSpace(auth.GoogleDisplayName)
+                    ? auth.GoogleDisplayName!
+                    : auth.Email?.Split('@')[0] ?? "Пользователь"
             };
+            if (!string.IsNullOrWhiteSpace(auth.GooglePhotoUrl))
+                currentProfile.GooglePhotoUrl = auth.GooglePhotoUrl!;
+            if (string.IsNullOrWhiteSpace(currentProfile.AvatarData))
+                currentProfile.AvatarType = "google";
+            if (existingProfile is null || !string.IsNullOrWhiteSpace(auth.GooglePhotoUrl))
+                await profiles.WriteAsync(auth.UserId!, token, currentProfile);
             nicknameBox.Text = currentProfile.Nickname;
             selectedAvatarBase64 = null;
             ShowAvatar();
-            profileStatusText.Text = "Профиль загружен из облака. Google-фото появится после подключения Google-входа.";
+            profileStatusText.Text = "Профиль и фотография Google загружены.";
         }
         catch (Exception ex) { profileStatusText.Text = "Не удалось загрузить профиль: " + ex.Message; }
     }
@@ -239,7 +316,9 @@ public sealed class AccountWindow : Window
             ? $"Выполнен вход: {auth.Email}\nUID: {auth.UserId}"
             : "Не выполнен вход. Локальная музыка продолжит работать без аккаунта.";
         emailBox.Visibility = passwordBox.Visibility = signedIn ? Visibility.Collapsed : Visibility.Visible;
-        signInButton.Visibility = registerButton.Visibility = signedIn ? Visibility.Collapsed : Visibility.Visible;
+        signInButton.Visibility = registerButton.Visibility = googleButton.Visibility = signedIn ? Visibility.Collapsed : Visibility.Visible;
+        setPasswordButton.Visibility = signedIn && !auth.HasPasswordProvider ? Visibility.Visible : Visibility.Collapsed;
+        setPasswordButton.IsEnabled = signedIn && !auth.HasPasswordProvider;
         syncButton.IsEnabled = signedIn;
         signOutButton.Visibility = signedIn ? Visibility.Visible : Visibility.Collapsed;
         nicknameBox.IsEnabled = saveProfileButton.IsEnabled = signedIn;
