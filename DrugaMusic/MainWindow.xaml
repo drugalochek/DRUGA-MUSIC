@@ -17,6 +17,7 @@
       <Button Style="{StaticResource NavButton}" Content="⌂   Главная" Click="Home_Click"/>
       <Button Style="{StaticResource NavButton}" Content="⌕   Поиск" Click="Search_Click"/>
       <Button Style="{StaticResource NavButton}" Content="▤   Моя музыка" Click="Library_Click"/>
+      <Button Style="{StaticResource NavButton}" Content="♥   Избранное" Click="Favorites_Click"/>
       <Button Style="{StaticResource NavButton}" Content="♫   Плейлисты" Click="Playlists_Click"/>
       <TextBlock Text="ТВОЯ КОЛЛЕКЦИЯ" FontSize="10" FontWeight="Bold" Foreground="#63738A" Margin="14,30,0,10"/>
       <Button Style="{StaticResource NavButton}" Content="＋   Добавить музыку" Click="AddMusic_Click"/>
@@ -57,8 +58,12 @@
        </Grid>
       </Border>
       <Grid Margin="0,0,0,14">
-       <TextBlock Text="Твоя библиотека" FontSize="20" FontWeight="SemiBold"/>
-       <TextBlock x:Name="TrackCountText" Text="0 треков" Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="12"/>
+       <StackPanel><TextBlock Text="Твоя библиотека" FontSize="20" FontWeight="SemiBold"/><TextBlock x:Name="TrackCountText" Text="0 треков" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,3,0,0"/></StackPanel>
+       <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+        <TextBlock x:Name="FavoriteCountText" Text="0 избранных" Foreground="{StaticResource MutedBrush}" FontSize="11" VerticalAlignment="Center" Margin="0,0,10,0"/>
+        <Button x:Name="FavoriteButton" Content="♡ В избранное" Padding="10,7" Click="Favorite_Click"/>
+        <Button Content="＋ В плейлист" Padding="10,7" Margin="7,0,0,0" Click="AddToPlaylist_Click"/>
+       </StackPanel>
       </Grid>
       <TextBox x:Name="SearchBox" Height="40" Padding="12,8" Background="#111827" Foreground="White" BorderThickness="0" FontSize="13" Margin="0,0,0,12" ToolTip="Поиск по локальной библиотеке" TextChanged="SearchBox_TextChanged"/>
       <Border Background="#111827" CornerRadius="14" Padding="8">
@@ -79,15 +84,13 @@
          </Style>
         </ListView.ItemContainerStyle>
         <ListView.ItemTemplate><DataTemplate>
-         <Grid MinHeight="38">
-          <Grid.ColumnDefinitions><ColumnDefinition Width="2.2*"/><ColumnDefinition Width="1.4*"/><ColumnDefinition Width="1.2*"/><ColumnDefinition Width="55"/></Grid.ColumnDefinitions>
-          <StackPanel VerticalAlignment="Center">
-           <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-           <TextBlock Text="{Binding FilePath}" Foreground="#77879D" FontSize="10" TextTrimming="CharacterEllipsis"/>
-          </StackPanel>
-          <TextBlock Grid.Column="1" Text="{Binding Artist}" Foreground="#B3C0D1" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-          <TextBlock Grid.Column="2" Text="{Binding Album}" Foreground="#B3C0D1" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-          <TextBlock Grid.Column="3" Text="{Binding DurationText}" Foreground="#8292A8" VerticalAlignment="Center"/>
+         <Grid MinHeight="46">
+          <Grid.ColumnDefinitions><ColumnDefinition Width="48"/><ColumnDefinition Width="2.2*"/><ColumnDefinition Width="1.3*"/><ColumnDefinition Width="1.1*"/><ColumnDefinition Width="55"/></Grid.ColumnDefinitions>
+          <Border Width="38" Height="38" CornerRadius="6" Background="#1A2B44" ClipToBounds="True"><Image Source="{Binding ArtworkPath}" Stretch="UniformToFill"/></Border>
+          <StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/><TextBlock Text="{Binding Genre}" Foreground="#77879D" FontSize="10" TextTrimming="CharacterEllipsis"/></StackPanel>
+          <TextBlock Grid.Column="2" Text="{Binding Artist}" Foreground="#B3C0D1" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+          <TextBlock Grid.Column="3" Text="{Binding Album}" Foreground="#B3C0D1" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+          <TextBlock Grid.Column="4" Text="{Binding DurationText}" Foreground="#8292A8" VerticalAlignment="Center"/>
          </Grid>
         </DataTemplate></ListView.ItemTemplate>
        </ListView>
@@ -101,7 +104,7 @@
    <Grid>
     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="2*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-     <Border Width="46" Height="46" CornerRadius="8" Background="#1A2B44"><TextBlock Text="S" FontSize="23" FontWeight="Bold" Foreground="#78ABFF" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+     <Border Width="46" Height="46" CornerRadius="8" Background="#1A2B44" ClipToBounds="True"><Image x:Name="NowPlayingArtwork" Stretch="UniformToFill"/></Border>
      <StackPanel VerticalAlignment="Center" Margin="12,0,0,0">
       <TextBlock x:Name="NowPlayingTitle" Text="Ничего не воспроизводится" FontWeight="SemiBold" FontSize="12"/>
       <TextBlock x:Name="NowPlayingArtist" Text="Выбери трек из своей библиотеки" Foreground="{StaticResource MutedBrush}" FontSize="10" Margin="0,3,0,0"/>
@@ -109,14 +112,16 @@
     </StackPanel>
     <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center" Width="360">
      <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-      <Button Content="⏮" Background="Transparent" Padding="12,4" Click="Previous_Click"/>
-      <Button x:Name="PlayPauseButton" Content="▶" Background="#287BFF" Padding="17,7" Margin="12,0" Click="PlayPause_Click"/>
-      <Button Content="⏭" Background="Transparent" Padding="12,4" Click="Next_Click"/>
+      <Button x:Name="ShuffleButton" Content="🔀" Background="Transparent" Padding="8,4" Click="Shuffle_Click"/>
+      <Button Content="⏮" Background="Transparent" Padding="9,4" Click="Previous_Click"/>
+      <Button x:Name="PlayPauseButton" Content="▶" Background="#287BFF" Padding="17,7" Margin="8,0" Click="PlayPause_Click"/>
+      <Button Content="⏭" Background="Transparent" Padding="9,4" Click="Next_Click"/>
+      <Button x:Name="RepeatButton" Content="↻" Background="Transparent" Padding="8,4" Click="Repeat_Click"/>
      </StackPanel>
      <Grid Margin="0,7,0,0">
       <Grid.ColumnDefinitions><ColumnDefinition Width="38"/><ColumnDefinition Width="*"/><ColumnDefinition Width="38"/></Grid.ColumnDefinitions>
       <TextBlock x:Name="CurrentTimeText" Text="0:00" FontSize="9" Foreground="#8292A8" VerticalAlignment="Center"/>
-      <ProgressBar x:Name="PlaybackProgress" Grid.Column="1" Height="3" Maximum="100" Value="0" VerticalAlignment="Center" Background="#283548" Foreground="#287BFF"/>
+      <Slider x:Name="SeekSlider" Grid.Column="1" Height="18" Minimum="0" Maximum="1" Value="0" VerticalAlignment="Center" IsMoveToPointEnabled="True" ValueChanged="SeekSlider_ValueChanged" PreviewMouseLeftButtonDown="SeekSlider_MouseDown" PreviewMouseLeftButtonUp="SeekSlider_MouseUp"/>
       <TextBlock x:Name="DurationText" Grid.Column="2" Text="0:00" FontSize="9" Foreground="#8292A8" HorizontalAlignment="Right" VerticalAlignment="Center"/>
      </Grid>
     </StackPanel>
