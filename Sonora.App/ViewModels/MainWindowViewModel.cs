@@ -17,7 +17,7 @@ public sealed class ArtistTile
     public string CountText { get; init; } = "";
 }
 
-public partial class MainWindowViewModel : ObservableObject
+public partial class MainWindowViewModel : ObservableObject, IDisposable
 {
     private readonly string dataDirectory = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SONORA");
@@ -27,6 +27,7 @@ public partial class MainWindowViewModel : ObservableObject
     private int queueIndex = -1;
 
     public ObservableCollection<Track> Tracks { get; } = [];
+    public ObservableCollection<Track> VisibleTracks { get; } = [];
     public ObservableCollection<ArtistTile> Artists { get; } = [];
 
     [ObservableProperty] private Track? currentTrack;
@@ -243,13 +244,17 @@ public partial class MainWindowViewModel : ObservableObject
 
     private void RefreshArtistsAndLibrary()
     {
-        Artists.Clear();
         var filtered = Tracks.Where(t =>
             string.IsNullOrWhiteSpace(SearchQuery) ||
             t.Title.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase) ||
             t.Artist.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase) ||
             t.Album.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase)).ToList();
 
+        VisibleTracks.Clear();
+        foreach (var track in filtered)
+            VisibleTracks.Add(track);
+
+        Artists.Clear();
         foreach (var group in filtered.Where(t => !string.IsNullOrWhiteSpace(t.Artist))
                      .GroupBy(t => t.Artist.Trim(), StringComparer.OrdinalIgnoreCase)
                      .OrderBy(g => g.Key, StringComparer.CurrentCultureIgnoreCase).Take(24))
@@ -261,5 +266,11 @@ public partial class MainWindowViewModel : ObservableObject
         OnPropertyChanged(nameof(ArtistCountText));
         OnPropertyChanged(nameof(IsLibraryEmpty));
         OnPropertyChanged(nameof(EmptyLibraryText));
+    }
+
+    public void Dispose()
+    {
+        timer.Stop();
+        playback.Dispose();
     }
 }
