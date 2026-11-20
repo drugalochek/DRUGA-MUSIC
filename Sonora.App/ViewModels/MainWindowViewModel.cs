@@ -27,7 +27,6 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     private readonly DispatcherTimer timer;
     private List<string> queue = [];
     private int queueIndex = -1;
-    private Bitmap? artwork;
 
     public ObservableCollection<Track> Tracks { get; } = [];
     public ObservableCollection<Track> VisibleTracks { get; } = [];
@@ -264,7 +263,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             var directory = Path.Combine(dataDirectory, "Artwork");
             Directory.CreateDirectory(directory);
             var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(path.ToUpperInvariant())));
-            var extension = picture.MimeType == "image/png" ? ".png" : ".jpg";
+            var extension = picture?.MimeType == "image/png" ? ".png" : ".jpg";
             var target = Path.Combine(directory, hash + extension);
             if (!File.Exists(target)) File.WriteAllBytes(target, bytes);
             return target;
