@@ -48,6 +48,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     [ObservableProperty] private string profileName = "Гость";
     [ObservableProperty] private string accountStatusText = "Локальный профиль";
     [ObservableProperty] private bool isSignedIn;
+    [ObservableProperty] private bool isGoogleLinked;
     [ObservableProperty] private Bitmap? currentArtwork;
 
     public string CurrentTrackTitle => CurrentTrack?.Title ?? "Выбери музыку";
@@ -59,6 +60,9 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     public bool IsLibraryEmpty => Tracks.Count == 0;
     public bool IsFavoritesEmpty => FavoriteTracks.Count == 0;
     public bool HasCurrentTrack => CurrentTrack is not null;
+    public string GoogleProviderStatusText => IsGoogleLinked ? "Google привязан к этому аккаунту" : "Google ещё не привязан";
+    public string GoogleButtonText => IsSignedIn ? (IsGoogleLinked ? "Google подключён" : "Привязать Google к аккаунту") : "Продолжить с Google";
+    public bool CanLinkGoogle => !IsSignedIn || !IsGoogleLinked;
     public string EmptyLibraryText => "Пока здесь пусто. Добавь музыку — и SONORA соберёт твою коллекцию.";
     public string EmptyFavoritesText => "Здесь появятся треки, которые ты добавишь в избранное.";
     public string GreetingText => DateTime.Now.Hour switch
@@ -90,6 +94,17 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     }
 
     partial void OnIsPlayingChanged(bool value) => OnPropertyChanged(nameof(PlayButtonGlyph));
+    partial void OnIsSignedInChanged(bool value)
+    {
+        OnPropertyChanged(nameof(GoogleButtonText));
+        OnPropertyChanged(nameof(CanLinkGoogle));
+    }
+    partial void OnIsGoogleLinkedChanged(bool value)
+    {
+        OnPropertyChanged(nameof(GoogleProviderStatusText));
+        OnPropertyChanged(nameof(GoogleButtonText));
+        OnPropertyChanged(nameof(CanLinkGoogle));
+    }
     partial void OnVolumeChanged(double value) => playback.SetVolume((float)Math.Clamp(value, 0, 1));
     partial void OnSearchQueryChanged(string value) => RefreshArtistsAndLibrary();
 
@@ -315,6 +330,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             if (await auth.RestoreSessionAsync())
             {
                 IsSignedIn = true;
+                IsGoogleLinked = auth.HasGoogleProvider;
                 Email = auth.Email ?? "";
                 ProfileName = auth.GoogleDisplayName ?? Email;
                 AccountStatusText = "Аккаунт SONORA подключён";
@@ -390,6 +406,14 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     {
         try
         {
+            if (auth.IsSignedIn)
+            {
+                await auth.LinkGoogleAsync();
+                IsGoogleLinked = auth.HasGoogleProvider;
+                AuthMessage = "Google привязан к текущему аккаунту SONORA.";
+                return;
+            }
+
             await auth.SignInWithGoogleAsync();
             await CompleteSignInAsync();
             AuthMessage = "Вход через Google выполнен.";
@@ -400,6 +424,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     private async Task CompleteSignInAsync()
     {
         IsSignedIn = auth.IsSignedIn;
+        IsGoogleLinked = auth.HasGoogleProvider;
         Email = auth.Email ?? "";
         ProfileName = auth.GoogleDisplayName ?? Email;
         AccountStatusText = "Аккаунт SONORA подключён";
@@ -410,6 +435,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     {
         auth.SignOut();
         IsSignedIn = false;
+        IsGoogleLinked = false;
         Email = "";
         Nickname = "";
         ProfileName = "Гость";
