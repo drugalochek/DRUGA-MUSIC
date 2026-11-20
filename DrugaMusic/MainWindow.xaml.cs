@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.IO;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Data;
@@ -59,7 +60,7 @@ public partial class MainWindow : Window
         var dialog = new OpenFileDialog
         {
             Title = "Добавить музыку в Druga Music",
-            Filter = "Аудиофайлы|*.mp3;*.wav;*.aiff;*.aif;*.wma;*.aac;*.m4a|Все файлы|*.*",
+            Filter = "Поддерживаемые аудиофайлы|*.mp3;*.wav;*.aiff;*.aif|Все файлы|*.*",
             Multiselect = true
         };
         if (dialog.ShowDialog(this) != true) return;
