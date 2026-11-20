@@ -6,13 +6,13 @@
         Width="1280" Height="850"
         MinWidth="900" MinHeight="650"
         WindowStartupLocation="CenterScreen"
-        Background="#0A0A12"
+        Background="#080B12"
         Foreground="#F5F5F8"
         FontFamily="avares://SONORA/Assets/WidockTrialBold.otf#Widock">
-  <Grid RowDefinitions="64,*,Auto,72" Background="#0A0A12">
+  <Grid RowDefinitions="72,*,Auto" ColumnDefinitions="238,*" Background="#080B12">
     <!-- Sonic Wave top bar -->
-    <Border Grid.Row="0" Background="#0A0A12" BorderBrush="#FFFFFF12" BorderThickness="0,0,0,1">
-      <Grid Margin="22,0" ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
+    <Border Grid.Row="0" Grid.Column="1" Background="#0B0F18" BorderBrush="#FFFFFF12" BorderThickness="0,0,0,1">
+      <Grid Margin="30,0,34,0" ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
         <StackPanel Orientation="Horizontal" Spacing="9" VerticalAlignment="Center">
           <Border Width="30" Height="30" CornerRadius="9">
             <Border.Background>
@@ -25,19 +25,25 @@
           </Border>
           <TextBlock Text="SONORA" FontSize="19" FontWeight="Bold" VerticalAlignment="Center"/>
         </StackPanel>
-        <TextBlock Grid.Column="1" Text="{Binding StatusText}" Foreground="#82829A" FontSize="11" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
+        <Border Grid.Column="1" Background="#111A29" BorderBrush="#FFFFFF12" BorderThickness="1" CornerRadius="12" Padding="13,8" MaxWidth="430" HorizontalAlignment="Center">
+          <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+            <TextBlock Text="⌕" Foreground="#6F8BAF" FontSize="17" VerticalAlignment="Center"/>
+            <TextBlock Grid.Column="1" Text="Поиск музыки, альбомов и исполнителей" Foreground="#77869B" FontSize="12" VerticalAlignment="Center"/>
+          </Grid>
+        </Border>
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
           <Button Classes="icon-button" Content="＋" Click="Import_Click" ToolTip.Tip="Добавить музыку"/>
-          <Button Classes="icon-button profile-button" Content="♙" Click="Profile_Click" ToolTip.Tip="Профиль"/>
+          <Border Width="1" Height="26" Background="#263348" Margin="3,0"/>
+          <Button Classes="profile-button" Content="{Binding ProfileName}" Click="Profile_Click" ToolTip.Tip="Профиль"/>
         </StackPanel>
       </Grid>
     </Border>
 
     <!-- Main views: all stay inside this one native window -->
-    <Grid Grid.Row="1">
+    <Grid Grid.Row="1" Grid.Column="1">
       <ScrollViewer x:Name="HomePage" IsVisible="True" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-        <StackPanel Margin="22,20,22,30" Spacing="0">
-          <TextBlock Text="{Binding GreetingText}" Foreground="#82829A" FontSize="12" Margin="0,0,0,3"/>
+        <StackPanel Margin="34,30,42,42" Spacing="0">
+          <TextBlock Text="{Binding GreetingText}" Foreground="#8190A5" FontSize="12" Margin="0,0,0,3"/>
           <TextBlock Text="Главная" FontSize="27" FontWeight="Bold" Margin="0,0,0,14"/>
           <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,8">
             <TextBlock Text="Любимые исполнители" FontSize="17" FontWeight="Bold"/>
@@ -373,7 +379,7 @@
       </ScrollViewer>
 
       <!-- Full player overlay, still inside the same window -->
-      <Border x:Name="NowPlayingOverlay" IsVisible="False" Background="#080B14">
+      <Border x:Name="NowPlayingOverlay" IsVisible="False" Background="#080B12">
         <Grid RowDefinitions="Auto,*,Auto" Margin="24">
           <Button Classes="icon-button" Content="⌄" HorizontalAlignment="Left" Click="ClosePlayer_Click"/>
           <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="16" MaxWidth="420">
@@ -404,7 +410,7 @@
     </Grid>
 
     <!-- Mini player -->
-    <Border x:Name="MiniPlayer" Grid.Row="2" IsVisible="{Binding HasCurrentTrack}" Background="#171722" BorderBrush="#FFFFFF12" BorderThickness="1" CornerRadius="13" Margin="12,7" Padding="8" PointerPressed="MiniPlayer_PointerPressed">
+    <Border x:Name="MiniPlayer" Grid.Row="2" Grid.Column="1" IsVisible="{Binding HasCurrentTrack}" Background="#0D1420" BorderBrush="#FFFFFF12" BorderThickness="1" CornerRadius="13" Margin="12,7" Padding="8" PointerPressed="MiniPlayer_PointerPressed">
       <Grid RowDefinitions="*,2" ColumnDefinitions="44,*,Auto,Auto" ColumnSpacing="10">
         <Border Width="42" Height="42" CornerRadius="9" Background="#244D91">
           <Image Source="{Binding CurrentArtwork}" Stretch="UniformToFill"/>
@@ -419,14 +425,42 @@
       </Grid>
     </Border>
 
-    <!-- Original Sonic Wave's four-tab bottom navigation -->
-    <Border Grid.Row="3" Background="#0A0A12" BorderBrush="#FFFFFF18" BorderThickness="0,1,0,0">
-      <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="22">
-        <Button Classes="nav-item active" Tag="home" Content="⌂   Главная" Click="Nav_Click"/>
-        <Button Classes="nav-item" Tag="explore" Content="◉   Обзор" Click="Nav_Click"/>
-        <Button Classes="nav-item" Tag="favorites" Content="♡   Избранное" Click="Nav_Click"/>
-        <Button Classes="nav-item" Tag="search" Content="⌕   Поиск" Click="Nav_Click"/>
-      </StackPanel>
+    <!-- Native desktop navigation -->
+    <Border Grid.Column="0" Grid.RowSpan="3" Background="#090D15" BorderBrush="#FFFFFF12" BorderThickness="0,0,1,0">
+      <Grid RowDefinitions="Auto,Auto,*,Auto">
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="24,25,18,34" Spacing="11">
+          <Border Width="34" Height="34" CornerRadius="11" Background="#176BFF">
+            <Image Source="avares://SONORA/Assets/sonora.png" Stretch="Uniform" Margin="4"/>
+          </Border>
+          <StackPanel VerticalAlignment="Center" Spacing="0">
+            <TextBlock Text="SONORA" FontSize="17" FontWeight="Bold" LetterSpacing="1.4"/>
+            <TextBlock Text="MUSIC PLAYER" FontSize="8" Foreground="#64758D" LetterSpacing="2"/>
+          </StackPanel>
+        </StackPanel>
+        <StackPanel Grid.Row="1" Margin="14,0,14,0" Spacing="5">
+          <TextBlock Text="МЕНЮ" FontSize="9" FontWeight="Bold" Foreground="#53647B" Margin="12,0,0,8" LetterSpacing="1.8"/>
+          <Button Classes="nav-item active" Tag="home" Content="⌂     Главная" Click="Nav_Click"/>
+          <Button Classes="nav-item" Tag="explore" Content="◈     Обзор" Click="Nav_Click"/>
+          <Button Classes="nav-item" Tag="favorites" Content="♡     Избранное" Click="Nav_Click"/>
+          <Button Classes="nav-item" Tag="search" Content="⌕     Поиск" Click="Nav_Click"/>
+          <Border Height="1" Background="#FFFFFF12" Margin="8,17,8,13"/>
+          <TextBlock Text="ТВОЯ SONORA" FontSize="9" FontWeight="Bold" Foreground="#53647B" Margin="12,0,0,8" LetterSpacing="1.8"/>
+          <Button Classes="nav-item" Content="◎     Профиль" Click="Profile_Click"/>
+          <Button Classes="nav-item" Content="⌘     Аккаунты" Click="Accounts_Click"/>
+        </StackPanel>
+        <StackPanel Grid.Row="3" Margin="14,0,14,20" Spacing="8">
+          <Border Background="#101A2B" BorderBrush="#FFFFFF12" BorderThickness="1" CornerRadius="14" Padding="13">
+            <StackPanel Spacing="6">
+              <TextBlock Text="ТВОЯ МУЗЫКА" FontSize="9" Foreground="#7792B5" FontWeight="Bold" LetterSpacing="1.3"/>
+              <TextBlock Text="{Binding TrackCountText}" FontSize="15" FontWeight="SemiBold"/>
+              <TextBlock Text="Локальная библиотека" FontSize="10" Foreground="#708099"/>
+              <Button Classes="sidebar-add" Content="＋  Добавить треки" Click="Import_Click"/>
+            </StackPanel>
+          </Border>
+          <Button Classes="nav-item" Content="⚙     Настройки" Click="Settings_Click"/>
+          <TextBlock Text="SONORA  •  DESKTOP" FontSize="8" Foreground="#46556A" Margin="12,6,0,0" LetterSpacing="1.2"/>
+        </StackPanel>
+      </Grid>
     </Border>
   </Grid>
 </Window>
