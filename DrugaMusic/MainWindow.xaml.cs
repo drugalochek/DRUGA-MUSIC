@@ -22,6 +22,7 @@ public partial class MainWindow : Window
  private readonly ICollectionView tracksView;
  private readonly PlaybackService playback = new();
  private readonly FirebaseAuthService accountAuth;
+ private readonly FirebaseDatabaseService cloudDatabase = new();
  private readonly DispatcherTimer timer;
  private readonly string dataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SONORA");
  private string LibraryFile => Path.Combine(dataDir,"library.json");
@@ -257,10 +258,70 @@ public partial class MainWindow : Window
   else if(index<queueIndex)queueIndex--;
   return Current;
  }
+ private static string TrackCloudKey(Track track)
+ {
+  static string Normalize(string value) => string.Join(' ', (value ?? "").Trim().ToLowerInvariant().Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+  return Normalize(track.Artist) + "|" + Normalize(track.Title);
+ }
+ private CloudLibrarySnapshot BuildCloudSnapshot()
+ {
+  return new CloudLibrarySnapshot
+  {
+   UpdatedAtUtc = DateTime.UtcNow,
+   FavoriteTrackKeys = tracks.Where(t=>t.IsFavorite).Select(TrackCloudKey).Where(k=>k!="|").Distinct().ToList(),
+   Playlists = playlists.Select(p=>new CloudPlaylist
+   {
+    Name=p.Name,
+    TrackKeys=p.TrackIds.Select(id=>tracks.FirstOrDefault(t=>t.Id==id)).Where(t=>t is not null).Select(t=>TrackCloudKey(t!)).Where(k=>k!="|").Distinct().ToList()
+   }).ToList(),
+   Volume = VolumeSlider.Value,
+   RepeatMode = repeat,
+   Shuffle = shuffle
+  };
+ }
+ private async Task<string> SyncAccountDataAsync()
+ {
+  if(!accountAuth.IsSignedIn || string.IsNullOrWhiteSpace(accountAuth.UserId)) return "Сначала войди в аккаунт.";
+  var token=await accountAuth.GetValidIdTokenAsync();
+  var cloud=await cloudDatabase.ReadAsync(accountAuth.UserId,token);
+  var merged=BuildCloudSnapshot();
+  if(cloud is not null)
+  {
+   merged.FavoriteTrackKeys=merged.FavoriteTrackKeys.Concat(cloud.FavoriteTrackKeys??new()).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+   foreach(var remote in cloud.Playlists??new())
+   {
+    var existing=merged.Playlists.FirstOrDefault(p=>string.Equals(p.Name,remote.Name,StringComparison.OrdinalIgnoreCase));
+    if(existing is null) merged.Playlists.Add(new CloudPlaylist{Name=remote.Name,TrackKeys=(remote.TrackKeys??new()).Distinct(StringComparer.OrdinalIgnoreCase).ToList()});
+    else existing.TrackKeys=existing.TrackKeys.Concat(remote.TrackKeys??new()).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+   }
+   foreach(var track in tracks) track.IsFavorite=merged.FavoriteTrackKeys.Contains(TrackCloudKey(track),StringComparer.OrdinalIgnoreCase);
+   foreach(var cloudPlaylist in merged.Playlists)
+   {
+    var local=playlists.FirstOrDefault(p=>string.Equals(p.Name,cloudPlaylist.Name,StringComparison.OrdinalIgnoreCase));
+    if(local is null){local=new Playlist{Name=cloudPlaylist.Name};playlists.Add(local);}
+    foreach(var key in cloudPlaylist.TrackKeys)
+    {
+     var match=tracks.FirstOrDefault(t=>string.Equals(TrackCloudKey(t),key,StringComparison.OrdinalIgnoreCase));
+     if(match is not null && !local.TrackIds.Contains(match.Id)) local.TrackIds.Add(match.Id);
+    }
+   }
+   VolumeSlider.Value=Math.Clamp(cloud.Volume,0,1);
+   repeat=Math.Clamp(cloud.RepeatMode,0,2);
+   shuffle=cloud.Shuffle;
+   RepeatButton.Content=repeat==0?"↻":repeat==1?"↻ Все":"↻ 1";
+   ShuffleButton.Content=shuffle?"🔀 Вкл.":"🔀";
+  }
+  merged.UpdatedAtUtc=DateTime.UtcNow;
+  SaveLibrary();SavePlaylists();RefreshLibrary();ApplyFilters();
+  await cloudDatabase.WriteAsync(accountAuth.UserId,token,merged);
+  return cloud is null
+   ? $"Облачное хранилище создано. Отправлено избранного: {merged.FavoriteTrackKeys.Count}, плейлистов: {merged.Playlists.Count}."
+   : $"Данные объединены с облаком. Избранного: {merged.FavoriteTrackKeys.Count}, плейлистов: {merged.Playlists.Count}.";
+ }
  private async void Services_Click(object sender,RoutedEventArgs e)
  {
   await accountAuth.RestoreSessionAsync();
-  var window = new AccountWindow(accountAuth) { Owner = this };
+  var window = new AccountWindow(accountAuth,SyncAccountDataAsync) { Owner = this };
   window.ShowDialog();
  }
  private void SetHeader(string title,string subtitle){GreetingText.Text=title;SubtitleText.Text=subtitle;}
