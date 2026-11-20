@@ -15,6 +15,9 @@ public sealed class ArtistTile
     public string Name { get; init; } = "";
     public string Initial => string.IsNullOrWhiteSpace(Name) ? "♫" : Name[..1].ToUpperInvariant();
     public string CountText { get; init; } = "";
+    public string? ArtworkPath { get; init; }
+    public bool HasArtwork => !string.IsNullOrWhiteSpace(ArtworkPath) && File.Exists(ArtworkPath);
+    public bool ShowInitial => !HasArtwork;
 }
 
 public partial class MainWindowViewModel : ObservableObject, IDisposable
@@ -335,7 +338,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         foreach (var group in filtered.Where(t => !string.IsNullOrWhiteSpace(t.Artist))
                      .GroupBy(t => t.Artist.Trim(), StringComparer.OrdinalIgnoreCase)
                      .OrderBy(g => g.Key, StringComparer.CurrentCultureIgnoreCase).Take(24))
-            Artists.Add(new ArtistTile { Name = group.Key, CountText = $"{group.Count()} треков" });
+            Artists.Add(new ArtistTile { Name = group.Key, CountText = $"{group.Count()} треков", ArtworkPath = group.FirstOrDefault(t => !string.IsNullOrWhiteSpace(t.ArtworkPath))?.ArtworkPath });
 
         OnPropertyChanged(nameof(TrackCountText));
         OnPropertyChanged(nameof(ArtistCountText));
