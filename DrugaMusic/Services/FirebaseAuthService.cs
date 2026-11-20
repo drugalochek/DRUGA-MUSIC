@@ -83,6 +83,7 @@ public sealed class FirebaseAuthService
         GooglePhotoUrl = null;
         GoogleDisplayName = null;
         await SaveSessionAsync();
+        await LoadProviderInfoAsync();
     }
 
     public async Task SignInWithGoogleAsync()
