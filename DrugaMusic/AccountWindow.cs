@@ -8,30 +8,36 @@ namespace DrugaMusic;
 public sealed class AccountWindow : Window
 {
     private readonly FirebaseAuthService auth;
+    private readonly Func<Task<string>> syncAction;
     private readonly TextBox emailBox;
     private readonly PasswordBox passwordBox;
     private readonly TextBlock statusText;
+    private readonly TextBlock syncStatusText;
     private readonly Button signInButton;
     private readonly Button registerButton;
     private readonly Button signOutButton;
+    private readonly Button syncButton;
 
-    public AccountWindow(FirebaseAuthService auth)
+    public AccountWindow(FirebaseAuthService auth, Func<Task<string>> syncAction)
     {
         this.auth = auth;
-        Title = "Аккаунт SONORA";
-        Width = 410;
-        Height = 390;
-        ResizeMode = ResizeMode.NoResize;
+        this.syncAction = syncAction;
+        Title = "Аккаунт и подключения — SONORA";
+        Width = 470;
+        Height = 570;
+        MinHeight = 480;
+        ResizeMode = ResizeMode.CanResize;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
-        Background = new SolidColorBrush(Color.FromRgb(8, 11, 18));
+        Background = Brush("#080B12");
         Foreground = Brushes.White;
 
         var root = new StackPanel { Margin = new Thickness(26) };
-        root.Children.Add(new TextBlock { Text = "Аккаунт SONORA", FontSize = 23, FontWeight = FontWeights.Bold });
-        root.Children.Add(new TextBlock { Text = "Войди, чтобы подключить облачную синхронизацию.", Foreground = Brush("#93A1B5"), FontSize = 12, Margin = new Thickness(0, 7, 0, 20), TextWrapping = TextWrapping.Wrap });
+        root.Children.Add(new TextBlock { Text = "Аккаунт и подключения", FontSize = 23, FontWeight = FontWeights.Bold });
+        root.Children.Add(new TextBlock { Text = "Управление профилем SONORA и облачными данными.", Foreground = Brush("#93A1B5"), FontSize = 12, Margin = new Thickness(0, 7, 0, 18), TextWrapping = TextWrapping.Wrap });
 
-        statusText = new TextBlock { Foreground = Brush("#8CB8FF"), FontSize = 12, Margin = new Thickness(0, 0, 0, 14), TextWrapping = TextWrapping.Wrap };
+        statusText = new TextBlock { Foreground = Brush("#8CB8FF"), FontSize = 12, Margin = new Thickness(0, 0, 0, 12), TextWrapping = TextWrapping.Wrap };
         root.Children.Add(statusText);
+
         emailBox = new TextBox { Height = 38, Padding = new Thickness(10), Background = Brush("#111827"), Foreground = Brushes.White, BorderThickness = new Thickness(0), FontSize = 13 };
         emailBox.ToolTip = "Электронная почта";
         root.Children.Add(emailBox);
@@ -40,18 +46,32 @@ public sealed class AccountWindow : Window
         root.Children.Add(passwordBox);
 
         signInButton = MakeButton("Войти", "#287BFF");
-        signInButton.Margin = new Thickness(0, 18, 0, 0);
+        signInButton.Margin = new Thickness(0, 16, 0, 0);
         signInButton.Click += async (_, _) => await RunAuthAsync(false);
         root.Children.Add(signInButton);
         registerButton = MakeButton("Создать аккаунт", "#1A2638");
         registerButton.Margin = new Thickness(0, 8, 0, 0);
         registerButton.Click += async (_, _) => await RunAuthAsync(true);
         root.Children.Add(registerButton);
+
+        var divider = new Border { Height = 1, Background = Brush("#202B3B"), Margin = new Thickness(0, 22, 0, 18) };
+        root.Children.Add(divider);
+        root.Children.Add(new TextBlock { Text = "ОБЛАЧНОЕ ПОДКЛЮЧЕНИЕ", Foreground = Brush("#63738A"), FontSize = 10, FontWeight = FontWeights.Bold });
+        root.Children.Add(new TextBlock { Text = "Firebase Authentication · вход и профиль", Foreground = Brush("#D7E1F0"), FontSize = 12, Margin = new Thickness(0, 10, 0, 0) });
+        root.Children.Add(new TextBlock { Text = "Firebase Realtime Database · избранное, плейлисты и настройки", Foreground = Brush("#D7E1F0"), FontSize = 12, Margin = new Thickness(0, 7, 0, 0), TextWrapping = TextWrapping.Wrap });
+        syncStatusText = new TextBlock { Text = "Синхронизация ещё не запускалась на этом устройстве.", Foreground = Brush("#93A1B5"), FontSize = 11, Margin = new Thickness(0, 12, 0, 0), TextWrapping = TextWrapping.Wrap };
+        root.Children.Add(syncStatusText);
+
+        syncButton = MakeButton("Синхронизировать сейчас", "#287BFF");
+        syncButton.Margin = new Thickness(0, 14, 0, 0);
+        syncButton.Click += async (_, _) => await RunSyncAsync();
+        root.Children.Add(syncButton);
+
         signOutButton = MakeButton("Выйти из аккаунта", "#1A2638");
         signOutButton.Margin = new Thickness(0, 8, 0, 0);
         signOutButton.Click += (_, _) => { auth.SignOut(); UpdateState(); };
         root.Children.Add(signOutButton);
-        Content = root;
+        Content = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Content = root };
         UpdateState();
     }
 
@@ -75,14 +95,29 @@ public sealed class AccountWindow : Window
         finally { signInButton.IsEnabled = registerButton.IsEnabled = true; }
     }
 
+    private async Task RunSyncAsync()
+    {
+        if (!auth.IsSignedIn) { syncStatusText.Text = "Сначала войди в аккаунт."; return; }
+        syncButton.IsEnabled = false;
+        syncStatusText.Text = "Подключаемся к Realtime Database…";
+        try { syncStatusText.Text = await syncAction(); }
+        catch (Exception ex) { syncStatusText.Text = "Синхронизация не выполнена: " + ex.Message; }
+        finally { syncButton.IsEnabled = auth.IsSignedIn; }
+    }
+
     private void UpdateState()
     {
         var signedIn = auth.IsSignedIn;
-        statusText.Text = signedIn ? $"Выполнен вход: {auth.Email}\nСессия будет сохранена на этом компьютере." : "Не выполнен вход. Локальная музыка продолжит работать без аккаунта.";
+        statusText.Text = signedIn
+            ? $"Выполнен вход: {auth.Email}\nUID: {auth.UserId}"
+            : "Не выполнен вход. Локальная музыка продолжит работать без аккаунта.";
         emailBox.Visibility = passwordBox.Visibility = signedIn ? Visibility.Collapsed : Visibility.Visible;
         signInButton.Visibility = registerButton.Visibility = signedIn ? Visibility.Collapsed : Visibility.Visible;
+        syncButton.IsEnabled = signedIn;
         signOutButton.Visibility = signedIn ? Visibility.Visible : Visibility.Collapsed;
-        Height = signedIn ? 260 : 390;
+        syncStatusText.Text = signedIn
+            ? "Аккаунт подключён. Нажми кнопку, чтобы объединить локальные данные с облаком."
+            : "Для облачного подключения сначала войди в аккаунт.";
     }
 
     private Button MakeButton(string text, string color) => new()
