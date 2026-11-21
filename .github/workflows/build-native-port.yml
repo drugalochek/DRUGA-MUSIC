@@ -1,0 +1,32 @@
+name: Build SONORA Native Port
+
+on:
+  push:
+    branches:
+      - native-sonora-port
+    paths:
+      - "NativePort/**"
+      - ".github/workflows/build-native-port.yml"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Publish standalone Windows application
+        run: dotnet publish NativePort/SONORA.Native.csproj -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true
+
+      - name: Upload executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: SONORA-Native-win-x64
+          path: NativePort/bin/Release/net8.0-windows/win-x64/publish/
+          if-no-files-found: error
