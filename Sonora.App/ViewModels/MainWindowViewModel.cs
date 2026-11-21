@@ -1,0 +1,672 @@
+using System.Collections.ObjectModel;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
+using Avalonia.Media.Imaging;
+using Avalonia.Threading;
+using CommunityToolkit.Mvvm.ComponentModel;
+using DrugaMusic.Models;
+using DrugaMusic.Services;
+
+namespace Sonora.ViewModels;
+
+public sealed class ArtistTile
+{
+    public string Name { get; init; } = "";
+    public string Initial => string.IsNullOrWhiteSpace(Name) ? "S" : Name[..1].ToUpperInvariant();
+    public string CountText { get; init; } = "";
+    public string? ArtworkPath { get; init; }
+    public bool HasArtwork => !string.IsNullOrWhiteSpace(ArtworkPath) && File.Exists(ArtworkPath);
+    public bool ShowInitial => !HasArtwork;
+}
+
+public sealed class GenreTile
+{
+    public string Name { get; init; } = "";
+    public string CountText { get; init; } = "";
+    public string? ArtworkPath { get; init; }
+}
+
+public partial class MainWindowViewModel : ObservableObject, IDisposable
+{
+    private readonly string dataDirectory = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SONORA");
+    private readonly PlaybackService playback = new();
+    private readonly FirebaseAuthService auth;
+    private readonly FirebaseProfileService profiles = new();
+    private readonly DispatcherTimer timer;
+    private List<string> queue = [];
+    private int queueIndex = -1;
+
+    public ObservableCollection<Track> Tracks { get; } = [];
+    public ObservableCollection<Track> VisibleTracks { get; } = [];
+    public ObservableCollection<Track> FavoriteTracks { get; } = [];
+    public ObservableCollection<ArtistTile> Artists { get; } = [];
+    public ObservableCollection<GenreTile> Genres { get; } = [];
+
+    [ObservableProperty] private Track? currentTrack;
+    [ObservableProperty] private bool isPlaying;
+    [ObservableProperty] private string searchQuery = "";
+    [ObservableProperty] private string currentSection = "home";
+    [ObservableProperty] private double progress;
+    [ObservableProperty] private double volume = 0.8;
+    [ObservableProperty] private string currentTimeText = "0:00";
+    [ObservableProperty] private string durationText = "0:00";
+    [ObservableProperty] private string statusText = "Готово";
+    [ObservableProperty] private string authMessage = "Войди, чтобы синхронизировать профиль и настройки.";
+    [ObservableProperty] private string email = "";
+    [ObservableProperty] private string nickname = "";
+    [ObservableProperty] private string profileName = "Гость";
+    [ObservableProperty] private string accountStatusText = "Локальный профиль";
+    [ObservableProperty] private bool isSignedIn;
+    [ObservableProperty] private bool isGoogleLinked;
+    [ObservableProperty] private bool isPasswordLinked;
+    [ObservableProperty] private Bitmap? currentArtwork;
+    [ObservableProperty] private Bitmap? profileAvatar;
+    private string avatarType = "google";
+    private string avatarData = "";
+    private string avatarContentType = "";
+
+    public string CurrentSectionTitle => CurrentSection switch
+    {
+        "home" => "Главная",
+        "explore" => "Обзор",
+        "favorites" => "Избранное",
+        "search" => "Поиск",
+        "profile" => "Профиль",
+        "accounts" => "Аккаунты",
+        "settings" => "Настройки",
+        _ => "SONORA"
+    };
+    public string CurrentTrackTitle => CurrentTrack?.Title ?? "Выбери музыку";
+    public string CurrentTrackArtist => CurrentTrack?.Artist ?? "SONORA";
+    public string PlayButtonGlyph => IsPlaying ? "Ⅱ" : "▶";
+    public string TrackCountText => $"{Tracks.Count} треков";
+    public string ArtistCountText => $"{Artists.Count} исполнителей";
+    public string GenreCountText => $"{Genres.Count} жанров";
+    public bool IsGenreEmpty => Genres.Count == 0;
+    public string FavoriteCountText => $"{FavoriteTracks.Count} треков";
+    private ArtistTile? ForYouArtist => Artists.OrderByDescending(a => Tracks.Count(t => string.Equals(t.Artist?.Trim(), a.Name, StringComparison.OrdinalIgnoreCase))).FirstOrDefault();
+    public string ForYouArtistName => ForYouArtist?.Name ?? "Добавь музыку в библиотеку";
+    public string ForYouTrackCountText => ForYouArtist is null ? "Твой персональный микс появится здесь" : $"{Tracks.Count(t => string.Equals(t.Artist?.Trim(), ForYouArtist.Name, StringComparison.OrdinalIgnoreCase))} треков этого исполнителя";
+    public string? ForYouArtworkPath => ForYouArtist?.ArtworkPath;
+    public bool HasForYouArtist => ForYouArtist is not null;
+    public bool IsLibraryEmpty => Tracks.Count == 0;
+    public bool IsSearchEmpty => VisibleTracks.Count == 0;
+    public bool IsFavoritesEmpty => FavoriteTracks.Count == 0;
+    public bool HasCurrentTrack => CurrentTrack is not null;
+    public bool HasProfileAvatar => ProfileAvatar is not null;
+    public bool ShowProfileAvatarPlaceholder => ProfileAvatar is null;
+    public string GoogleProviderStatusText => IsGoogleLinked ? "Google привязан к этому аккаунту" : "Google ещё не привязан";
+    public string GoogleButtonText => IsSignedIn ? (IsGoogleLinked ? "Google подключён" : "Привязать Google к аккаунту") : "Продолжить с Google";
+    public bool CanLinkGoogle => !IsSignedIn || !IsGoogleLinked;
+    public string PasswordProviderStatusText => IsPasswordLinked ? "Пароль привязан" : "Пароль не настроен";
+    public bool CanAddPassword => IsSignedIn && !IsPasswordLinked;
+    public bool ShowSignInOptions => !IsSignedIn;
+    public string EmptyLibraryText => "Пока здесь пусто. Добавь музыку — и SONORA соберёт твою коллекцию.";
+    public string EmptyFavoritesText => "Здесь появятся треки, которые ты добавишь в избранное.";
+    public string GreetingText => DateTime.Now.Hour switch
+    {
+        < 6 => "Ночная музыка для тебя",
+        < 12 => "Доброе утро",
+        < 18 => "Хорошего дня",
+        _ => "Добрый вечер"
+    };
+
+    public MainWindowViewModel()
+    {
+        Directory.CreateDirectory(dataDirectory);
+        auth = new FirebaseAuthService(dataDirectory);
+        LoadLibrary();
+        LoadLocalProfile();
+        playback.TrackEnded += (_, _) => Dispatcher.UIThread.Post(NextTrack);
+        timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
+        timer.Tick += (_, _) => UpdateProgress();
+        timer.Start();
+        _ = RestoreAccountAsync();
+    }
+
+    partial void OnCurrentTrackChanged(Track? value)
+    {
+        OnPropertyChanged(nameof(CurrentTrackTitle));
+        OnPropertyChanged(nameof(CurrentTrackArtist));
+        OnPropertyChanged(nameof(HasCurrentTrack));
+        LoadCurrentArtwork(value?.ArtworkPath);
+    }
+
+    partial void OnIsPlayingChanged(bool value) => OnPropertyChanged(nameof(PlayButtonGlyph));
+    partial void OnCurrentSectionChanged(string value) => OnPropertyChanged(nameof(CurrentSectionTitle));
+    partial void OnProfileAvatarChanged(Bitmap? value)
+    {
+        OnPropertyChanged(nameof(HasProfileAvatar));
+        OnPropertyChanged(nameof(ShowProfileAvatarPlaceholder));
+    }
+    partial void OnIsSignedInChanged(bool value)
+    {
+        OnPropertyChanged(nameof(GoogleButtonText));
+        OnPropertyChanged(nameof(CanLinkGoogle));
+        OnPropertyChanged(nameof(ShowSignInOptions));
+        OnPropertyChanged(nameof(CanAddPassword));
+    }
+    partial void OnIsGoogleLinkedChanged(bool value)
+    {
+        OnPropertyChanged(nameof(GoogleProviderStatusText));
+        OnPropertyChanged(nameof(GoogleButtonText));
+        OnPropertyChanged(nameof(CanLinkGoogle));
+    }
+    partial void OnIsPasswordLinkedChanged(bool value)
+    {
+        OnPropertyChanged(nameof(PasswordProviderStatusText));
+        OnPropertyChanged(nameof(CanAddPassword));
+    }
+    partial void OnVolumeChanged(double value) => playback.SetVolume((float)Math.Clamp(value, 0, 1));
+    partial void OnSearchQueryChanged(string value) => RefreshArtistsAndLibrary();
+
+    private void LoadCurrentArtwork(string? path)
+    {
+        CurrentArtwork?.Dispose();
+        CurrentArtwork = null;
+        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) return;
+        try
+        {
+            using var stream = File.OpenRead(path);
+            CurrentArtwork = new Bitmap(stream);
+        }
+        catch { CurrentArtwork = null; }
+    }
+
+    public void ImportFiles(IEnumerable<string> paths)
+    {
+        var added = 0;
+        foreach (var path in paths.Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            if (!File.Exists(path) || Tracks.Any(t => string.Equals(t.FilePath, path, StringComparison.OrdinalIgnoreCase)))
+                continue;
+
+            try
+            {
+                using var audio = new NAudio.Wave.AudioFileReader(path);
+                using var tag = TagLib.File.Create(path);
+                Tracks.Add(new Track
+                {
+                    FilePath = path,
+                    Title = string.IsNullOrWhiteSpace(tag.Tag.Title) ? Path.GetFileNameWithoutExtension(path) : tag.Tag.Title,
+                    Artist = string.IsNullOrWhiteSpace(tag.Tag.FirstPerformer) ? "Неизвестный исполнитель" : tag.Tag.FirstPerformer,
+                    Album = tag.Tag.Album ?? "",
+                    Genre = tag.Tag.FirstGenre ?? "",
+                    Year = tag.Tag.Year == 0 ? null : tag.Tag.Year,
+                    ArtworkPath = SaveArtwork(tag, path),
+                    DurationText = audio.TotalTime.ToString(@"m\:ss")
+                });
+                added++;
+            }
+            catch
+            {
+                // Unsupported or damaged files are skipped without interrupting the import batch.
+            }
+        }
+
+        SaveLibrary();
+        RefreshArtistsAndLibrary();
+        StatusText = added == 0 ? "Новых поддерживаемых файлов не найдено" : $"Добавлено треков: {added}";
+    }
+
+    public void PlayDailyMix()
+    {
+        if (Tracks.Count == 0) return;
+        var random = new Random(DateOnly.FromDateTime(DateTime.Today).DayNumber);
+        queue = Tracks.OrderBy(_ => random.Next()).Select(t => t.Id).ToList();
+        queueIndex = 0;
+        StartCurrentTrack();
+    }
+
+    public void PlayWeeklyMix()
+    {
+        if (Tracks.Count == 0) return;
+        var topGenre = Genres.FirstOrDefault()?.Name;
+        var source = string.IsNullOrWhiteSpace(topGenre)
+            ? Tracks.ToList()
+            : Tracks.Where(t => string.Equals(t.Genre?.Trim(), topGenre, StringComparison.OrdinalIgnoreCase)).ToList();
+        if (source.Count == 0) source = Tracks.ToList();
+        var weekSeed = DateTime.Today.Year * 100 + System.Globalization.ISOWeek.GetWeekOfYear(DateTime.Today);
+        var random = new Random(weekSeed);
+        queue = source.OrderBy(_ => random.Next()).Select(t => t.Id).ToList();
+        queueIndex = 0;
+        StartCurrentTrack();
+    }
+
+    public void PlayForYouArtist()
+    {
+        var artist = ForYouArtist;
+        if (artist is null) return;
+        queue = Tracks.Where(t => string.Equals(t.Artist?.Trim(), artist.Name, StringComparison.OrdinalIgnoreCase))
+            .Select(t => t.Id).ToList();
+        queueIndex = 0;
+        StartCurrentTrack();
+    }
+
+    public void PlayTrack(Track track)
+    {
+        queue = Tracks.Select(t => t.Id).ToList();
+        queueIndex = queue.IndexOf(track.Id);
+        StartCurrentTrack();
+    }
+
+    public void TogglePlayback()
+    {
+        if (CurrentTrack is null)
+        {
+            var first = Tracks.FirstOrDefault();
+            if (first is not null) PlayTrack(first);
+            return;
+        }
+        playback.Pause();
+        IsPlaying = playback.IsPlaying;
+    }
+
+    public void SeekToPercent(double percent)
+    {
+        if (playback.Duration <= TimeSpan.Zero) return;
+        var clamped = Math.Clamp(percent, 0, 100);
+        playback.Seek(TimeSpan.FromMilliseconds(playback.Duration.TotalMilliseconds * clamped / 100d));
+        UpdateProgress();
+    }
+
+    public void NextTrack()
+    {
+        if (queue.Count == 0) return;
+        queueIndex = (queueIndex + 1) % queue.Count;
+        StartCurrentTrack();
+    }
+
+    public void PreviousTrack()
+    {
+        if (queue.Count == 0) return;
+        queueIndex = queueIndex <= 0 ? queue.Count - 1 : queueIndex - 1;
+        StartCurrentTrack();
+    }
+
+    public void StopAndClearCurrentTrack()
+    {
+        playback.Stop();
+        IsPlaying = false;
+        CurrentTrack = null;
+        CurrentArtwork?.Dispose();
+        CurrentArtwork = null;
+    }
+
+    public void ToggleFavorite(Track track)
+    {
+        track.IsFavorite = !track.IsFavorite;
+        SaveLibrary();
+        RefreshArtistsAndLibrary();
+    }
+
+    private void StartCurrentTrack()
+    {
+        var id = queueIndex >= 0 && queueIndex < queue.Count ? queue[queueIndex] : null;
+        var track = Tracks.FirstOrDefault(t => t.Id == id);
+        if (track is null) return;
+
+        try
+        {
+            playback.Play(track.FilePath);
+            CurrentTrack = track;
+            DurationText = playback.Duration.ToString(@"m\:ss");
+            IsPlaying = true;
+            UpdateProgress();
+        }
+        catch (Exception ex)
+        {
+            StatusText = "Не удалось воспроизвести файл: " + ex.Message;
+            IsPlaying = false;
+        }
+    }
+
+    private void UpdateProgress()
+    {
+        if (CurrentTrack is null || playback.Duration <= TimeSpan.Zero)
+        {
+            Progress = 0;
+            CurrentTimeText = "0:00";
+            return;
+        }
+
+        var position = playback.Position;
+        Progress = Math.Clamp(position.TotalMilliseconds / playback.Duration.TotalMilliseconds * 100d, 0, 100);
+        CurrentTimeText = position.ToString(@"m\:ss");
+        DurationText = playback.Duration.ToString(@"m\:ss");
+        IsPlaying = playback.IsPlaying;
+    }
+
+    private void LoadLibrary()
+    {
+        var file = Path.Combine(dataDirectory, "library.json");
+        try
+        {
+            if (File.Exists(file))
+            {
+                foreach (var track in JsonSerializer.Deserialize<List<Track>>(File.ReadAllText(file)) ?? [])
+                    if (File.Exists(track.FilePath)) Tracks.Add(track);
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusText = "Не удалось загрузить библиотеку: " + ex.Message;
+        }
+        RefreshArtistsAndLibrary();
+    }
+
+    private void SaveLibrary()
+    {
+        var file = Path.Combine(dataDirectory, "library.json");
+        File.WriteAllText(file, JsonSerializer.Serialize(Tracks, new JsonSerializerOptions { WriteIndented = true }));
+    }
+
+    private string SaveArtwork(TagLib.File tag, string path)
+    {
+        try
+        {
+            var picture = tag.Tag.Pictures.FirstOrDefault();
+            var bytes = picture?.Data.Data;
+            if (bytes is null || bytes.Length == 0) return "";
+
+            var directory = Path.Combine(dataDirectory, "Artwork");
+            Directory.CreateDirectory(directory);
+            var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(path.ToUpperInvariant())));
+            var extension = picture?.MimeType == "image/png" ? ".png" : ".jpg";
+            var target = Path.Combine(directory, hash + extension);
+            if (!File.Exists(target)) File.WriteAllBytes(target, bytes);
+            return target;
+        }
+        catch { return ""; }
+    }
+
+    private void RefreshArtistsAndLibrary()
+    {
+        var filtered = Tracks.Where(t =>
+            string.IsNullOrWhiteSpace(SearchQuery) ||
+            t.Title.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase) ||
+            t.Artist.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase) ||
+            t.Album.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase)).ToList();
+
+        VisibleTracks.Clear();
+        foreach (var track in filtered) VisibleTracks.Add(track);
+
+        FavoriteTracks.Clear();
+        foreach (var track in filtered.Where(t => t.IsFavorite)) FavoriteTracks.Add(track);
+
+        Artists.Clear();
+        foreach (var group in filtered.Where(t => !string.IsNullOrWhiteSpace(t.Artist))
+                     .GroupBy(t => t.Artist.Trim(), StringComparer.OrdinalIgnoreCase)
+                     .OrderBy(g => g.Key, StringComparer.CurrentCultureIgnoreCase).Take(24))
+            Artists.Add(new ArtistTile { Name = group.Key, CountText = $"{group.Count()} треков", ArtworkPath = group.FirstOrDefault(t => !string.IsNullOrWhiteSpace(t.ArtworkPath))?.ArtworkPath });
+
+        Genres.Clear();
+        foreach (var group in filtered.Where(t => !string.IsNullOrWhiteSpace(t.Genre))
+                     .GroupBy(t => t.Genre.Trim(), StringComparer.OrdinalIgnoreCase)
+                     .OrderByDescending(g => g.Count()).ThenBy(g => g.Key, StringComparer.CurrentCultureIgnoreCase).Take(8))
+            Genres.Add(new GenreTile
+            {
+                Name = group.Key,
+                CountText = $"{group.Count()} треков",
+                ArtworkPath = group.FirstOrDefault(t => !string.IsNullOrWhiteSpace(t.ArtworkPath))?.ArtworkPath
+            });
+
+        OnPropertyChanged(nameof(TrackCountText));
+        OnPropertyChanged(nameof(ArtistCountText));
+        OnPropertyChanged(nameof(GenreCountText));
+        OnPropertyChanged(nameof(IsGenreEmpty));
+        OnPropertyChanged(nameof(FavoriteCountText));
+        OnPropertyChanged(nameof(ForYouArtistName));
+        OnPropertyChanged(nameof(ForYouTrackCountText));
+        OnPropertyChanged(nameof(ForYouArtworkPath));
+        OnPropertyChanged(nameof(HasForYouArtist));
+        OnPropertyChanged(nameof(IsLibraryEmpty));
+        OnPropertyChanged(nameof(IsSearchEmpty));
+        OnPropertyChanged(nameof(IsFavoritesEmpty));
+        OnPropertyChanged(nameof(EmptyLibraryText));
+        OnPropertyChanged(nameof(EmptyFavoritesText));
+    }
+
+    private async Task RestoreAccountAsync()
+    {
+        try
+        {
+            if (await auth.RestoreSessionAsync())
+            {
+                IsSignedIn = true;
+                IsGoogleLinked = auth.HasGoogleProvider;
+                IsPasswordLinked = auth.HasPasswordProvider;
+                Email = auth.Email ?? "";
+                ProfileName = auth.GoogleDisplayName ?? Email;
+                AccountStatusText = "Аккаунт SONORA подключён";
+                await LoadProfileAsync();
+                AuthMessage = "Сессия восстановлена.";
+            }
+        }
+        catch (Exception ex) { AuthMessage = ex.Message; }
+    }
+
+    private async Task LoadProfileAsync()
+    {
+        if (!auth.IsSignedIn || string.IsNullOrWhiteSpace(auth.UserId)) return;
+        try
+        {
+            var profile = await profiles.ReadAsync(auth.UserId, await auth.GetValidIdTokenAsync());
+            if (profile is not null)
+            {
+                Nickname = profile.Nickname;
+                if (!string.IsNullOrWhiteSpace(profile.Nickname)) ProfileName = profile.Nickname;
+                avatarType = profile.AvatarType;
+                avatarData = profile.AvatarData;
+                avatarContentType = profile.AvatarContentType;
+                if (string.Equals(profile.AvatarType, "custom", StringComparison.OrdinalIgnoreCase) &&
+                    !string.IsNullOrWhiteSpace(profile.AvatarData))
+                {
+                    var bytes = Convert.FromBase64String(profile.AvatarData);
+                    using var stream = new MemoryStream(bytes);
+                    ProfileAvatar?.Dispose();
+                    ProfileAvatar = new Bitmap(stream);
+                }
+                else
+                {
+                    var googleAvatarUrl = !string.IsNullOrWhiteSpace(profile.GooglePhotoUrl)
+                        ? profile.GooglePhotoUrl
+                        : auth.GooglePhotoUrl;
+                    if (!string.IsNullOrWhiteSpace(googleAvatarUrl))
+                        await LoadGoogleAvatarAsync(googleAvatarUrl);
+                }
+            }
+            else if (avatarType == "custom" && !string.IsNullOrWhiteSpace(avatarData))
+            {
+                using var stream = new MemoryStream(Convert.FromBase64String(avatarData));
+                ProfileAvatar?.Dispose();
+                ProfileAvatar = new Bitmap(stream);
+            }
+            else if (!string.IsNullOrWhiteSpace(auth.GooglePhotoUrl))
+            {
+                await LoadGoogleAvatarAsync(auth.GooglePhotoUrl);
+            }
+        }
+        catch (Exception ex) { AuthMessage = "Профиль не загрузился: " + ex.Message; }
+    }
+
+    public async Task SaveProfileAsync()
+    {
+        if (!auth.IsSignedIn || string.IsNullOrWhiteSpace(auth.UserId))
+        {
+            ProfileName = string.IsNullOrWhiteSpace(Nickname) ? "Гость" : Nickname.Trim();
+            var localProfile = new UserProfile
+            {
+                Nickname = Nickname.Trim(),
+                AvatarType = avatarType,
+                AvatarData = avatarData,
+                AvatarContentType = avatarContentType
+            };
+            await File.WriteAllTextAsync(Path.Combine(dataDirectory, "profile.json"),
+                JsonSerializer.Serialize(localProfile));
+            AuthMessage = "Профиль сохранён на этом устройстве. Войди для облачной синхронизации.";
+            return;
+        }
+
+        try
+        {
+            var profile = new UserProfile
+            {
+                Nickname = Nickname.Trim(),
+                AvatarType = avatarType,
+                AvatarData = avatarData,
+                AvatarContentType = avatarContentType,
+                GooglePhotoUrl = avatarType == "google" ? auth.GooglePhotoUrl ?? "" : ""
+            };
+            await profiles.WriteAsync(auth.UserId, await auth.GetValidIdTokenAsync(), profile);
+            ProfileName = string.IsNullOrWhiteSpace(Nickname) ? auth.GoogleDisplayName ?? Email : Nickname.Trim();
+            AuthMessage = "Профиль сохранён.";
+        }
+        catch (Exception ex) { AuthMessage = "Не удалось сохранить профиль: " + ex.Message; }
+    }
+
+    public async Task SetAvatarAsync(string filePath)
+    {
+        var info = new FileInfo(filePath);
+        if (!info.Exists) throw new FileNotFoundException("Файл аватара не найден.");
+        if (info.Length > 3 * 1024 * 1024)
+            throw new InvalidOperationException("Аватар должен быть не больше 3 МБ.");
+
+        var bytes = await File.ReadAllBytesAsync(filePath);
+        using var stream = new MemoryStream(bytes);
+        var decoded = new Bitmap(stream);
+        ProfileAvatar?.Dispose();
+        ProfileAvatar = decoded;
+        avatarType = "custom";
+        avatarData = Convert.ToBase64String(bytes);
+        avatarContentType = Path.GetExtension(filePath).ToLowerInvariant() switch
+        {
+            ".png" => "image/png",
+            ".webp" => "image/webp",
+            _ => "image/jpeg"
+        };
+        await SaveProfileAsync();
+    }
+
+    private void LoadLocalProfile()
+    {
+        try
+        {
+            var path = Path.Combine(dataDirectory, "profile.json");
+            if (!File.Exists(path)) return;
+            var profile = JsonSerializer.Deserialize<UserProfile>(File.ReadAllText(path));
+            if (profile is null) return;
+            Nickname = profile.Nickname;
+            if (!string.IsNullOrWhiteSpace(profile.Nickname)) ProfileName = profile.Nickname;
+            avatarType = profile.AvatarType;
+            avatarData = profile.AvatarData;
+            avatarContentType = profile.AvatarContentType;
+            if (profile.AvatarType == "custom" && !string.IsNullOrWhiteSpace(profile.AvatarData))
+            {
+                using var stream = new MemoryStream(Convert.FromBase64String(profile.AvatarData));
+                ProfileAvatar = new Bitmap(stream);
+            }
+        }
+        catch (Exception ex) { AuthMessage = "Не удалось загрузить локальный профиль: " + ex.Message; }
+    }
+
+    private async Task LoadGoogleAvatarAsync(string url)
+    {
+        try
+        {
+            using var response = await new HttpClient().GetAsync(url);
+            response.EnsureSuccessStatusCode();
+            var bytes = await response.Content.ReadAsByteArrayAsync();
+            if (bytes.Length > 3 * 1024 * 1024) return;
+            using var stream = new MemoryStream(bytes);
+            ProfileAvatar?.Dispose();
+            ProfileAvatar = new Bitmap(stream);
+        }
+        catch { /* The profile remains usable if the provider image is unavailable. */ }
+    }
+
+    public async Task SignInAsync(string email, string password)
+    {
+        try
+        {
+            await auth.SignInAsync(email.Trim(), password);
+            await CompleteSignInAsync();
+            AuthMessage = "Вход выполнен.";
+        }
+        catch (Exception ex) { AuthMessage = ex.Message; }
+    }
+
+    public async Task RegisterAsync(string email, string password)
+    {
+        try
+        {
+            await auth.RegisterAsync(email.Trim(), password);
+            await CompleteSignInAsync();
+            AuthMessage = "Аккаунт создан.";
+        }
+        catch (Exception ex) { AuthMessage = ex.Message; }
+    }
+
+    public async Task GoogleSignInAsync()
+    {
+        try
+        {
+            if (auth.IsSignedIn)
+            {
+                await auth.LinkGoogleAsync();
+                IsGoogleLinked = auth.HasGoogleProvider;
+                AuthMessage = "Google привязан к текущему аккаунту SONORA.";
+                return;
+            }
+
+            await auth.SignInWithGoogleAsync();
+            await CompleteSignInAsync();
+            AuthMessage = "Вход через Google выполнен.";
+        }
+        catch (Exception ex) { AuthMessage = ex.Message; }
+    }
+
+    private async Task CompleteSignInAsync()
+    {
+        IsSignedIn = auth.IsSignedIn;
+        IsGoogleLinked = auth.HasGoogleProvider;
+        IsPasswordLinked = auth.HasPasswordProvider;
+        Email = auth.Email ?? "";
+        ProfileName = auth.GoogleDisplayName ?? Email;
+        AccountStatusText = "Аккаунт SONORA подключён";
+        await LoadProfileAsync();
+    }
+
+    public async Task AddPasswordAsync(string password)
+    {
+        try
+        {
+            await auth.SetSonoraPasswordAsync(password);
+            IsPasswordLinked = auth.HasPasswordProvider;
+            AuthMessage = "Пароль добавлен к текущему аккаунту SONORA.";
+        }
+        catch (Exception ex) { AuthMessage = ex.Message; }
+    }
+
+    public void SignOut()
+    {
+        auth.SignOut();
+        IsSignedIn = false;
+        IsGoogleLinked = false;
+        IsPasswordLinked = false;
+        Email = "";
+        Nickname = "";
+        ProfileName = "Гость";
+        AccountStatusText = "Локальный профиль";
+        AuthMessage = "Ты вышел из аккаунта. Локальная музыка осталась на устройстве.";
+    }
+
+    public void Dispose()
+    {
+        timer.Stop();
+        playback.Dispose();
+        CurrentArtwork?.Dispose();
+    }
+}
