@@ -14,9 +14,14 @@
     <!-- Sonic Wave top bar -->
     <Border Grid.Row="0" Grid.Column="0" Background="#0A0A12" BorderBrush="#FFFFFF12" BorderThickness="0,0,0,1">
       <Grid Margin="30,0,34,0" ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
-        <StackPanel VerticalAlignment="Center" Spacing="2">
-          <TextBlock Text="{Binding CurrentSectionTitle}" FontSize="16" FontWeight="SemiBold"/>
-          <TextBlock Text="{Binding StatusText}" FontSize="10" Foreground="#71839B"/>
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="11">
+          <Border Width="34" Height="34" CornerRadius="10" Background="#3478F6" ClipToBounds="True">
+            <Image Source="avares://SONORA/Assets/sonora.png" Stretch="Uniform" Margin="4"/>
+          </Border>
+          <StackPanel VerticalAlignment="Center" Spacing="2">
+            <TextBlock Text="SONORA" FontSize="16" FontWeight="Bold" LetterSpacing="1.1" FontFamily="avares://SONORA/Assets/WidockTrialBold.otf#Widock"/>
+            <TextBlock Text="{Binding CurrentSectionTitle}" FontSize="10" Foreground="#82829A"/>
+          </StackPanel>
         </StackPanel>
         <TextBox x:Name="HeaderSearchBox" Grid.Column="1" Classes="search-box" Width="360" Height="40" HorizontalAlignment="Center" VerticalContentAlignment="Center" Text="{Binding SearchQuery, Mode=TwoWay}" PlaceholderText="Поиск музыки, альбомов и исполнителей" TextChanged="HeaderSearchBox_TextChanged"/>
         <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
