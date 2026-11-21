@@ -13,7 +13,7 @@ namespace Sonora.ViewModels;
 public sealed class ArtistTile
 {
     public string Name { get; init; } = "";
-    public string Initial => string.IsNullOrWhiteSpace(Name) ? "♫" : Name[..1].ToUpperInvariant();
+    public string Initial => string.IsNullOrWhiteSpace(Name) ? "S" : Name[..1].ToUpperInvariant();
     public string CountText { get; init; } = "";
     public string? ArtworkPath { get; init; }
     public bool HasArtwork => !string.IsNullOrWhiteSpace(ArtworkPath) && File.Exists(ArtworkPath);
