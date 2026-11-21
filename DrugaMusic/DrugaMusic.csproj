@@ -14,6 +14,7 @@
   <ItemGroup>
     <Resource Include="Assets\sonora.ico" />
     <Resource Include="Assets\WidockTrialBold.otf" />
+    <Resource Include="Assets\Icons\*.svg" />
     <Resource Include="..\1795143870953.png" Link="Assets\sonora.png" />
   </ItemGroup>
   <ItemGroup>
