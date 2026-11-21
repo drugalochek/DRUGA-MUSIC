@@ -1,15 +1,15 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <Styles.Resources>
-    <SolidColorBrush x:Key="AppBackground" Color="#080B12"/>
-    <SolidColorBrush x:Key="PanelBackground" Color="#0D1420"/>
-    <SolidColorBrush x:Key="CardBackground" Color="#111B2A"/>
-    <SolidColorBrush x:Key="CardHover" Color="#17253A"/>
+    <SolidColorBrush x:Key="AppBackground" Color="#0A0A12"/>
+    <SolidColorBrush x:Key="PanelBackground" Color="#0F0F1A"/>
+    <SolidColorBrush x:Key="CardBackground" Color="#16161F"/>
+    <SolidColorBrush x:Key="CardHover" Color="#1E1E2A"/>
     <SolidColorBrush x:Key="TextPrimary" Color="#F4F7FC"/>
-    <SolidColorBrush x:Key="TextMuted" Color="#8190A5"/>
-    <SolidColorBrush x:Key="AccentBlue" Color="#347DFF"/>
-    <SolidColorBrush x:Key="AccentCyan" Color="#39C5E8"/>
-    <SolidColorBrush x:Key="Stroke" Color="#1FFFFFFF"/>
+    <SolidColorBrush x:Key="TextMuted" Color="#82829A"/>
+    <SolidColorBrush x:Key="AccentBlue" Color="#3478F6"/>
+    <SolidColorBrush x:Key="AccentCyan" Color="#69B7FF"/>
+    <SolidColorBrush x:Key="Stroke" Color="#12FFFFFF"/>
   </Styles.Resources>
 
   <Style Selector="Window">
@@ -75,9 +75,9 @@
     <Setter Property="Background" Value="Transparent"/>
     <Setter Property="Foreground" Value="#F4F7FC"/>
     <Setter Property="Padding" Value="0"/>
-    <Setter Property="BorderBrush" Value="#294A70"/>
+    <Setter Property="BorderBrush" Value="#1CFFFFFF"/>
     <Setter Property="BorderThickness" Value="1"/>
-    <Setter Property="CornerRadius" Value="15"/>
+    <Setter Property="CornerRadius" Value="14"/>
     <Setter Property="ClipToBounds" Value="True"/>
   </Style>
   <Style Selector="Button.mix-artwork:pointerover">
@@ -158,8 +158,8 @@
 
   <Style Selector="Border.music-card">
     <Setter Property="Background" Value="#101927"/>
-    <Setter Property="CornerRadius" Value="14"/>
-    <Setter Property="BorderBrush" Value="#1FFFFFFF"/>
+    <Setter Property="CornerRadius" Value="12"/>
+    <Setter Property="BorderBrush" Value="#12FFFFFF"/>
     <Setter Property="BorderThickness" Value="1"/>
   </Style>
 
