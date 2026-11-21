@@ -12,7 +12,7 @@
         FontFamily="avares://SONORA/Assets/WidockTrialBold.otf#Widock">
   <Grid RowDefinitions="72,*,Auto" ColumnDefinitions="238,*" Background="#080B12">
     <!-- Sonic Wave top bar -->
-    <Border Grid.Row="0" Grid.Column="1" Background="#0B0F18" BorderBrush="#FFFFFF12" BorderThickness="0,0,0,1">
+    <Border Grid.Row="0" Grid.Column="1" Background="#0A0A12" BorderBrush="#FFFFFF12" BorderThickness="0,0,0,1">
       <Grid Margin="30,0,34,0" ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
         <StackPanel VerticalAlignment="Center" Spacing="2">
           <TextBlock Text="{Binding CurrentSectionTitle}" FontSize="16" FontWeight="SemiBold"/>
@@ -20,7 +20,7 @@
         </StackPanel>
         <TextBox x:Name="HeaderSearchBox" Grid.Column="1" Classes="search-box" Width="360" Height="40" HorizontalAlignment="Center" VerticalContentAlignment="Center" Text="{Binding SearchQuery, Mode=TwoWay}" PlaceholderText="Поиск музыки, альбомов и исполнителей" TextChanged="HeaderSearchBox_TextChanged"/>
         <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-          <Button Classes="icon-button" Content="＋" Click="Import_Click" ToolTip.Tip="Добавить музыку"/>
+          <Button Classes="icon-button" Content="+" Click="Import_Click" ToolTip.Tip="Добавить музыку"/>
           <Border Width="1" Height="26" Background="#263348" Margin="3,0"/>
           <Button Classes="profile-button" Content="{Binding ProfileName}" Click="Profile_Click" ToolTip.Tip="Профиль"/>
         </StackPanel>
@@ -30,41 +30,9 @@
     <!-- Main views: all stay inside this one native window -->
     <Grid Grid.Row="1" Grid.Column="1">
       <ScrollViewer x:Name="HomePage" IsVisible="True" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-        <StackPanel Margin="34,30,42,42" Spacing="0">
+        <StackPanel Margin="28,24,30,36" Spacing="0">
           <TextBlock Text="{Binding GreetingText}" Foreground="#8190A5" FontSize="12" Margin="0,0,0,3"/>
           <TextBlock Text="Главная" FontSize="30" FontWeight="Bold" Margin="0,0,0,18"/>
-          <Border CornerRadius="18" BorderBrush="#2B5D9C" BorderThickness="1" Padding="26" Margin="0,0,0,27">
-            <Border.Background>
-              <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                <GradientStop Color="#142C4D" Offset="0"/>
-                <GradientStop Color="#101E34" Offset="0.58"/>
-                <GradientStop Color="#102A3C" Offset="1"/>
-              </LinearGradientBrush>
-            </Border.Background>
-            <Grid ColumnDefinitions="*,Auto">
-              <StackPanel VerticalAlignment="Center" Spacing="9">
-                <Border Background="#1D4778" CornerRadius="5" Padding="8,4" HorizontalAlignment="Left">
-                  <TextBlock Text="ТВОЯ МУЗЫКА — ТВОИ ПРАВИЛА" FontSize="8" FontWeight="Bold" Foreground="#9CCBFF" LetterSpacing="1.3"/>
-                </Border>
-                <TextBlock Text="Слушай своё." FontSize="30" FontWeight="Bold"/>
-                <TextBlock Text="Вся твоя музыка. В одном пространстве." FontSize="13" Foreground="#A7B9D0"/>
-                <Button Classes="action" Content="＋  Добавить музыку" HorizontalAlignment="Left" Margin="0,8,0,0" Click="Import_Click"/>
-              </StackPanel>
-              <Grid Grid.Column="1" Width="230" Height="150" VerticalAlignment="Center">
-                <Border Width="142" Height="142" CornerRadius="71" BorderBrush="#427FC0" BorderThickness="1" Opacity="0.65" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                <Border Width="106" Height="106" CornerRadius="53" BorderBrush="#438BDA" BorderThickness="1" Opacity="0.55" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                <Border Width="68" Height="68" CornerRadius="34" Background="#2268B5" Opacity="0.65" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="5">
-                  <Border Width="4" Height="22" CornerRadius="2" Background="#A8D7FF"/>
-                  <Border Width="4" Height="42" CornerRadius="2" Background="#72B9FF"/>
-                  <Border Width="4" Height="58" CornerRadius="2" Background="#D2ECFF"/>
-                  <Border Width="4" Height="34" CornerRadius="2" Background="#7CC8F3"/>
-                  <Border Width="4" Height="48" CornerRadius="2" Background="#A8D7FF"/>
-                  <Border Width="4" Height="19" CornerRadius="2" Background="#72B9FF"/>
-                </StackPanel>
-              </Grid>
-            </Grid>
-          </Border>
           <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,8">
             <TextBlock Text="Любимые исполнители" FontSize="19" FontWeight="Bold"/>
             <TextBlock Grid.Column="1" Text="{Binding ArtistCountText}" Foreground="#82829A" FontSize="11" VerticalAlignment="Center"/>
@@ -205,7 +173,7 @@
                     <TextBlock Text="{Binding ForYouArtistName}" FontSize="20" FontWeight="Bold" TextTrimming="CharacterEllipsis"/>
                     <TextBlock Text="{Binding ForYouTrackCountText}" FontSize="10" Foreground="#C2D0E2"/>
                   </StackPanel>
-                  <Button Classes="mix-play-button" Content="▶" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,13,14" IsEnabled="{Binding HasForYouArtist}" Click="ForYou_Click"/>
+                  <Button Classes="mix-play-button" Content="Воспроизвести" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,13,14" IsEnabled="{Binding HasForYouArtist}" Click="ForYou_Click"/>
                 </Grid>
               </Border>
               <TextBlock Text="Треки исполнителя, который чаще всего встречается в твоей библиотеке" FontSize="10" Foreground="#8190A5" TextWrapping="Wrap" Margin="12,10,12,12"/>
@@ -289,7 +257,7 @@
           <Border CornerRadius="15" Padding="18" Background="#1B2450">
             <StackPanel Orientation="Horizontal" Spacing="14">
               <Border Width="66" Height="66" CornerRadius="12" Background="#317CEB">
-                <TextBlock Text="♥" FontSize="29" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                <TextBlock Text="Избранное" FontSize="29" HorizontalAlignment="Center" VerticalAlignment="Center"/>
               </Border>
               <StackPanel VerticalAlignment="Center" Spacing="4">
                 <TextBlock Text="Любимые треки" FontSize="16" FontWeight="Bold"/>
@@ -307,7 +275,7 @@
                       <TextBlock Text="{Binding Title}" FontSize="12"/>
                       <TextBlock Text="{Binding Artist}" FontSize="10" Foreground="#82829A"/>
                     </StackPanel>
-                    <TextBlock Grid.Column="2" Text="♥" Foreground="#4B9AFF" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="2" Text="Избранное" Foreground="#4B9AFF" VerticalAlignment="Center"/>
                   </Grid>
                 </Button>
               </DataTemplate>
@@ -346,7 +314,7 @@
       <ScrollViewer x:Name="ProfilePage" IsVisible="False" VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="22,20,22,30" Spacing="14">
           <TextBlock Text="Профиль" FontSize="30" FontWeight="Bold"/>
-          <Border CornerRadius="18" BorderBrush="#294B72" BorderThickness="1" Padding="22">
+          <Border CornerRadius="14" BorderBrush="#294B72" BorderThickness="1" Padding="22">
             <Border.Background>
               <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
                 <GradientStop Color="#142943" Offset="0"/>
@@ -356,7 +324,7 @@
             <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="18">
               <Border Width="82" Height="82" CornerRadius="41" Background="#1C385B" BorderBrush="#4D8ACB" BorderThickness="2" ClipToBounds="True">
                 <Grid>
-                  <TextBlock Text="◎" FontSize="31" Foreground="#9DCBFF" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding ShowProfileAvatarPlaceholder}"/>
+                  <TextBlock Text="S" FontSize="25" Foreground="#9DCBFF" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding ShowProfileAvatarPlaceholder}"/>
                   <Image Source="{Binding ProfileAvatar}" Stretch="UniformToFill" IsVisible="{Binding HasProfileAvatar}"/>
                 </Grid>
               </Border>
@@ -440,7 +408,7 @@
       <!-- Full player overlay, still inside the same window -->
       <Border x:Name="NowPlayingOverlay" IsVisible="False" Background="#080B12">
         <Grid RowDefinitions="Auto,*" Margin="24,22">
-          <Button Classes="icon-button" Content="⌄" HorizontalAlignment="Left" Click="ClosePlayer_Click"/>
+          <Button Classes="icon-button" Content="Назад" HorizontalAlignment="Left" Click="ClosePlayer_Click"/>
           <Grid Grid.Row="1" ColumnDefinitions="*,Auto,Auto,*" ColumnSpacing="22" VerticalAlignment="Center">
             <Border Grid.Column="1" Width="290" Height="290" CornerRadius="18" Background="#14243A" BorderBrush="#2C4B70" BorderThickness="1" ClipToBounds="True">
               <controls:TrackArtwork ArtworkPath="{Binding CurrentTrack.ArtworkPath}"/>
@@ -462,12 +430,12 @@
                 </Grid>
               </StackPanel>
               <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Spacing="18">
-                <Button Classes="icon-button" Content="|◀" Click="Previous_Click"/>
+                <Button Classes="icon-button" Content="Предыдущий" Click="Previous_Click"/>
                 <Button Classes="action" Width="54" Height="54" Content="{Binding PlayButtonGlyph}" Click="PlayPause_Click"/>
-                <Button Classes="icon-button" Content="▶|" Click="Next_Click"/>
+                <Button Classes="icon-button" Content="Следующий" Click="Next_Click"/>
               </StackPanel>
               <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,7,0,0">
-                <TextBlock Text="♫" FontSize="14" Foreground="#7891AE" VerticalAlignment="Center"/>
+                <TextBlock Text="ГРОМКОСТЬ" FontSize="14" Foreground="#7891AE" VerticalAlignment="Center"/>
                 <Slider Width="170" Minimum="0" Maximum="1" Value="{Binding Volume, Mode=TwoWay}"/>
                 <TextBlock Text="Громкость" FontSize="10" Foreground="#8294AA" VerticalAlignment="Center"/>
               </StackPanel>
@@ -488,7 +456,7 @@
           <TextBlock Text="{Binding CurrentTrackArtist}" FontSize="10" Foreground="#82829A"/>
         </StackPanel>
         <Button Grid.Column="2" Classes="icon-button" Content="{Binding PlayButtonGlyph}" Click="PlayPause_Click"/>
-        <Button Grid.Column="3" Classes="icon-button" Content="×" Click="CloseMini_Click"/>
+        <Button Grid.Column="3" Classes="icon-button" Content="Закрыть" Click="CloseMini_Click"/>
         <ProgressBar Grid.Row="1" Grid.ColumnSpan="4" Height="2" Minimum="0" Maximum="100" Value="{Binding Progress}" Background="#FFFFFF18" Foreground="#397BFF"/>
       </Grid>
     </Border>
@@ -533,8 +501,8 @@
           </Button>
           <Border Height="1" Background="#FFFFFF12" Margin="8,17,8,13"/>
           <TextBlock Text="ТВОЯ SONORA" FontSize="9" FontWeight="Bold" Foreground="#53647B" Margin="12,0,0,8" LetterSpacing="1.8"/>
-          <Button Classes="nav-item" Content="◎     Профиль" Click="Profile_Click"/>
-          <Button Classes="nav-item" Content="⌘     Аккаунты" Click="Accounts_Click"/>
+          <Button Classes="nav-item" Content="Профиль" Click="Profile_Click"/>
+          <Button Classes="nav-item" Content="Аккаунты" Click="Accounts_Click"/>
         </StackPanel>
         <StackPanel Grid.Row="3" Margin="14,0,14,20" Spacing="8">
           <Border Background="#101A2B" BorderBrush="#FFFFFF12" BorderThickness="1" CornerRadius="14" Padding="13">
@@ -542,10 +510,10 @@
               <TextBlock Text="ТВОЯ МУЗЫКА" FontSize="9" Foreground="#7792B5" FontWeight="Bold" LetterSpacing="1.3"/>
               <TextBlock Text="{Binding TrackCountText}" FontSize="15" FontWeight="SemiBold"/>
               <TextBlock Text="Локальная библиотека" FontSize="10" Foreground="#708099"/>
-              <Button Classes="sidebar-add" Content="＋  Добавить треки" Click="Import_Click"/>
+              <Button Classes="sidebar-add" Content="Добавить треки" Click="Import_Click"/>
             </StackPanel>
           </Border>
-          <Button Classes="nav-item" Content="⚙     Настройки" Click="Settings_Click"/>
+          <Button Classes="nav-item" Content="Настройки" Click="Settings_Click"/>
           <TextBlock Text="SONORA  •  DESKTOP" FontSize="8" Foreground="#46556A" Margin="12,6,0,0" LetterSpacing="1.2"/>
         </StackPanel>
       </Grid>
