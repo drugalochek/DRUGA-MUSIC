@@ -15,18 +15,18 @@
      <TextBlock Text="SONORA" FontSize="20" FontWeight="Bold" VerticalAlignment="Center"/>
     </StackPanel>
     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-     <Button Content="♧" Width="38" Height="38" Padding="0" Margin="0,0,9,0" ToolTip="Уведомления"/>
-     <Button Content="●" Width="38" Height="38" Padding="0" Background="{StaticResource Accent}" BorderBrush="#59B9FF" ToolTip="Профиль"/>
+     <Button x:Name="AddMusicButton" Content="＋ Добавить музыку" Click="AddMusic_Click" Margin="0,0,10,0"/>
+     <Button x:Name="AccountButton" Content="Войти в аккаунт" Click="Account_Click" Padding="15,8"/>
     </StackPanel>
    </Grid>
   </Border>
   <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
    <StackPanel Margin="34,26,34,38">
     <TextBlock Text="ТВОЯ МУЗЫКА" Foreground="{StaticResource Muted}" FontSize="11" Margin="0,0,0,5"/>
-    <TextBlock Text="Главная" FontSize="30" FontWeight="Bold" Margin="0,0,0,17"/>
-    <TextBlock Text="Исполнители" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,12"/>
+    <TextBlock x:Name="PageTitle" Text="Главная" FontSize="30" FontWeight="Bold" Margin="0,0,0,17"/>
+    <DockPanel Margin="0,0,0,12"><TextBlock Text="Исполнители" FontSize="20" FontWeight="SemiBold"/><TextBlock x:Name="ArtistCount" Text="0 исполнителей" Foreground="{StaticResource Muted}" FontSize="10" DockPanel.Dock="Right" VerticalAlignment="Bottom"/></DockPanel>
     <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" Margin="0,0,0,24">
-     <ItemsControl ItemsSource="{Binding Artists}">
+     <ItemsControl x:Name="ArtistsList">
       <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
       <ItemsControl.ItemTemplate><DataTemplate><StackPanel Width="112" Margin="0,0,18,0">
        <Border Width="82" Height="82" CornerRadius="41" Background="#1B2B40" BorderBrush="#2B4A70" BorderThickness="1" HorizontalAlignment="Center">
@@ -41,44 +41,38 @@
      <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
      <ItemsControl.ItemTemplate><DataTemplate><StackPanel Width="200" Margin="0,0,18,12">
       <Border Width="200" Height="200" CornerRadius="15" ClipToBounds="True" Background="#1B2B40">
-       <Grid>
-        <Grid.RowDefinitions><RowDefinition/><RowDefinition/></Grid.RowDefinitions><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
+       <Grid><Grid.RowDefinitions><RowDefinition/><RowDefinition/></Grid.RowDefinitions><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
         <Border Background="#244E82"/><Border Grid.Column="1" Background="#1D7594"/><Border Grid.Row="1" Background="#163B65"/><Border Grid.Row="1" Grid.Column="1" Background="#236B91"/>
-        <Border Height="42" VerticalAlignment="Bottom" Background="{StaticResource Accent}" Grid.ColumnSpan="2">
-         <Grid Margin="12,0,8,0"><TextBlock Text="{Binding}" FontWeight="Bold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,42,0"/><Border Width="30" Height="30" CornerRadius="15" Background="#FFFFFF" HorizontalAlignment="Right"><Path Data="M0,0 L0,14 L12,7 Z" Fill="#287FEA" Width="12" Height="14" Stretch="Fill" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border></Grid>
-        </Border>
+        <Border Height="42" VerticalAlignment="Bottom" Background="{StaticResource Accent}" Grid.ColumnSpan="2"><Grid Margin="12,0,8,0"><TextBlock Text="{Binding}" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,42,0"/><Border Width="30" Height="30" CornerRadius="15" Background="White" HorizontalAlignment="Right"><Path Data="M0,0 L0,14 L12,7 Z" Fill="#287FEA" Width="12" Height="14" Stretch="Fill" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border></Grid></Border>
        </Grid>
       </Border>
      </StackPanel></DataTemplate></ItemsControl.ItemTemplate>
     </ItemsControl>
     <DockPanel Margin="0,0,0,12"><TextBlock Text="Жанры" FontSize="20" FontWeight="SemiBold"/><TextBlock Text="ВЫБЕРИ НАСТРОЕНИЕ" Foreground="{StaticResource Muted}" FontSize="10" DockPanel.Dock="Right" VerticalAlignment="Bottom"/></DockPanel>
     <ItemsControl ItemsSource="{Binding Genres}" Margin="0,0,0,26">
-     <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsControl.ItemsPanel>
-     <ItemsControl.ItemTemplate><DataTemplate><Border Width="170" Height="100" CornerRadius="12" Margin="0,0,14,12" Padding="15" Background="{StaticResource Accent}">
-      <Grid><Ellipse Width="76" Height="76" Fill="#30FFFFFF" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-24,-24,0"/><TextBlock Text="{Binding}" FontSize="17" FontWeight="Bold" VerticalAlignment="Bottom"/></Grid>
-     </Border></DataTemplate></ItemsControl.ItemTemplate>
-    </ItemsControl>
-    <DockPanel Margin="0,0,0,12"><TextBlock Text="Твой топ артистов" FontSize="20" FontWeight="SemiBold"/><TextBlock Text="100% ИЗ ТВОИХ ПРОСЛУШИВАНИЙ" Foreground="{StaticResource Muted}" FontSize="10" DockPanel.Dock="Right" VerticalAlignment="Bottom"/></DockPanel>
-    <ItemsControl ItemsSource="{Binding TopArtists}" Margin="0,0,0,24">
      <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-     <ItemsControl.ItemTemplate><DataTemplate><StackPanel Width="200" Margin="0,0,18,12">
-      <Border Height="200" CornerRadius="15" Background="#1B2B40" ClipToBounds="True">
-       <Grid><TextBlock Text="100%" FontSize="25" FontWeight="Black" Margin="12" VerticalAlignment="Top"/><Border Height="34" VerticalAlignment="Bottom" Background="{StaticResource Accent}"><TextBlock Text="{Binding}" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold"/></Border></Grid>
-      </Border>
-     </StackPanel></DataTemplate></ItemsControl.ItemTemplate>
+     <ItemsControl.ItemTemplate><DataTemplate><Border Width="170" Height="100" CornerRadius="12" Margin="0,0,14,12" Padding="15" Background="{StaticResource Accent}"><Grid><Ellipse Width="76" Height="76" Fill="#30FFFFFF" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-24,-24,0"/><TextBlock Text="{Binding}" FontSize="17" FontWeight="Bold" VerticalAlignment="Bottom"/></Grid></Border></DataTemplate></ItemsControl.ItemTemplate>
     </ItemsControl>
-    <DockPanel Margin="0,0,0,10"><TextBlock Text="Недавно прослушано" FontSize="20" FontWeight="SemiBold"/><TextBlock Text="ВСЯ МУЗЫКА" Foreground="{StaticResource Muted}" FontSize="10" DockPanel.Dock="Right" VerticalAlignment="Bottom"/></DockPanel>
-    <ItemsControl ItemsSource="{Binding RecentTracks}">
-     <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="3"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-     <ItemsControl.ItemTemplate><DataTemplate><Border Background="{StaticResource Surface}" CornerRadius="10" Padding="11" Margin="0,0,12,9"><DockPanel><Border Width="42" Height="42" CornerRadius="7" Background="#244E82" DockPanel.Dock="Left" Margin="0,0,11,0"><TextBlock Text="♫" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="19"/></Border><StackPanel VerticalAlignment="Center"><TextBlock Text="{Binding}" FontWeight="SemiBold" FontSize="12"/><TextBlock Text="Исполнитель" Foreground="{StaticResource Muted}" FontSize="10"/></StackPanel></DockPanel></Border></DataTemplate></ItemsControl.ItemTemplate>
-    </ItemsControl>
+    <DockPanel Margin="0,0,0,12"><TextBlock Text="Недавно прослушано" FontSize="20" FontWeight="SemiBold"/><TextBlock x:Name="TrackCount" Text="0 треков" Foreground="{StaticResource Muted}" FontSize="10" DockPanel.Dock="Right" VerticalAlignment="Bottom"/></DockPanel>
+    <Border Background="{StaticResource Surface}" CornerRadius="12" Padding="10">
+     <DataGrid x:Name="TracksGrid" AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True" HeadersVisibility="Column" GridLinesVisibility="None" Background="Transparent" Foreground="{StaticResource Text}" BorderThickness="0" RowBackground="#151D2A" AlternatingRowBackground="#192333" SelectionMode="Single" MouseDoubleClick="TracksGrid_DoubleClick" MinHeight="180">
+      <DataGrid.Columns>
+       <DataGridTextColumn Header="НАЗВАНИЕ" Binding="{Binding Title}" Width="2*"/>
+       <DataGridTextColumn Header="ИСПОЛНИТЕЛЬ" Binding="{Binding Artist}" Width="1.4*"/>
+       <DataGridTextColumn Header="АЛЬБОМ" Binding="{Binding Album}" Width="1.2*"/>
+       <DataGridTextColumn Header="ЖАНР" Binding="{Binding Genre}" Width="*"/>
+       <DataGridTextColumn Header="ВРЕМЯ" Binding="{Binding DurationText}" Width="70"/>
+      </DataGrid.Columns>
+     </DataGrid>
+    </Border>
+    <TextBlock x:Name="EmptyStateText" Text="Библиотека пока пуста. Нажми «Добавить музыку», чтобы импортировать свои треки." Foreground="{StaticResource Muted}" TextAlignment="Center" Margin="0,20,0,20" FontSize="12"/>
    </StackPanel>
   </ScrollViewer>
   <Border Grid.Row="2" Background="#0D1420" BorderBrush="#1C2939" BorderThickness="0,1,0,0" Padding="28,9">
    <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="2*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-    <StackPanel Orientation="Horizontal" VerticalAlignment="Center"><Border Width="46" Height="46" CornerRadius="7" Background="#1B2B40"><TextBlock Text="♫" FontSize="22" Foreground="#A9CFFF" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><StackPanel VerticalAlignment="Center" Margin="11,0,0,0"><TextBlock Text="Ничего не воспроизводится" FontSize="12" FontWeight="SemiBold"/><TextBlock Text="Выбери трек" Foreground="{StaticResource Muted}" FontSize="10" Margin="0,3,0,0"/></StackPanel></StackPanel>
-    <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center"><StackPanel Orientation="Horizontal" HorizontalAlignment="Center"><Button Content="|◀" Background="Transparent" BorderThickness="0"/><Button Content="▶" Width="42" Height="42" Background="{StaticResource Accent}" Margin="10,0"/><Button Content="▶|" Background="Transparent" BorderThickness="0"/></StackPanel><Border Height="3" Width="340" Background="#26364A" CornerRadius="2" Margin="0,7,0,0"/></StackPanel>
-    <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center"><TextBlock Text="ГРОМКОСТЬ" Foreground="{StaticResource Muted}" FontSize="9" VerticalAlignment="Center" Margin="0,0,10,0"/><Slider Width="110" Minimum="0" Maximum="100" Value="75"/></StackPanel>
+    <StackPanel Orientation="Horizontal" VerticalAlignment="Center"><Border Width="46" Height="46" CornerRadius="7" Background="#1B2B40"><TextBlock Text="♫" FontSize="22" Foreground="#A9CFFF" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><StackPanel VerticalAlignment="Center" Margin="11,0,0,0"><TextBlock x:Name="NowPlayingTitle" Text="Ничего не воспроизводится" FontSize="12" FontWeight="SemiBold"/><TextBlock x:Name="NowPlayingArtist" Text="Выбери трек" Foreground="{StaticResource Muted}" FontSize="10" Margin="0,3,0,0"/></StackPanel></StackPanel>
+    <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center"><StackPanel Orientation="Horizontal" HorizontalAlignment="Center"><Button Content="|◀" Click="Previous_Click" Background="Transparent" BorderThickness="0"/><Button x:Name="PlayPauseButton" Content="▶" Width="42" Height="42" Background="{StaticResource Accent}" Margin="10,0" Click="PlayPause_Click"/><Button Content="▶|" Click="Next_Click" Background="Transparent" BorderThickness="0"/></StackPanel><Grid Width="340" Margin="0,5,0,0"><Slider x:Name="SeekSlider" Minimum="0" Maximum="1" Value="0" ValueChanged="SeekSlider_ValueChanged" PreviewMouseLeftButtonDown="SeekSlider_MouseDown" PreviewMouseLeftButtonUp="SeekSlider_MouseUp"/><TextBlock x:Name="CurrentTimeText" Text="0:00" Foreground="{StaticResource Muted}" FontSize="9" HorizontalAlignment="Left" Margin="0,12,0,0"/><TextBlock x:Name="DurationText" Text="0:00" Foreground="{StaticResource Muted}" FontSize="9" HorizontalAlignment="Right" Margin="0,12,0,0"/></Grid></StackPanel>
+    <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center"><TextBlock Text="ГРОМКОСТЬ" Foreground="{StaticResource Muted}" FontSize="9" VerticalAlignment="Center" Margin="0,0,10,0"/><Slider x:Name="VolumeSlider" Width="110" Minimum="0" Maximum="1" Value="0.75" ValueChanged="VolumeSlider_ValueChanged"/></StackPanel>
    </Grid>
   </Border>
   <Border Grid.Row="3" Background="#0A0F18" BorderBrush="#1C2939" BorderThickness="0,1,0,0">
