@@ -2,17 +2,17 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DrugaMusic", "DrugaMusic\DrugaMusic.csproj", "{7D0FCA2B-ED41-4C6D-9DAA-16F2A5E4C23B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SONORA", "Sonora.App\Sonora.App.csproj", "{F7C2B2A1-6E11-4D0D-9D63-4B0F6E8C912A}"
 EndProject
 Global
-	GlobalSection(SolutionConfigurationPlatforms) = preSolution
-		Debug|Any CPU = Debug|Any CPU
-		Release|Any CPU = Release|Any CPU
-	EndGlobalSection
-	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{7D0FCA2B-ED41-4C6D-9DAA-16F2A5E4C23B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{7D0FCA2B-ED41-4C6D-9DAA-16F2A5E4C23B}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{7D0FCA2B-ED41-4C6D-9DAA-16F2A5E4C23B}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{7D0FCA2B-ED41-4C6D-9DAA-16F2A5E4C23B}.Release|Any CPU.Build.0 = Release|Any CPU
-	EndGlobalSection
+    GlobalSection(SolutionConfigurationPlatforms) = preSolution
+        Debug|Any CPU = Debug|Any CPU
+        Release|Any CPU = Release|Any CPU
+    EndGlobalSection
+    GlobalSection(ProjectConfigurationPlatforms) = postSolution
+        {F7C2B2A1-6E11-4D0D-9D63-4B0F6E8C912A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+        {F7C2B2A1-6E11-4D0D-9D63-4B0F6E8C912A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+        {F7C2B2A1-6E11-4D0D-9D63-4B0F6E8C912A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+        {F7C2B2A1-6E11-4D0D-9D63-4B0F6E8C912A}.Release|Any CPU.Build.0 = Release|Any CPU
+    EndGlobalSection
 EndGlobal

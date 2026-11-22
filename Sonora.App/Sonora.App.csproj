@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
+    <RootNamespace>Sonora</RootNamespace>
+    <AssemblyName>SONORA</AssemblyName>
+    <Product>SONORA</Product>
+    <Version>1.0.0</Version>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>true</SelfContained>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="12.1.6" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.1.6" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.6" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    <PackageReference Include="NAudio" Version="2.2.1" />
+    <PackageReference Include="TagLibSharp" Version="2.3.0" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\**" />
+    <AvaloniaResource Include="..\DrugaMusic\Assets\WidockTrialBold.otf" Link="Assets\WidockTrialBold.otf" />
+    <AvaloniaResource Include="..\1795143870953.png" Link="Assets\sonora.png" />
+    <Compile Include="..\DrugaMusic\Models\**\*.cs" Link="Core\Models\%(RecursiveDir)%(Filename)%(Extension)" />
+    <Compile Include="..\DrugaMusic\Services\**\*.cs" Link="Core\Services\%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+</Project>

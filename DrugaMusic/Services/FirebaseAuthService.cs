@@ -24,6 +24,7 @@ public sealed class FirebaseAuthService
     public string? GooglePhotoUrl { get; private set; }
     public string? GoogleDisplayName { get; private set; }
     public bool HasPasswordProvider { get; private set; }
+    public bool HasGoogleProvider { get; private set; }
     private string? refreshToken;
 
     public bool IsSignedIn => !string.IsNullOrWhiteSpace(IdToken);
@@ -78,9 +79,11 @@ public sealed class FirebaseAuthService
         IdToken = root.GetProperty("idToken").GetString();
         refreshToken = root.GetProperty("refreshToken").GetString();
         HasPasswordProvider = true;
+        HasGoogleProvider = false;
         GooglePhotoUrl = null;
         GoogleDisplayName = null;
         await SaveSessionAsync();
+        await LoadProviderInfoAsync();
     }
 
     public async Task SignInWithGoogleAsync()
@@ -131,6 +134,69 @@ public sealed class FirebaseAuthService
         GoogleDisplayName = root.TryGetProperty("displayName", out var display) ? display.GetString() : null;
         await SaveSessionAsync();
         await LoadProviderInfoAsync();
+    }
+
+    public async Task LinkGoogleAsync()
+    {
+        if (!IsSignedIn)
+            throw new InvalidOperationException("Сначала войди в аккаунт SONORA.");
+        if (HasGoogleProvider)
+            throw new InvalidOperationException("Google уже привязан к этому аккаунту.");
+
+        var existingUserId = UserId;
+        var (code, redirectUri) = await GetGoogleAuthorizationCodeAsync();
+        using var tokenResponse = await Http.PostAsync(
+            "https://oauth2.googleapis.com/token",
+            new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["client_id"] = GoogleClientId,
+                ["code"] = code,
+                ["code_verifier"] = _lastCodeVerifier!,
+                ["grant_type"] = "authorization_code",
+                ["redirect_uri"] = redirectUri
+            }));
+        var tokenBody = await tokenResponse.Content.ReadAsStringAsync();
+        if (!tokenResponse.IsSuccessStatusCode)
+            throw new InvalidOperationException("Google не выдал токен: " + ReadGoogleError(tokenBody));
+
+        using var googleJson = JsonDocument.Parse(tokenBody);
+        var googleAccessToken = googleJson.RootElement.TryGetProperty("access_token", out var accessToken)
+            ? accessToken.GetString()
+            : null;
+        if (string.IsNullOrWhiteSpace(googleAccessToken))
+            throw new InvalidOperationException("Google не вернул токен доступа.");
+
+        var postBody = $"access_token={Uri.EscapeDataString(googleAccessToken)}&providerId=google.com";
+        using var firebaseResponse = await Http.PostAsJsonAsync(
+            $"https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key={ApiKey}",
+            new
+            {
+                idToken = await GetValidIdTokenAsync(),
+                postBody,
+                requestUri = redirectUri,
+                returnIdpCredential = true,
+                returnSecureToken = true
+            });
+        var firebaseBody = await firebaseResponse.Content.ReadAsStringAsync();
+        if (!firebaseResponse.IsSuccessStatusCode)
+            throw new InvalidOperationException(ParseError(firebaseBody));
+
+        using var firebaseJson = JsonDocument.Parse(firebaseBody);
+        var root = firebaseJson.RootElement;
+        var linkedUserId = root.GetProperty("localId").GetString();
+        if (!string.Equals(existingUserId, linkedUserId, StringComparison.Ordinal))
+            throw new InvalidOperationException("Firebase вернул другую учётную запись. Текущая сессия не была заменена.");
+
+        IdToken = root.GetProperty("idToken").GetString();
+        refreshToken = root.GetProperty("refreshToken").GetString();
+        Email = root.TryGetProperty("email", out var email) ? email.GetString() : Email;
+        GooglePhotoUrl = root.TryGetProperty("photoUrl", out var photo) ? photo.GetString() : GooglePhotoUrl;
+        GoogleDisplayName = root.TryGetProperty("displayName", out var display) ? display.GetString() : GoogleDisplayName;
+        await SaveSessionAsync();
+        await LoadProviderInfoAsync();
+
+        if (!HasGoogleProvider)
+            throw new InvalidOperationException("Firebase не подтвердил привязку Google. Проверь список провайдеров аккаунта.");
     }
 
     private string? _lastCodeVerifier;
@@ -225,10 +291,15 @@ public sealed class FirebaseAuthService
             GooglePhotoUrl = photo.GetString();
         if (user.TryGetProperty("displayName", out var display) && !string.IsNullOrWhiteSpace(display.GetString()))
             GoogleDisplayName = display.GetString();
-        HasPasswordProvider = user.TryGetProperty("providerUserInfo", out var providers) &&
-            providers.EnumerateArray().Any(provider =>
-                provider.TryGetProperty("providerId", out var providerId) &&
-                providerId.GetString() == "password");
+        var providerList = user.TryGetProperty("providerUserInfo", out var providers)
+            ? providers.EnumerateArray().ToArray()
+            : Array.Empty<JsonElement>();
+        HasPasswordProvider = providerList.Any(provider =>
+            provider.TryGetProperty("providerId", out var providerId) &&
+            providerId.GetString() == "password");
+        HasGoogleProvider = providerList.Any(provider =>
+            provider.TryGetProperty("providerId", out var providerId) &&
+            providerId.GetString() == "google.com");
     }
 
     public async Task SetSonoraPasswordAsync(string password)
@@ -303,6 +374,7 @@ public sealed class FirebaseAuthService
         GooglePhotoUrl = null;
         GoogleDisplayName = null;
         HasPasswordProvider = false;
+        HasGoogleProvider = false;
     }
 
     private static string ReadGoogleError(string body)
@@ -326,7 +398,11 @@ public sealed class FirebaseAuthService
             {
                 "EMAIL_EXISTS" or "ACCOUNT_EXISTS_WITH_DIFFERENT_CREDENTIAL" =>
                     "Этот Google-адрес уже используется другим способом входа. Сначала войди в существующий аккаунт SONORA; автоматическое объединение пока не выполнено.",
-                "NEED_CONFIRMATION" => "Для этого адреса уже существует другой аккаунт. Нужно отдельно связать способы входа.",
+                "NEED_CONFIRMATION" => "Для этого адреса уже существует другой аккаунт. Войди в него и привяжи новый способ входа из раздела «Аккаунты».",
+                "CREDENTIAL_ALREADY_IN_USE" or "FEDERATED_USER_ID_ALREADY_LINKED" =>
+                    "Этот Google-аккаунт уже привязан к другой учётной записи SONORA.",
+                "PROVIDER_ALREADY_LINKED" => "Этот способ входа уже привязан к аккаунту SONORA.",
+                "USER_NOT_FOUND" => "Аккаунт не найден. Проверь данные для входа.",
                 "INVALID_EMAIL" => "Проверь адрес электронной почты.",
                 "WEAK_PASSWORD" => "Пароль слишком короткий. Нужно не менее 6 символов.",
                 "EMAIL_NOT_FOUND" or "INVALID_PASSWORD" or "INVALID_LOGIN_CREDENTIALS" => "Неверная почта или пароль.",
