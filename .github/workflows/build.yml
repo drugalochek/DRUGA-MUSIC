@@ -3,9 +3,10 @@ name: Build SONORA
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -13,25 +14,55 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Setup .NET
+
+      - name: Setup .NET SDK
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
-      - name: Generate SONORA icon from repository artwork
+
+      - name: Build SONORA.exe (.NET Framework 4.8, WPF)
+        run: dotnet build Sonora/Sonora.csproj -c Release
+
+      - name: Pack ZIP
         shell: pwsh
-        run: ./scripts/create-icon.ps1
-      - name: Restore
-        run: dotnet restore DrugaMusic.sln
-      - name: Build
-        run: dotnet build DrugaMusic.sln --configuration Release --no-restore
-      - name: Publish self-contained Windows x64 app
-        if: github.event_name != 'pull_request'
-        run: dotnet publish DrugaMusic/DrugaMusic.csproj --configuration Release --runtime win-x64 --self-contained true /p:PublishSingleFile=true --output publish
-      - name: Upload Windows build
-        if: github.event_name != 'pull_request'
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Copy-Item Sonora/bin/Release/net48/SONORA.exe dist/
+          Copy-Item Sonora/bin/Release/net48/SONORA.exe.config dist/
+          Compress-Archive -Path dist/* -DestinationPath SONORA-win.zip -Force
+
+      - name: Take screenshots (app renders every screen to PNG)
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath "dist/SONORA.exe" -ArgumentList "--shots", "$PWD/shots-out" -PassThru
+          if (-not $p.WaitForExit(240000)) { $p.Kill() }
+          Get-ChildItem shots-out -ErrorAction SilentlyContinue
+          Get-Content "$env:LOCALAPPDATA/SONORA/log.txt" -ErrorAction SilentlyContinue | Select-Object -Last 40
+
+      - name: Upload build
         uses: actions/upload-artifact@v4
         with:
-          name: SONORA-Windows-x64
-          path: publish/
-          if-no-files-found: error
-          retention-days: 14
+          name: SONORA-win
+          path: SONORA-win.zip
+
+      - name: Upload screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: shots-out/
+          if-no-files-found: warn
+
+      - name: Commit screenshots to repository
+        if: github.ref == 'refs/heads/main'
+        shell: pwsh
+        run: |
+          if (-not (Test-Path shots-out/*.png)) { exit 0 }
+          New-Item -ItemType Directory -Force screenshots | Out-Null
+          Remove-Item screenshots/*.png -ErrorAction SilentlyContinue
+          Copy-Item shots-out/*.png screenshots/
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add screenshots
+          git diff --cached --quiet
+          if ($LASTEXITCODE -ne 0) { git commit -m "Update screenshots [skip ci]"; git push }
+          exit 0

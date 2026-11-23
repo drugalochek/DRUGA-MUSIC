@@ -1,6 +1,5 @@
-**/bin/
-**/obj/
-.vs/
+bin/
+obj/
 *.user
-*.suo
-*.log
+.vs/
+shots-out/
