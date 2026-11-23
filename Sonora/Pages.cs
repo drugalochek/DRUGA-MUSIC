@@ -400,111 +400,9 @@ namespace Sonora
         }
 
         // ---------- Home ----------
-        // ---------- «Моя волна»: большой живой баннер, как в Яндекс Музыке ----------
-        List<Track> WavePool()
-        {
-            var pool = Mixes.FavPool();
-            if (pool == null || pool.Count < 8) pool = Catalog.All.Where(t => !t.IsLocal).ToList();
-            return Mixes.Shuffle(pool, DateTime.Now.Ticks.ToString());
-        }
-        void PlayWave()
-        {
-            var list = WavePool();
-            if (list.Count == 0) { Toast("Каталог ещё загружается"); return; }
-            Player.I.PlayList(list, 0);
-        }
-        FrameworkElement WaveHero()
-        {
-            var g = new Grid { Height = 420, Margin = new Thickness(0, 4, 0, 0) };
-            g.Children.Add(new Border { CornerRadius = new CornerRadius(24), Background = Th.B("#07080B") });
-            var blobs = new Grid { IsHitTestVisible = false };
-            Action<string, double, double, double, double, double, int> blob = (hex, w, h, x, y, a, sec) =>
-            {
-                var br = new RadialGradientBrush();
-                br.GradientStops.Add(new GradientStop(Th.C(hex, a), 0));
-                br.GradientStops.Add(new GradientStop(Th.C(hex, a * .55), .45));
-                br.GradientStops.Add(new GradientStop(Th.C(hex, 0), 1));
-                var tt = new TranslateTransform(x, y);
-                var e = new Ellipse { Width = w, Height = h, Fill = br, RenderTransform = tt, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
-                blobs.Children.Add(e);
-                if (ShotMode) return;
-                var ax = new DoubleAnimation(x - 60, x + 60, TimeSpan.FromSeconds(sec)) { AutoReverse = true, RepeatBehavior = RepeatBehavior.Forever, EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut } };
-                var ay = new DoubleAnimation(y + 40, y - 40, TimeSpan.FromSeconds(sec * 1.3)) { AutoReverse = true, RepeatBehavior = RepeatBehavior.Forever, EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut } };
-                tt.BeginAnimation(TranslateTransform.XProperty, ax);
-                tt.BeginAnimation(TranslateTransform.YProperty, ay);
-            };
-            blob("#1D4ED8", 760, 560, -170, 10, .95, 9);
-            blob("#FF3E9A", 560, 480, 190, 40, .85, 11);
-            blob("#22D3EE", 420, 340, 30, -130, .7, 7);
-            blob("#3B82F6", 380, 380, 40, 60, .9, 8);
-            blob("#F0F6FF", 180, 160, 10, -10, .35, 6);
-            g.Children.Add(blobs);
-            // лёгкое затемнение краёв
-            var vig = new RadialGradientBrush { RadiusX = .75, RadiusY = .75 };
-            vig.GradientStops.Add(new GradientStop(Th.C("#000000", 0), .55));
-            vig.GradientStops.Add(new GradientStop(Th.C("#000000", .75), 1));
-            g.Children.Add(new Border { CornerRadius = new CornerRadius(24), Background = vig, IsHitTestVisible = false });
-
-            bool waveOn = Player.I.IsPlaying;
-            var title = U.Tx("Моя волна", 52, Th.White);
-            title.FontFamily = Th.Font;
-            title.VerticalAlignment = VerticalAlignment.Center;
-            title.Margin = new Thickness(16, 0, 0, 0);
-            var tri = U.Ico(waveOn ? "pause" : "play", 38, Th.White, true);
-            tri.VerticalAlignment = VerticalAlignment.Center;
-            var head = U.Click(new Border { Background = Th.Clear, Child = U.Row(tri, title) }, () => { if (Player.I.IsPlaying) Player.I.Toggle(); else PlayWave(); }, .97);
-            head.HorizontalAlignment = HorizontalAlignment.Center;
-            var cfgTxt = U.Tx("Перемешать всё", 15, Th.White);
-            cfgTxt.VerticalAlignment = VerticalAlignment.Center;
-            cfgTxt.Margin = new Thickness(10, 0, 0, 0);
-            var cfg = new Border { CornerRadius = new CornerRadius(26), Background = Th.B("#FFFFFF", .16), Padding = new Thickness(22, 12, 24, 12), HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 22, 0, 0), Child = U.Row(U.Ico("shuffle", 18, Th.White), cfgTxt) };
-            U.Hover(cfg, Th.B("#FFFFFF", .16), Th.B("#FFFFFF", .26));
-            U.Click(cfg, () =>
-            {
-                var all = Mixes.Shuffle(Catalog.All, DateTime.Now.Ticks.ToString());
-                if (all.Count > 0) Player.I.PlayList(all, 0);
-            }, .96);
-            var mid = U.Col(head, cfg);
-            mid.VerticalAlignment = VerticalAlignment.Center;
-            mid.Margin = new Thickness(0, 0, 0, 40);
-            g.Children.Add(mid);
-
-            // нижние «пилюли»: Для вас / Тренды
-            var mixes = Mixes.ForYou();
-            var popular = Catalog.All.Where(t => !t.IsLocal).OrderByDescending(t => t.Plays).Take(30).ToList();
-            var pills = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Bottom, Margin = new Thickness(22, 0, 22, 22) };
-            Func<string, List<Track>, Action, bool, FrameworkElement> pill = (name, tracks, act, filled) =>
-            {
-                var faces = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-                int k = 0;
-                foreach (var t in tracks.Where(x => !string.IsNullOrEmpty(x.Cover)).GroupBy(x => x.Artist).Select(x => x.First()).Take(2))
-                {
-                    var c = new Border { Width = 52, Height = 52, CornerRadius = new CornerRadius(26), Background = U.CoverBrush(t, 104) ?? (Brush)Th.Card, BorderBrush = Th.B("#000000", .5), BorderThickness = new Thickness(2), Margin = new Thickness(k == 0 ? 0 : -16, 0, 0, 0) };
-                    faces.Children.Add(c); k++;
-                }
-                var names = string.Join(", ", tracks.Select(x => x.Artist).Where(x => !string.IsNullOrEmpty(x)).Distinct().Take(2));
-                var tt = U.Tx(name, 24, Th.White);
-                var sub = U.Tx(names, 13, Th.B("#FFFFFF", .7));
-                sub.FontFamily = Th.Body; sub.FontWeight = FontWeights.SemiBold;
-                var info = U.Col(tt, sub);
-                info.VerticalAlignment = VerticalAlignment.Center;
-                info.Margin = new Thickness(k > 0 ? 14 : 0, 0, 6, 0);
-                var b = new Border { CornerRadius = new CornerRadius(40), Padding = new Thickness(10, 9, 26, 9), Margin = new Thickness(0, 0, 14, 0), Background = filled ? Th.B("#000000", .45) : Th.Clear, Child = U.Row(faces, info) };
-                U.Hover(b, filled ? Th.B("#000000", .45) : Th.Clear, Th.B("#000000", .6));
-                return U.Click(b, act, .97);
-            };
-            if (mixes.Count > 0) pills.Children.Add(pill("Для вас", mixes.SelectMany(m => m.Tracks).ToList(), () => Go("playlist", mixes[0].Id), true));
-            else pills.Children.Add(pill("Для вас", Mixes.FavTracks(), () => Go("fav"), true));
-            if (popular.Count > 0) pills.Children.Add(pill("Тренды", popular, () => Player.I.PlayList(popular, 0), false));
-            g.Children.Add(pills);
-            U.ClipRound(g, 24);
-            return g;
-        }
-
         FrameworkElement Home()
         {
             var sp = new StackPanel();
-            sp.Children.Add(WaveHero());
 
             if (Auth.Current == null)
             {
@@ -515,12 +413,12 @@ namespace Sonora
                 var login = new Border { CornerRadius = new CornerRadius(10), Padding = new Thickness(12, 7, 12, 7), Background = Th.White, VerticalAlignment = VerticalAlignment.Center, Child = U.Tx("Войти", 13, Th.B("#000000")) };
                 U.Click(login, OpenWelcome, .95);
                 var g = U.Cols("a * a", chk, txt, login);
-                sp.Children.Add(new Border { Padding = new Thickness(14, 12, 12, 12), CornerRadius = new CornerRadius(12), Background = Th.Card, BorderBrush = Th.Border, BorderThickness = new Thickness(1), Margin = new Thickness(0, 18, 0, 12), Child = g });
+                sp.Children.Add(new Border { Padding = new Thickness(14, 12, 12, 12), CornerRadius = new CornerRadius(12), Background = Th.Glass(.045), BorderBrush = Th.GlassEdge, BorderThickness = new Thickness(1), Margin = new Thickness(0, 8, 0, 12), Child = g });
             }
 
             if (!Catalog.Loaded)
             {
-                sp.Children.Add(Empty("music", "Загружаем каталог…", "Подключаемся к серверу Sonic Wave."));
+                sp.Children.Add(Empty("music", "Загружаем каталог…", "Подключаемся к серверу."));
                 return sp;
             }
 

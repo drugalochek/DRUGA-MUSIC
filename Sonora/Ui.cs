@@ -64,6 +64,16 @@ namespace Sonora
         }
         public static readonly LinearGradientBrush Brand = G("#3b82f6", "#2563eb"), Hot = G("#3b82f6", "#2563eb"), Pink = G("#FF5FA2", "#D6246E");
         public static FontFamily LogoFont = new FontFamily("Segoe UI");
+        // «стекло»: полупрозрачная заливка + светлая кромка сверху, гаснущая книзу
+        public static readonly LinearGradientBrush GlassEdge = Edge(.16, .035), GlassEdgeSoft = Edge(.10, .02);
+        public static readonly LinearGradientBrush GlassShine = Edge(.055, 0);
+        static LinearGradientBrush Edge(double top, double bottom)
+        {
+            var g = new LinearGradientBrush(C("#FFFFFF", top), C("#FFFFFF", bottom), new Point(0, 0), new Point(0, 1));
+            g.Freeze();
+            return g;
+        }
+        public static SolidColorBrush Glass(double a = .06) { return B("#FFFFFF", a); }
         public static readonly FontFamily Body = new FontFamily("Segoe UI");
         public static FontFamily Font = new FontFamily("Segoe UI");
 

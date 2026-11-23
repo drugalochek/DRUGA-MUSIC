@@ -54,7 +54,7 @@ namespace Sonora
         public void OpenWelcome()
         {
             var benefits = new StackPanel();
-            foreach (var s in new[] { "Синхронизация треков между устройствами", "Избранное и плейлисты в облаке", "Профиль, общий с сайтом Sonic" })
+            foreach (var s in new[] { "Синхронизация треков между устройствами", "Избранное и плейлисты в облаке", "Единый профиль на всех устройствах" })
             {
                 var ic = U.Ico("check", 16, Th.Accent3, null, 2.5);
                 var t = U.Wrap(s, 12.5, Th.Txt);
@@ -207,7 +207,7 @@ namespace Sonora
                 info.Margin = new Thickness(12, 0, 0, 0);
                 list.Children.Add(new Border { Padding = new Thickness(8, 12, 8, 12), BorderBrush = Th.Border, BorderThickness = new Thickness(0, 0, 0, 1), Child = U.Cols("a *", ic, info) });
             };
-            item("#8b5cf6", "#ec4899", "star", "Добро пожаловать", "SONORA — нативное приложение Sonic Wave для Windows. Лайкай треки, собирай плейлисты, слушай миксы.");
+            item("#8b5cf6", "#ec4899", "star", "Добро пожаловать", "SONORA — нативный музыкальный плеер для Windows. Лайкай треки, собирай плейлисты, слушай миксы.");
             foreach (var t in Catalog.Remote.OrderByDescending(x => x.AddedAt).Take(5))
                 item("#06b6d4", "#10b981", "music", "Новый трек", t.Artist + " — " + t.Title + (t.AddedAt > 0 ? " · " + new DateTime(1970, 1, 1).AddMilliseconds(t.AddedAt).ToLocalTime().ToString("d MMM yyyy") : ""));
             OpenSheet("Уведомления", null, list);

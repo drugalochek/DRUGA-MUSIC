@@ -32,6 +32,20 @@ namespace Sonora
         Border toastBox; TextBlock toastText; DispatcherTimer toastTimer;
         Border profileBtn, notifBadge, backBtn;
         Border side, contentPanel, topGlow, sidePromo;
+        Grid ambient; Ellipse trackGlow;
+        static Ellipse Glow(string hex, double a, double w, double h, HorizontalAlignment ha, VerticalAlignment va, Thickness m)
+        {
+            return new Ellipse { Width = w, Height = h, HorizontalAlignment = ha, VerticalAlignment = va, Margin = m, Fill = GlowBrush(Th.C(hex), a), IsHitTestVisible = false };
+        }
+        static Brush GlowBrush(Color c, double a)
+        {
+            var br = new RadialGradientBrush();
+            br.GradientStops.Add(new GradientStop(Color.FromArgb((byte)(a * 255), c.R, c.G, c.B), 0));
+            br.GradientStops.Add(new GradientStop(Color.FromArgb((byte)(a * 120), c.R, c.G, c.B), .5));
+            br.GradientStops.Add(new GradientStop(Color.FromArgb(0, c.R, c.G, c.B), 1));
+            br.Freeze();
+            return br;
+        }
         StackPanel sideNav, sideLib;
         Border sideProfile;
         bool compact;
@@ -62,6 +76,12 @@ namespace Sonora
             layout.ColumnDefinitions.Add(new ColumnDefinition());
             layout.RowDefinitions.Add(new RowDefinition());
             layout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            ambient = new Grid { IsHitTestVisible = false, ClipToBounds = true };
+            ambient.Children.Add(Glow("#2563EB", .30, 1000, 760, HorizontalAlignment.Left, VerticalAlignment.Top, new Thickness(-380, -300, 0, 0)));
+            ambient.Children.Add(Glow("#FF4D94", .13, 900, 700, HorizontalAlignment.Right, VerticalAlignment.Bottom, new Thickness(0, 0, -320, -300)));
+            trackGlow = Glow("#38BDF8", .12, 1100, 640, HorizontalAlignment.Center, VerticalAlignment.Bottom, new Thickness(0, 0, 0, -380));
+            ambient.Children.Add(trackGlow);
+            Children.Add(ambient);
             Children.Add(layout);
 
             side = BuildSide();
@@ -79,10 +99,11 @@ namespace Sonora
             Grid.SetRow(scroll, 1);
             contentGrid.Children.Add(top);
             contentGrid.Children.Add(scroll);
+            center.Children.Add(new Border { Height = 160, VerticalAlignment = VerticalAlignment.Top, Background = Th.GlassShine, IsHitTestVisible = false });
             center.Children.Add(topGlow);
             center.Children.Add(contentGrid);
             center.Children.Add(BuildToast());
-            contentPanel = new Border { CornerRadius = new CornerRadius(26), Background = Th.Panel, BorderBrush = Th.Border, BorderThickness = new Thickness(1), Margin = new Thickness(0, 14, 14, 14), Child = center };
+            contentPanel = new Border { CornerRadius = new CornerRadius(26), Background = Th.B("#0E1015", .74), BorderBrush = Th.GlassEdge, BorderThickness = new Thickness(1), Margin = new Thickness(0, 14, 14, 14), Child = center };
             U.ClipRound(center, 26);
             Grid.SetColumn(contentPanel, 1);
             layout.Children.Add(contentPanel);
@@ -95,7 +116,7 @@ namespace Sonora
             Full = new FullPlayer();
             Children.Add(Full);
 
-            modal.Background = Th.B("#000000", .6);
+            modal.Background = Th.B("#000000", .5);
             modal.Visibility = Visibility.Collapsed;
             modal.MouseLeftButtonDown += (s, e) => { if (e.OriginalSource == modal) CloseSheet(); };
             sheet = new Border
@@ -104,8 +125,8 @@ namespace Sonora
                 Margin = new Thickness(16),
                 VerticalAlignment = VerticalAlignment.Center,
                 CornerRadius = new CornerRadius(12),
-                Background = Th.Bg2,
-                BorderBrush = Th.Border,
+                Background = Th.B("#15181F", .93),
+                BorderBrush = Th.GlassEdge,
                 BorderThickness = new Thickness(1),
                 Padding = new Thickness(24, 22, 24, 22),
                 RenderTransformOrigin = new Point(.5, .5),
@@ -190,12 +211,10 @@ namespace Sonora
             FrameworkElement brandRow = logo;
             if (!compact)
             {
-                var small = U.Tx("Sonic Wave", 14, Th.Accent2);
-                small.FontFamily = Th.LogoFont;
                 var big = U.Tx("SONORA", 31, Th.Accent);
                 big.FontFamily = Th.LogoFont;
-                big.Margin = new Thickness(0, -5, 0, 0);
-                var col = U.Col(small, big);
+                big.Margin = new Thickness(0, 2, 0, 0);
+                var col = U.Col(big);
                 col.VerticalAlignment = VerticalAlignment.Center;
                 col.Margin = new Thickness(12, 0, 0, 0);
                 brandRow = U.Row(logo, col);
@@ -275,10 +294,10 @@ namespace Sonora
                 var bt = U.Tx("Загрузить", 15, Th.Txt);
                 bt.VerticalAlignment = VerticalAlignment.Center;
                 bt.Margin = new Thickness(10, 0, 0, 0);
-                var btn = new Border { CornerRadius = new CornerRadius(24), Background = Th.Card2, Padding = new Thickness(18, 11, 20, 11), Margin = new Thickness(0, 14, 0, 0), Child = U.Center(U.Row(U.Ico("upload", 18, Th.Txt), bt)) };
-                U.Hover(btn, Th.Card2, Th.B("#2C313B"));
+                var btn = new Border { CornerRadius = new CornerRadius(24), Background = Th.Glass(.08), BorderBrush = Th.GlassEdgeSoft, BorderThickness = new Thickness(1), Padding = new Thickness(18, 11, 20, 11), Margin = new Thickness(0, 14, 0, 0), Child = U.Center(U.Row(U.Ico("upload", 18, Th.Txt), bt)) };
+                U.Hover(btn, Th.Glass(.08), Th.Glass(.14));
                 U.Click(btn, PickFiles, .97);
-                sidePromo.Child = new Border { CornerRadius = new CornerRadius(20), BorderBrush = Th.BorderHi, BorderThickness = new Thickness(1), Background = Th.B("#0B0C10"), Padding = new Thickness(18, 18, 18, 18), Margin = new Thickness(0, 12, 0, 16), Child = U.Col(pt, btn) };
+                sidePromo.Child = new Border { CornerRadius = new CornerRadius(20), BorderBrush = Th.GlassEdge, BorderThickness = new Thickness(1), Background = Th.Glass(.04), Padding = new Thickness(18, 18, 18, 18), Margin = new Thickness(0, 12, 0, 16), Child = U.Col(pt, btn) };
             }
 
             // профиль внизу: аватар в градиентном кольце + бейдж
@@ -294,7 +313,7 @@ namespace Sonora
             {
                 var n = U.Tx(nm, 15, Th.Txt);
                 n.Margin = new Thickness(0, 0, 0, 4);
-                var badgeTxt = U.Tx(s != null ? "Sonic" : "Войти", 12.5, Th.White);
+                var badgeTxt = U.Tx(s != null ? "Профиль" : "Войти", 12.5, Th.White);
                 badgeTxt.FontWeight = FontWeights.Bold;
                 var badge = new Border { CornerRadius = new CornerRadius(11), Background = Th.GH("#FF4D94", "#3B82F6"), Padding = new Thickness(10, 2, 11, 3), HorizontalAlignment = HorizontalAlignment.Left, Child = badgeTxt };
                 var info = U.Col(n, badge);
@@ -424,7 +443,7 @@ namespace Sonora
             Grid.SetColumn(mid, 1); Grid.SetColumn(right, 2);
             g.Children.Add(left); g.Children.Add(mid); g.Children.Add(right);
             right.ClipToBounds = true;
-            bar = new Border { Height = 100, CornerRadius = new CornerRadius(24), Margin = new Thickness(0, 0, 14, 14), Padding = new Thickness(16, 8, 22, 8), Background = Th.Card2, Child = g, Visibility = Visibility.Collapsed };
+            bar = new Border { Height = 100, CornerRadius = new CornerRadius(24), Margin = new Thickness(0, 0, 14, 14), Padding = new Thickness(16, 8, 22, 8), Background = Th.B("#1A1D24", .8), BorderBrush = Th.GlassEdge, BorderThickness = new Thickness(1), Child = g, Visibility = Visibility.Collapsed };
             return bar;
         }
         static Border SmallBtn(string icon, Action a)
@@ -492,7 +511,9 @@ namespace Sonora
             // цвет панели плеера и подсветки — из обложки трека
             var dc = Img.Dominant(t);
             Func<double, double, Color> tint = (k, add) => Color.FromRgb((byte)Math.Min(255, dc.R * k + add), (byte)Math.Min(255, dc.G * k + add), (byte)Math.Min(255, dc.B * k + add));
-            bar.Background = Th.B(tint(.42, 14));
+            var bc = tint(.42, 14);
+            bar.Background = Th.B(Color.FromArgb(205, bc.R, bc.G, bc.B));
+            trackGlow.Fill = GlowBrush(dc, .20);
             topGlow.Background = Th.G(Color.FromArgb(70, dc.R, dc.G, dc.B), Color.FromArgb(0, dc.R, dc.G, dc.B), false);
             var br = U.CoverBrush(t, 112);
             barCover.Background = br ?? (Brush)Th.Card;
