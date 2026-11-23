@@ -228,7 +228,8 @@ namespace Sonora
             var t = new TextBlock { Text = s ?? "", FontSize = size, Foreground = fg ?? Th.Txt, Opacity = opacity, FontFamily = Th.Font };
             bool dim = fg == Th.Dim || opacity < 1;
             // фирменный шрифт Widock — для заголовков, названий и навигации; мелкий служебный текст — Segoe UI
-            if (dim || size < 13) { t.FontFamily = Th.Body; t.FontWeight = size >= 13 ? FontWeights.SemiBold : FontWeights.Normal; }
+            // Widock — капсовый акцидентный шрифт: только для крупных заголовков; остальной текст — Segoe UI
+            if (dim || size < 17) { t.FontFamily = Th.Body; t.FontWeight = dim ? (size >= 13 ? FontWeights.Medium : FontWeights.Normal) : size >= 12.5 ? FontWeights.SemiBold : FontWeights.Normal; }
             else t.FontWeight = FontWeights.Bold;
             if (trim) { t.TextTrimming = TextTrimming.CharacterEllipsis; t.TextWrapping = TextWrapping.NoWrap; }
             return t;
@@ -415,7 +416,7 @@ namespace Sonora
             box.Background = Th.Clear;
             box.BorderThickness = new Thickness(0);
             box.Foreground = Th.Txt;
-            box.FontFamily = Th.Font;
+            box.FontFamily = Th.Body;
             box.FontSize = 14;
             box.Padding = new Thickness(0);
             box.VerticalContentAlignment = VerticalAlignment.Center;

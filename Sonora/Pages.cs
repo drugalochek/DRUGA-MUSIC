@@ -484,7 +484,6 @@ namespace Sonora
                 }
                 var names = string.Join(", ", tracks.Select(x => x.Artist).Where(x => !string.IsNullOrEmpty(x)).Distinct().Take(2));
                 var tt = U.Tx(name, 24, Th.White);
-                tt.FontFamily = Th.Font;
                 var sub = U.Tx(names, 13, Th.B("#FFFFFF", .7));
                 sub.FontFamily = Th.Body; sub.FontWeight = FontWeights.SemiBold;
                 var info = U.Col(tt, sub);

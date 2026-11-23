@@ -52,7 +52,7 @@ namespace Sonora
             ShotMode = shots;
             Background = Th.Bg;
             ClipToBounds = true;
-            TextElement.SetFontFamily(this, Th.Font);
+            TextElement.SetFontFamily(this, Th.Body);
             TextElement.SetForeground(this, Th.Txt);
             TextOptions.SetTextFormattingMode(this, TextFormattingMode.Ideal);
             TextOptions.SetTextRenderingMode(this, TextRenderingMode.ClearType);
@@ -211,8 +211,8 @@ namespace Sonora
                 if (!compact)
                 {
                     var t = U.Tx(TabNames[i], 17, on ? Th.White : Th.Dim);
-                    t.FontFamily = Th.Font;
-                    t.FontWeight = FontWeights.Bold;
+                    t.FontFamily = Th.Body;
+                    t.FontWeight = FontWeights.SemiBold;
                     t.VerticalAlignment = VerticalAlignment.Center;
                     t.Margin = new Thickness(18, 0, 0, 0);
                     content = U.Row(ic, t);
@@ -269,7 +269,7 @@ namespace Sonora
             if (compact) sidePromo.Child = null;
             else
             {
-                var pt = new TextBlock { TextAlignment = TextAlignment.Center, FontSize = 15, Foreground = Th.Dim, FontFamily = Th.Font, FontWeight = FontWeights.Bold };
+                var pt = new TextBlock { TextAlignment = TextAlignment.Center, FontSize = 15, Foreground = Th.Dim, FontFamily = Th.Body, FontWeight = FontWeights.SemiBold };
                 pt.Inlines.Add(new Run("Музыка с "));
                 pt.Inlines.Add(new Run("компьютера") { Foreground = Th.Txt });
                 var bt = U.Tx("Загрузить", 15, Th.Txt);
@@ -295,7 +295,7 @@ namespace Sonora
                 var n = U.Tx(nm, 15, Th.Txt);
                 n.Margin = new Thickness(0, 0, 0, 4);
                 var badgeTxt = U.Tx(s != null ? "Sonic" : "Войти", 12.5, Th.White);
-                badgeTxt.FontFamily = Th.Font; badgeTxt.FontWeight = FontWeights.Bold;
+                badgeTxt.FontWeight = FontWeights.Bold;
                 var badge = new Border { CornerRadius = new CornerRadius(11), Background = Th.GH("#FF4D94", "#3B82F6"), Padding = new Thickness(10, 2, 11, 3), HorizontalAlignment = HorizontalAlignment.Left, Child = badgeTxt };
                 var info = U.Col(n, badge);
                 info.VerticalAlignment = VerticalAlignment.Center;
