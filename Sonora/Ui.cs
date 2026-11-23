@@ -39,9 +39,10 @@ namespace Sonora
         public static SolidColorBrush B(string hex, double a = 1) { var b = new SolidColorBrush(C(hex, a)); b.Freeze(); return b; }
         public static SolidColorBrush B(Color c) { var b = new SolidColorBrush(c); b.Freeze(); return b; }
         public static readonly SolidColorBrush
-            Bg = B("#07090D"), Panel = B("#10141C"), Bg2 = B("#121722"), Card = B("#161B26"), Card2 = B("#1C2230"),
-            Border = B("#FFFFFF", .06), BorderHi = B("#FFFFFF", .12), Txt = B("#F3F6FB"), Dim = B("#8A94A8"),
+            Bg = B("#050608"), Panel = B("#101216"), Bg2 = B("#15171C"), Card = B("#1A1D23"), Card2 = B("#22262E"),
+            Border = B("#FFFFFF", .06), BorderHi = B("#FFFFFF", .12), Txt = B("#F5F7FA"), Dim = B("#8C93A1"),
             Accent = B("#3B82F6"), Accent2 = B("#60A5FA"), Accent3 = B("#38BDF8"), Soft = B("#3B82F6", .14),
+            Heart = B("#FF4D94"),
             Danger = B("#F43F5E"), Ok = B("#22D3EE"), White = B("#FFFFFF"), Clear = B("#000000", 0);
         public static LinearGradientBrush G(string a, string b, bool diagonal = true)
         {
@@ -61,8 +62,9 @@ namespace Sonora
             g.Freeze();
             return g;
         }
-        public static readonly LinearGradientBrush Brand = G("#3b82f6", "#2563eb"), Hot = G("#3b82f6", "#2563eb"), Pink = G("#60a5fa", "#3b82f6");
+        public static readonly LinearGradientBrush Brand = G("#3b82f6", "#2563eb"), Hot = G("#3b82f6", "#2563eb"), Pink = G("#FF5FA2", "#D6246E");
         public static FontFamily LogoFont = new FontFamily("Segoe UI");
+        public static readonly FontFamily Body = new FontFamily("Segoe UI");
         public static FontFamily Font = new FontFamily("Segoe UI");
 
         public static void InitFont()
@@ -78,6 +80,7 @@ namespace Sonora
                         using (var f = File.Create(file)) s.CopyTo(f);
                 }
                 LogoFont = new FontFamily(new Uri(dir.TrimEnd('\\') + "\\"), "./#Widock TRIAL, Segoe UI");
+                Font = LogoFont;
             }
             catch (Exception ex) { Log.W("font: " + ex.Message); }
         }
@@ -224,7 +227,9 @@ namespace Sonora
         {
             var t = new TextBlock { Text = s ?? "", FontSize = size, Foreground = fg ?? Th.Txt, Opacity = opacity, FontFamily = Th.Font };
             bool dim = fg == Th.Dim || opacity < 1;
-            t.FontWeight = size >= 19 ? FontWeights.Bold : size >= 13 && !dim ? FontWeights.SemiBold : FontWeights.Normal;
+            // фирменный шрифт Widock — для заголовков, названий и навигации; мелкий служебный текст — Segoe UI
+            if (dim || size < 13) { t.FontFamily = Th.Body; t.FontWeight = size >= 13 ? FontWeights.SemiBold : FontWeights.Normal; }
+            else t.FontWeight = FontWeights.Bold;
             if (trim) { t.TextTrimming = TextTrimming.CharacterEllipsis; t.TextWrapping = TextWrapping.NoWrap; }
             return t;
         }

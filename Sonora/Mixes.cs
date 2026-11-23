@@ -124,7 +124,7 @@ namespace Sonora
         public static Mix Get(string id)
         {
             if (id == null) return null;
-            if (id == Liked) return new Mix { Id = id, Name = "Любимые треки", Tag = "Избранное", Tracks = FavTracks(), Icon = "heart", From = "#ec4899", To = "#8b5cf6" };
+            if (id == Liked) return new Mix { Id = id, Name = "Любимые треки", Tag = "Избранное", Tracks = FavTracks(), Icon = "heart", From = "#FF5FA2", To = "#C2185B" };
             if (id == Uploaded) return new Mix { Id = id, Name = "Загруженная музыка", Tag = "С компьютера", Tracks = Library.LocalTracks(), Icon = "upload", From = "#06b6d4", To = "#10b981" };
             if (id == Recent) return new Mix { Id = id, Name = "Недавно прослушанные", Tag = "История", Tracks = Library.D.Recent.Select(Catalog.Get).Where(t => t != null).ToList(), Icon = "clock", From = "#8b5cf6", To = "#06b6d4" };
             if (id == "__hour_genre__") return GenreOfHour();

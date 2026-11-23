@@ -235,7 +235,7 @@ namespace Sonora
             sidePrev.Visibility = sideNext.Visibility = q.Count > 1 ? Visibility.Visible : Visibility.Hidden;
 
             bool fav = Library.IsFav(t.Id);
-            favBtn.Child = U.Center(U.Ico("heart", 21, fav ? Th.Accent2 : Th.White, fav));
+            favBtn.Child = U.Center(U.Ico("heart", 21, fav ? Th.Heart : Th.White, fav));
             var black = Th.B("#000000");
             playBtn.Child = U.Center(Player.I.Loading ? (FrameworkElement)U.Tx("···", 18, black) : U.Ico(Player.I.IsPlaying ? "pause" : "play", 32, black));
 
