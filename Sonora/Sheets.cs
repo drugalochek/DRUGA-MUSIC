@@ -92,7 +92,7 @@ namespace Sonora
             {
                 if (busy) return;
                 busy = true;
-                err.Text = "Открыли браузер — выбери аккаунт Google и вернись в приложение.";
+                err.Text = "Открыли браузер: нажми там «Войти через Google», выбери аккаунт и вернись сюда.";
                 err.Foreground = Th.Dim;
                 err.Visibility = Visibility.Visible;
                 try { await Auth.Google(); AfterLogin(); }
@@ -158,9 +158,8 @@ namespace Sonora
             form.Children.Add(err);
             form.Children.Add(submit);
             form.Children.Add(forgot);
-            if (!emailOpen) body.Children.Add(err);
-            else { form.Children.Remove(err); form.Children.Insert(4, err); }
-            OpenSheet("Вход в SONORA", "Тот же аккаунт, что и на сайте: избранное и плейлисты синхронизируются.", body);
+            if (!emailOpen) { form.Children.Remove(err); body.Children.Add(err); }
+            OpenSheet("Вход в SONORA", "Тот же аккаунт, что и на сайте: избранное и плейлисты синхронизируются.", body, Auth.CancelGoogle);
             if (emailOpen && !ShotMode) Dispatcher.BeginInvoke(new Action(() => mailIn.Focus2()), DispatcherPriority.Input);
         }
         void AfterLogin()

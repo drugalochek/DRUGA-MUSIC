@@ -615,38 +615,48 @@ namespace Sonora
         static string B64Url(byte[] b) { return Convert.ToBase64String(b).TrimEnd('=').Replace('+', '-').Replace('/', '_'); }
         static byte[] Rnd(int n) { var b = new byte[n]; using (var r = RandomNumberGenerator.Create()) r.GetBytes(b); return b; }
 
+        // Вход через Google: Firebase сам ведёт OAuth (его веб-клиент разрешает домен localhost).
+        // Приложение поднимает локальную страницу http://localhost:PORT, браузер открывает её,
+        // пользователь жмёт кнопку, Firebase показывает окно Google и возвращает токен Google,
+        // страница отдаёт его обратно приложению, а приложение обменивает его через signInWithIdp.
+        static System.Threading.CancellationTokenSource googleCts;
+        public static void CancelGoogle() { try { googleCts?.Cancel(); } catch { } }
+
         public static async Task Google()
         {
-            var verifier = B64Url(Rnd(32));
-            string challenge;
-            using (var sha = SHA256.Create()) challenge = B64Url(sha.ComputeHash(Encoding.ASCII.GetBytes(verifier)));
+            CancelGoogle();
+            var cts = new System.Threading.CancellationTokenSource();
+            googleCts = cts;
             var state = B64Url(Rnd(16));
-            var listener = new TcpListener(IPAddress.Loopback, 0);
-            listener.Start();
-            string code;
-            var port = ((IPEndPoint)listener.LocalEndpoint).Port;
-            var redirect = "http://127.0.0.1:" + port;
+            var v4 = new TcpListener(IPAddress.Loopback, 0);
+            v4.Start();
+            var port = ((IPEndPoint)v4.LocalEndpoint).Port;
+            TcpListener v6 = null;
+            try { v6 = new TcpListener(IPAddress.IPv6Loopback, port); v6.Start(); } catch { v6 = null; }
+            Dictionary<string, object> got;
             try
             {
-                var url = "https://accounts.google.com/o/oauth2/v2/auth?" + Net.Form(
-                    "client_id", GoogleClientId, "redirect_uri", redirect, "response_type", "code",
-                    "scope", "openid email profile", "code_challenge", challenge, "code_challenge_method", "S256",
-                    "state", state, "prompt", "select_account");
+                var url = "http://localhost:" + port + "/?s=" + state;
                 try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); }
                 catch (Exception ex) { throw new AuthException("Не удалось открыть браузер: " + ex.Message); }
-                code = await WaitForCode(listener, state);
+                got = await WaitForGoogle(v4, v6, port, state, cts.Token);
             }
-            finally { try { listener.Stop(); } catch { } }
+            finally
+            {
+                try { v4.Stop(); } catch { }
+                try { v6?.Stop(); } catch { }
+                if (googleCts == cts) googleCts = null;
+            }
 
-            var tr = await Net.Send("POST", "https://oauth2.googleapis.com/token", form: Net.Form(
-                "client_id", GoogleClientId, "code", code, "code_verifier", verifier, "grant_type", "authorization_code", "redirect_uri", redirect));
-            if (!tr.Ok) throw new AuthException("Google не выдал токен: " + (ErrorOf(tr.Body) ?? ("HTTP " + tr.Code)));
-            var access = J.Str(J.D(J.Parse(tr.Body)), "access_token");
-            if (string.IsNullOrEmpty(access)) throw new AuthException("Google не вернул токен доступа.");
+            var idTok = J.Str(got, "idToken");
+            var accTok = J.Str(got, "accessToken");
+            string post = !string.IsNullOrEmpty(idTok) ? "id_token=" + Uri.EscapeDataString(idTok)
+                        : !string.IsNullOrEmpty(accTok) ? "access_token=" + Uri.EscapeDataString(accTok) : null;
+            if (post == null) throw new AuthException("Google не вернул данные для входа. Попробуй ещё раз.");
             var d = await Call("signInWithIdp", new
             {
-                postBody = "access_token=" + Uri.EscapeDataString(access) + "&providerId=google.com",
-                requestUri = redirect,
+                postBody = post + "&providerId=google.com",
+                requestUri = "http://localhost",
                 returnIdpCredential = true,
                 returnSecureToken = true
             });
@@ -655,41 +665,141 @@ namespace Sonora
             Done();
         }
 
-        static async Task<string> WaitForCode(TcpListener listener, string state)
+        static string GooglePage(string state)
         {
-            var deadline = DateTime.UtcNow.AddMinutes(4);
+            return @"<!doctype html><html lang='ru'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>SONORA — вход через Google</title>
+<style>html,body{margin:0;height:100%;background:#050608;color:#F5F7FA;font-family:'Segoe UI',system-ui,sans-serif}
+.w{min-height:100%;display:flex;align-items:center;justify-content:center}.c{width:380px;max-width:90vw;text-align:center;padding:36px 32px;border-radius:24px;background:#101216;border:1px solid rgba(255,255,255,.08)}
+.l{width:64px;height:64px;border-radius:18px;margin:0 auto 18px;background:linear-gradient(135deg,#60a5fa,#1d4ed8)}h2{margin:0 0 8px;font-size:22px}p{color:#8C93A1;font-size:14px;line-height:1.45;margin:0 0 22px}
+button{width:100%;border:0;border-radius:14px;padding:14px;font-size:15px;font-weight:600;cursor:pointer;background:#fff;color:#111;display:flex;align-items:center;justify-content:center;gap:10px}
+button:disabled{opacity:.6;cursor:default}.e{color:#F87171}.ok{color:#60A5FA}</style></head><body><div class='w'><div class='c'><div class='l'></div>
+<h2 id='t'>Вход в SONORA</h2><p id='m'>Нажми кнопку и выбери аккаунт Google. Потом вернись в приложение.</p>
+<button id='b'><svg width='18' height='18' viewBox='0 0 48 48'><path fill='#FFC107' d='M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z'/><path fill='#FF3D00' d='M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z'/><path fill='#4CAF50' d='M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z'/><path fill='#1976D2' d='M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z'/></svg><span>Войти через Google</span></button></div></div>
+<script src='https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js'></script>
+<script src='https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js'></script>
+<script>
+var S='" + state + @"',b=document.getElementById('b'),m=document.getElementById('m'),t=document.getElementById('t');
+function msg(x,c){m.textContent=x;m.className=c||''}
+function send(path,obj){return fetch(path+'?s='+S,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(obj||{})})}
+function done(r){var c=r&&r.credential;if(!c){msg('Google не вернул данные. Попробуй ещё раз.','e');b.disabled=false;return}
+ msg('Секунду…');send('/done',{idToken:c.idToken||'',accessToken:c.accessToken||''}).then(function(){t.textContent='Готово!';msg('Можно закрыть вкладку и вернуться в SONORA.','ok');b.style.display='none'})
+ .catch(function(){msg('Приложение SONORA закрыто или вход уже отменён. Запусти вход заново.','e')})}
+function fail(e){var c=e&&e.code||'';b.disabled=false;
+ if(c==='auth/popup-closed-by-user'||c==='auth/cancelled-popup-request'){msg('Окно Google закрыто. Нажми кнопку ещё раз.');return}
+ if(c==='auth/network-request-failed'){msg('Нет связи с Google. Проверь интернет и попробуй ещё раз.','e');return}
+ msg('Ошибка: '+(e&&e.message||e),'e');send('/log',{code:c,message:String(e&&e.message||e)})}
+if(!window.firebase){msg('Не удалось загрузить модуль входа Google. Проверь интернет или отключи блокировщик и обнови страницу.','e');b.disabled=true}
+else{
+ firebase.initializeApp({apiKey:'" + ApiKey + @"',authDomain:'sonora-ab012.firebaseapp.com',projectId:'sonora-ab012'});
+ var A=firebase.auth(),P=new firebase.auth.GoogleAuthProvider();P.addScope('email');P.addScope('profile');P.setCustomParameters({prompt:'select_account'});
+ A.getRedirectResult().then(function(r){if(r&&r.credential)done(r)}).catch(fail);
+ b.onclick=function(){b.disabled=true;msg('Выбери аккаунт в окне Google…');
+  A.signInWithPopup(P).then(done).catch(function(e){if(e&&e.code==='auth/popup-blocked'){msg('Переходим на страницу Google…');A.signInWithRedirect(P).catch(fail)}else fail(e)})};
+}
+</script></body></html>";
+        }
+
+        static async Task<Dictionary<string, object>> WaitForGoogle(TcpListener v4, TcpListener v6, int port, string state, System.Threading.CancellationToken ct)
+        {
+            var deadline = DateTime.UtcNow.AddMinutes(5);
+            Task<TcpClient> a4 = null, a6 = null;
             while (DateTime.UtcNow < deadline)
             {
-                var acceptTask = listener.AcceptTcpClientAsync();
-                var done = await Task.WhenAny(acceptTask, Task.Delay(deadline - DateTime.UtcNow));
-                if (done != acceptTask) break;
-                using (var client = acceptTask.Result)
-                using (var stream = client.GetStream())
-                {
-                    stream.ReadTimeout = 5000;
-                    var buf = new byte[8192];
-                    int n = 0;
-                    try { n = stream.Read(buf, 0, buf.Length); } catch { }
-                    var req = Encoding.ASCII.GetString(buf, 0, n);
-                    var first = req.Split('\n')[0];
-                    var parts = first.Split(' ');
-                    var target = parts.Length > 1 ? parts[1] : "/";
-                    var q = ParseQuery(target);
-                    bool ok = q.ContainsKey("code") || q.ContainsKey("error");
-                    var html = ok
-                        ? "<!doctype html><html><head><meta charset='utf-8'><title>SONORA</title></head><body style='margin:0;height:100vh;display:flex;align-items:center;justify-content:center;background:#0A0A12;color:#F5F5F8;font-family:Segoe UI,sans-serif'><div style='text-align:center'><div style='width:64px;height:64px;border-radius:18px;margin:0 auto 18px;background:linear-gradient(135deg,#60a5fa,#1d4ed8)'></div><h2 style='margin:0 0 8px'>" + (q.ContainsKey("code") ? "Готово!" : "Вход отменён") + "</h2><p style='color:#82829A'>Можно закрыть вкладку и вернуться в SONORA.</p></div></body></html>"
-                        : "<!doctype html><html><body></body></html>";
-                    var bytes = Encoding.UTF8.GetBytes(html);
-                    var head = Encoding.ASCII.GetBytes("HTTP/1.1 " + (ok ? "200 OK" : "404 Not Found") + "\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: " + bytes.Length + "\r\nConnection: close\r\n\r\n");
-                    try { stream.Write(head, 0, head.Length); stream.Write(bytes, 0, bytes.Length); stream.Flush(); } catch { }
-                    if (!ok) continue;
-                    if (q.ContainsKey("error")) throw new AuthException(q["error"] == "access_denied" ? "Вход через Google отменён." : "Google: " + q["error"]);
-                    if (!q.TryGetValue("state", out var st) || st != state) throw new AuthException("Ответ Google не прошёл проверку. Попробуй ещё раз.");
-                    return q["code"];
-                }
+                if (a4 == null) a4 = v4.AcceptTcpClientAsync();
+                if (a6 == null && v6 != null) a6 = v6.AcceptTcpClientAsync();
+                var wait = new List<Task> { a4, Task.Delay(deadline - DateTime.UtcNow, ct) };
+                if (a6 != null) wait.Add(a6);
+                var fin = await Task.WhenAny(wait);
+                if (ct.IsCancellationRequested) throw new AuthException("Вход через Google отменён.");
+                TcpClient client;
+                if (fin == a4) { client = a4.Result; a4 = null; }
+                else if (a6 != null && fin == a6) { client = a6.Result; a6 = null; }
+                else break;
+                Dictionary<string, object> res = null;
+                try { res = await Task.Run(() => HandleGoogleReq(client, port, state)); }
+                catch (Exception ex) { Log.W("google http: " + ex.Message); }
+                finally { try { client.Close(); } catch { } }
+                if (res != null) return res;
             }
-            throw new AuthException("Время ожидания входа через Google истекло.");
+            throw new AuthException("Время ожидания входа через Google истекло. Нажми «Войти через Google» ещё раз.");
         }
+
+        // Мини-HTTP: GET / — страница входа, POST /done — токен Google, POST /log — ошибка из браузера.
+        static Dictionary<string, object> HandleGoogleReq(TcpClient client, int port, string state)
+        {
+            using (var stream = client.GetStream())
+            {
+                stream.ReadTimeout = 8000;
+                var ms = new MemoryStream();
+                var buf = new byte[8192];
+                int headEnd = -1, contentLen = 0;
+                while (ms.Length < 256 * 1024)
+                {
+                    int n;
+                    try { n = stream.Read(buf, 0, buf.Length); } catch { break; }
+                    if (n <= 0) break;
+                    ms.Write(buf, 0, n);
+                    var all = ms.ToArray();
+                    if (headEnd < 0)
+                    {
+                        var s = Encoding.ASCII.GetString(all);
+                        headEnd = s.IndexOf("\r\n\r\n", StringComparison.Ordinal);
+                        if (headEnd >= 0)
+                        {
+                            var mm = System.Text.RegularExpressions.Regex.Match(s.Substring(0, headEnd), @"(?im)^content-length:\s*(\d+)");
+                            if (mm.Success) contentLen = int.Parse(mm.Groups[1].Value);
+                        }
+                    }
+                    if (headEnd >= 0 && all.Length >= headEnd + 4 + contentLen) break;
+                }
+                var raw = ms.ToArray();
+                if (headEnd < 0) return null;
+                var head = Encoding.ASCII.GetString(raw, 0, headEnd);
+                var body = Encoding.UTF8.GetString(raw, headEnd + 4, Math.Max(0, Math.Min(contentLen, raw.Length - headEnd - 4)));
+                var first = head.Split('\n')[0].Trim().Split(' ');
+                var method = first.Length > 0 ? first[0] : "GET";
+                var target = first.Length > 1 ? first[1] : "/";
+                var path = target.Split('?')[0];
+                var q = ParseQuery(target);
+                var hostM = System.Text.RegularExpressions.Regex.Match(head, @"(?im)^host:\s*([^\r\n:]+)");
+                var host = hostM.Success ? hostM.Groups[1].Value.Trim().ToLowerInvariant() : "localhost";
+                string sv;
+                bool stateOk = q.TryGetValue("s", out sv) && sv == state;
+
+                if (method == "GET" && path == "/" && host != "localhost")
+                {
+                    // Firebase разрешает только домен localhost — перенаправляем 127.0.0.1 → localhost
+                    Reply(stream, "302 Found", "text/plain", "", "Location: http://localhost:" + port + target + "\r\n");
+                    return null;
+                }
+                if (method == "GET" && path == "/")
+                {
+                    if (!stateOk) { Reply(stream, "403 Forbidden", "text/plain; charset=utf-8", "Ссылка устарела. Нажми «Войти через Google» в SONORA ещё раз."); return null; }
+                    Reply(stream, "200 OK", "text/html; charset=utf-8", GooglePage(state), "Cache-Control: no-store\r\n");
+                    return null;
+                }
+                if (method == "POST" && stateOk && path == "/done")
+                {
+                    Reply(stream, "200 OK", "text/plain", "ok");
+                    return J.D(J.Parse(body)) ?? new Dictionary<string, object>();
+                }
+                if (method == "POST" && stateOk && path == "/log")
+                {
+                    Log.W("google page: " + body);
+                    Reply(stream, "200 OK", "text/plain", "ok");
+                    return null;
+                }
+                Reply(stream, "404 Not Found", "text/plain", "");
+                return null;
+            }
+        }
+        static void Reply(Stream stream, string status, string type, string text, string extra = "")
+        {
+            var bytes = Encoding.UTF8.GetBytes(text ?? "");
+            var head = Encoding.ASCII.GetBytes("HTTP/1.1 " + status + "\r\nContent-Type: " + type + "\r\nContent-Length: " + bytes.Length + "\r\n" + extra + "Connection: close\r\n\r\n");
+            try { stream.Write(head, 0, head.Length); stream.Write(bytes, 0, bytes.Length); stream.Flush(); } catch { }
+        }
+
         static Dictionary<string, string> ParseQuery(string target)
         {
             var res = new Dictionary<string, string>();

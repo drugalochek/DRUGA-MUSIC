@@ -60,6 +60,7 @@ namespace Sonora
         public const int SpPort = 43117;
         public static readonly string SpRedirect = "http://127.0.0.1:" + SpPort + "/callback";
         public const string YaClientId = "23cabbbdc6cd418abb4b39c32c41195d";
+        const string YaSecret = "53bc75238f0c4d08a118e51fe9203300";
         public static readonly string YaAuthUrl = "https://oauth.yandex.ru/authorize?response_type=token&client_id=" + YaClientId;
         const string YaApi = "https://api.music.yandex.net";
         const string DzApi = "https://api.deezer.com";
@@ -256,6 +257,51 @@ namespace Sonora
             catch { S.YaToken = oldTok; throw; }
             YaLists = null;
             Fire();
+        }
+        public sealed class YaCode { public string Device, User, Url; public int Interval, Expires; }
+        static Dictionary<string, object> Js(string body) { try { return J.D(J.Parse(body)); } catch { return null; } }
+        public static async Task<YaCode> YaDeviceStart()
+        {
+            var r = await Req("POST", "https://oauth.yandex.ru/device/code", null,
+                Net.Form("client_id", YaClientId, "device_name", "SONORA для Windows")).ConfigureAwait(false);
+            var d = Js(r.Body);
+            var dev = J.Str(d, "device_code");
+            if (!r.Ok || string.IsNullOrEmpty(dev))
+                throw new ExtException("Яндекс не выдал код входа: " + (J.Str(d, "error_description") ?? J.Str(d, "error") ?? ("HTTP " + r.Code)));
+            return new YaCode
+            {
+                Device = dev, User = J.Str(d, "user_code") ?? "",
+                Url = J.Str(d, "verification_url") ?? "https://ya.ru/device",
+                Interval = Math.Max(2, (int)J.Num(d, "interval")),
+                Expires = Math.Max(60, (int)J.Num(d, "expires_in"))
+            };
+        }
+        public static async Task YaDeviceWait(YaCode c, System.Threading.CancellationToken ct)
+        {
+            var until = DateTime.UtcNow.AddSeconds(c.Expires);
+            int iv = c.Interval;
+            while (DateTime.UtcNow < until)
+            {
+                await Task.Delay(iv * 1000, ct).ConfigureAwait(false);
+                Net.Resp r;
+                try
+                {
+                    r = await Req("POST", "https://oauth.yandex.ru/token", null, Net.Form(
+                        "grant_type", "device_code", "code", c.Device, "client_id", YaClientId, "client_secret", YaSecret)).ConfigureAwait(false);
+                }
+                catch (ExtException) { continue; }
+                ct.ThrowIfCancellationRequested();
+                var d = Js(r.Body);
+                var tok = J.Str(d, "access_token");
+                if (r.Ok && !string.IsNullOrEmpty(tok)) { await YaConnect(tok).ConfigureAwait(false); return; }
+                var err = J.Str(d, "error");
+                if (err == "authorization_pending") continue;
+                if (err == "slow_down") { iv += 2; continue; }
+                if (err == "expired_token") break;
+                if (err == "access_denied") throw new ExtException("Вход в Яндекс отменён. Нажми «Получить новый код».");
+                throw new ExtException("Яндекс отклонил вход: " + (J.Str(d, "error_description") ?? err ?? ("HTTP " + r.Code)));
+            }
+            throw new ExtException("Код устарел. Нажми «Получить новый код».");
         }
         public static void YaDisconnect()
         {
@@ -456,17 +502,27 @@ namespace Sonora
         static string B64Url(byte[] b) { return Convert.ToBase64String(b).TrimEnd('=').Replace('+', '-').Replace('/', '_'); }
         static byte[] Rnd(int n) { var b = new byte[n]; using (var r = RandomNumberGenerator.Create()) r.GetBytes(b); return b; }
 
+        static System.Threading.CancellationTokenSource spCts;
+        public static void SpCancel() { try { spCts?.Cancel(); } catch { } }
         public static async Task SpConnect(string clientId)
         {
+            SpCancel();
             clientId = (clientId ?? "").Trim();
             if (!Regex.IsMatch(clientId, "^[0-9a-fA-F]{32}$")) throw new ExtException("Client ID — это 32 символа (буквы a–f и цифры) из кабинета Spotify");
             var verifier = B64Url(Rnd(48));
             string challenge;
             using (var sha = SHA256.Create()) challenge = B64Url(sha.ComputeHash(Encoding.ASCII.GetBytes(verifier)));
             var state = B64Url(Rnd(16));
-            TcpListener listener;
-            try { listener = new TcpListener(IPAddress.Loopback, SpPort); listener.Start(); }
-            catch { throw new ExtException("Порт " + SpPort + " занят другой программой — закрой её и попробуй снова"); }
+            var cts = new System.Threading.CancellationTokenSource();
+            spCts = cts;
+            TcpListener listener = null;
+            for (int i = 0; i < 10 && listener == null; i++)
+            {
+                try { listener = new TcpListener(IPAddress.Loopback, SpPort); listener.Start(); }
+                catch { listener = null; await Task.Delay(200).ConfigureAwait(false); }
+            }
+            if (listener == null)
+                throw new ExtException("Порт " + SpPort + " занят другой программой — закрой её и попробуй снова");
             string code;
             try
             {
@@ -476,9 +532,13 @@ namespace Sonora
                     "scope", "user-library-read playlist-read-private playlist-read-collaborative user-read-private user-read-email");
                 try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); }
                 catch (Exception ex) { throw new ExtException("Не удалось открыть браузер: " + ex.Message); }
-                code = await WaitForCode(listener, state, "Spotify").ConfigureAwait(false);
+                using (cts.Token.Register(() => { try { listener.Stop(); } catch { } }))
+                {
+                    try { code = await WaitForCode(listener, state, "Spotify").ConfigureAwait(false); }
+                    catch (Exception) when (cts.IsCancellationRequested) { throw new ExtException("Подключение Spotify отменено"); }
+                }
             }
-            finally { try { listener.Stop(); } catch { } }
+            finally { try { listener.Stop(); } catch { } if (spCts == cts) spCts = null; }
 
             var tr = await Req("POST", "https://accounts.spotify.com/api/token", null, Net.Form(
                 "grant_type", "authorization_code", "code", code, "redirect_uri", SpRedirect, "client_id", clientId, "code_verifier", verifier)).ConfigureAwait(false);

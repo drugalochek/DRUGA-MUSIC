@@ -319,7 +319,7 @@ namespace Sonora
             var img = t == null ? null : Img.FromData(t.Id, t.Cover, px);
             if (img == null) return null;
             var b = new ImageBrush(img) { Stretch = Stretch.UniformToFill };
-            b.Freeze();
+            if (b.CanFreeze) b.Freeze();
             return b;
         }
         public static Border Cover(Track t, double size, double radius, double iconSize, Brush placeholder = null, string icon = "music")

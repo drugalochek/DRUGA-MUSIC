@@ -28,7 +28,7 @@ namespace Sonora
             var img = Img.FromData("url:" + url, url, px);
             if (img == null) return null;
             var b = new ImageBrush(img) { Stretch = Stretch.UniformToFill };
-            b.Freeze();
+            if (b.CanFreeze) b.Freeze();
             return b;
         }
         static Border Pill(string text, Action a, bool primary)
@@ -221,17 +221,69 @@ namespace Sonora
         }
 
         // ---------- окна подключения ----------
+        // Яндекс: вход по коду (как на телевизорах). Ничего копировать из браузера не нужно.
         public void YandexSheet()
         {
-            var err = U.Wrap("", 12.5, Th.Danger);
-            err.Visibility = Visibility.Collapsed;
-            err.Margin = new Thickness(2, 0, 2, 10);
-            var inp = new Input("Адрес страницы после входа (с access_token=…)");
+            var status = U.Wrap("", 12.5, Th.Dim);
+            status.Margin = new Thickness(2, 0, 2, 10);
+            status.Visibility = Visibility.Collapsed;
+            var code = U.Tx("········", 34, Th.White);
+            code.FontWeight = FontWeights.Bold;
+            code.FontFamily = new FontFamily("Consolas");
+            code.HorizontalAlignment = HorizontalAlignment.Center;
+            var codeHint = U.Tx("Код для входа", 12, Th.Dim);
+            codeHint.HorizontalAlignment = HorizontalAlignment.Center;
+            var codeBox = new Border
+            {
+                Padding = new Thickness(16, 14, 16, 16), Margin = new Thickness(0, 0, 0, 12), CornerRadius = new CornerRadius(16),
+                Background = Th.Soft, BorderBrush = Th.BorderHi, BorderThickness = new Thickness(1),
+                Child = U.Col(codeHint, U.M(code, 0, 4, 0, 0))
+            };
+            string curCode = null, curUrl = "https://ya.ru/device";
+            System.Threading.CancellationTokenSource cts = null;
+            Action<string, Brush> say = (m, b) => { status.Text = m; status.Foreground = b; status.Visibility = string.IsNullOrEmpty(m) ? Visibility.Collapsed : Visibility.Visible; };
+            Func<Task> start = null;
+            start = async () =>
+            {
+                try { cts?.Cancel(); } catch { }
+                var my = new System.Threading.CancellationTokenSource();
+                cts = my;
+                code.Text = "········"; curCode = null;
+                say("Получаем код у Яндекса…", Th.Dim);
+                try
+                {
+                    var c = await Ext.YaDeviceStart();
+                    if (my.IsCancellationRequested) return;
+                    curCode = c.User; curUrl = c.Url;
+                    code.Text = c.User.ToUpperInvariant();
+                    try { Clipboard.SetText(c.User); } catch { }
+                    OpenUrl(c.Url);
+                    say("Открыли " + c.Url.Replace("https://", "") + " в браузере. Войди в Яндекс и введи этот код (он уже скопирован — просто вставь). Ждём подтверждения…", Th.Dim);
+                    await Ext.YaDeviceWait(c, my.Token);
+                    if (my.IsCancellationRequested) return;
+                    CloseSheet();
+                    Toast("Яндекс Музыка подключена: " + Ext.S.YaName + (Ext.S.YaPlus ? " · Плюс" : ""));
+                    Go("services");
+                }
+                catch (OperationCanceledException) { }
+                catch (Exception ex)
+                {
+                    if (my.IsCancellationRequested) return;
+                    Log.W("yandex: " + ex.Message);
+                    say(ex.Message, Th.Danger);
+                }
+            };
+
+            // запасной способ — вставить токен вручную
+            var manualErr = U.Wrap("", 12.5, Th.Danger);
+            manualErr.Visibility = Visibility.Collapsed;
+            manualErr.Margin = new Thickness(2, 0, 2, 10);
+            var inp = new Input("Токен или адрес страницы с access_token=…");
             bool busy = false;
-            Func<Task> go = async () =>
+            Func<Task> manual = async () =>
             {
                 if (busy) return;
-                busy = true; err.Visibility = Visibility.Collapsed;
+                busy = true; manualErr.Visibility = Visibility.Collapsed;
                 try
                 {
                     await Ext.YaConnect(inp.Text);
@@ -239,17 +291,31 @@ namespace Sonora
                     Toast("Яндекс Музыка подключена: " + Ext.S.YaName);
                     Go("services");
                 }
-                catch (Exception ex) { err.Text = ex.Message; err.Visibility = Visibility.Visible; }
+                catch (Exception ex) { manualErr.Text = ex.Message; manualErr.Visibility = Visibility.Visible; }
                 busy = false;
             };
-            inp.Enter += async () => await go();
-            var steps = U.Wrap("1. Нажми «Открыть вход Яндекса» и войди в свой аккаунт.\n2. Откроется страница Яндекс Музыки — скопируй её адрес из строки браузера целиком.\n3. Вставь адрес сюда и нажми «Подключить».", 13, Th.Dim, 0, 21);
+            inp.Enter += async () => await manual();
+            var manualBox = U.Col(
+                U.M(U.Wrap("Открой ссылку, войди в Яндекс и скопируй адрес страницы, на которую попадёшь, целиком — в нём есть access_token=…", 12.5, Th.Dim, 0, 19), 0, 0, 0, 10),
+                Provider(U.Ico("globe", 20, Th.Txt), "Открыть страницу входа", () => OpenUrl(Ext.YaAuthUrl)),
+                inp, manualErr,
+                SheetBtn("Подключить по токену", async () => await manual(), "ghost"));
+            manualBox.Visibility = Visibility.Collapsed;
+            var manualLink = U.Tx("Не получается? Подключить вручную", 12.5, Th.Accent3);
+            manualLink.HorizontalAlignment = HorizontalAlignment.Center;
+            manualLink.Margin = new Thickness(0, 12, 0, 8);
+            U.Click(manualLink, () => { manualBox.Visibility = manualBox.Visibility == Visibility.Visible ? Visibility.Collapsed : Visibility.Visible; }, 1);
+
+            var steps = U.Wrap("1. SONORA покажет код и откроет страницу Яндекса.\n2. Войди там в свой аккаунт и вставь код (он уже скопирован).\n3. Всё — Яндекс Музыка подключится сама, здесь ничего нажимать не нужно.", 13, Th.Dim, 0, 21);
             steps.Margin = new Thickness(0, 0, 0, 14);
-            var body = U.Col(steps,
-                Provider(U.Ico("login", 20, Th.White), "Открыть вход Яндекса", () => OpenUrl(Ext.YaAuthUrl), true),
-                inp, err,
-                Acts(SheetBtn("Отмена", CloseSheet, "ghost"), SheetBtn("Подключить", async () => await go())));
-            OpenSheet("Яндекс Музыка", "Ключ доступа хранится только на этом компьютере, в зашифрованном виде.", body);
+            var body = U.Col(steps, codeBox, status,
+                Acts(SheetBtn("Скопировать код", () => { if (curCode == null) return; try { Clipboard.SetText(curCode); Toast("Код скопирован: " + curCode.ToUpperInvariant()); } catch { } }, "ghost"),
+                     SheetBtn("Открыть страницу", () => OpenUrl(curUrl), "ghost")),
+                U.M(SheetBtn("Получить новый код", async () => await start()), 0, 10, 0, 0),
+                manualLink, manualBox);
+            OpenSheet("Яндекс Музыка", "Вход проходит на сайте Яндекса — пароль SONORA не видит. Ключ доступа хранится только на этом компьютере, в зашифрованном виде.", body,
+                () => { try { cts?.Cancel(); } catch { } });
+            if (!ShotMode) { var _ = start(); }
         }
 
         public void SpotifySheet()
@@ -259,31 +325,37 @@ namespace Sonora
             err.Margin = new Thickness(2, 0, 2, 10);
             var inp = new Input("Client ID (32 символа)");
             inp.Text = Ext.S.SpClientId ?? "";
-            bool busy = false;
+            int gen = 0;
             Func<Task> go = async () =>
             {
-                if (busy) return;
-                busy = true; err.Visibility = Visibility.Collapsed;
+                int my = ++gen;
+                err.Visibility = Visibility.Collapsed;
                 try
                 {
-                    err.Text = "Подтверди вход в открывшемся браузере…"; err.Foreground = Th.Dim; err.Visibility = Visibility.Visible;
+                    err.Text = "Открыли браузер — нажми там «Agree / Принять». Если в браузере ошибка «Invalid redirect URI», проверь шаг 3 и нажми кнопку ещё раз.";
+                    err.Foreground = Th.Dim; err.Visibility = Visibility.Visible;
                     await Ext.SpConnect(inp.Text);
                     CloseSheet();
                     Toast("Spotify подключён: " + Ext.S.SpName);
                     Go("services");
                 }
-                catch (Exception ex) { err.Text = ex.Message; err.Foreground = Th.Danger; err.Visibility = Visibility.Visible; }
-                busy = false;
+                catch (Exception ex) { if (my == gen) { err.Text = ex.Message; err.Foreground = Th.Danger; err.Visibility = Visibility.Visible; } }
             };
             inp.Enter += async () => await go();
-            var steps = U.Wrap("Spotify не даёт сторонним плеерам общий ключ, поэтому нужен свой Client ID — бесплатно, пара минут:\n1. Открой кабинет разработчика Spotify и нажми «Create app».\n2. В Redirect URIs вставь " + Ext.SpRedirect + ", отметь «Web API» и сохрани.\n3. Скопируй Client ID из настроек приложения и вставь ниже.", 13, Th.Dim, 0, 21);
+            var steps = U.Wrap(
+                "Spotify не даёт сторонним плеерам общий ключ, поэтому один раз нужен свой Client ID (бесплатно, 2 минуты):\n" +
+                "1. Нажми «Открыть кабинет Spotify» и войди своим аккаунтом Spotify.\n" +
+                "2. Нажми «Create app». App name и Description — любые, например SONORA.\n" +
+                "3. В поле «Redirect URIs» вставь " + Ext.SpRedirect + " (кнопка ниже копирует его) и нажми «Add».\n" +
+                "4. В «Which API/SDKs are you planning to use?» отметь «Web API», поставь галочку согласия и нажми «Save».\n" +
+                "5. Открой «Settings» приложения, скопируй Client ID, вставь его ниже и нажми «Войти через Spotify».", 13, Th.Dim, 0, 21);
             steps.Margin = new Thickness(0, 0, 0, 14);
             var body = U.Col(steps,
-                Provider(U.Ico("globe", 20, Th.Txt), "Открыть кабинет Spotify", () => OpenUrl("https://developer.spotify.com/dashboard")),
+                Provider(U.Ico("globe", 20, Th.Txt), "Открыть кабинет Spotify", () => OpenUrl("https://developer.spotify.com/dashboard/create")),
                 Provider(U.Ico("share", 20, Th.Txt), "Скопировать Redirect URI", () => { try { Clipboard.SetText(Ext.SpRedirect); Toast("Скопировано: " + Ext.SpRedirect); } catch { } }),
                 inp, err,
                 Acts(SheetBtn("Отмена", CloseSheet, "ghost"), SheetBtn("Войти через Spotify", async () => await go())));
-            OpenSheet("Spotify", "Вход проходит на сайте Spotify — пароль SONORA не видит.", body);
+            OpenSheet("Spotify", "Вход проходит на сайте Spotify — пароль SONORA не видит. Если Spotify в твоей стране недоступен, сайт может не открыться без VPN.", body, Ext.SpCancel);
         }
 
         public void DeezerSheet(bool linkOnly)

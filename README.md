@@ -35,3 +35,13 @@ dotnet build Sonora/Sonora.csproj -c Release
 ```
 
 Готовый файл: `Sonora/bin/Release/net48/SONORA.exe`. Данные пользователя хранятся в `%LocalAppData%\SONORA`.
+
+## Как подключить сервисы (вкладка «Сервисы»)
+
+- **Яндекс Музыка** — «Подключить» → SONORA покажет код и откроет ya.ru/device. Войди в Яндекс, вставь код (он уже скопирован) — подключение завершится само.
+- **Spotify** — нужен свой бесплатный Client ID: developer.spotify.com/dashboard → Create app → Redirect URI `http://127.0.0.1:43117/callback` → Web API → Save → скопировать Client ID в SONORA → «Войти через Spotify».
+- **Deezer** — поиск работает без входа (отрывки по 30 с). Для лайков и плейлистов вставь ссылку на свой публичный профиль `deezer.com/profile/…`.
+
+## Вход через Google
+
+«Войти через Google» открывает в браузере страницу SONORA на `localhost` → кнопка «Войти через Google» → выбрать аккаунт → вернуться в приложение.
