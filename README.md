@@ -1,47 +1,34 @@
 # SONORA
 
-SONORA is a Windows desktop music player focused on a fast, local-first music library.
+Нативный музыкальный плеер для Windows (C# / WPF, .NET Framework 4.8) в стиле Sonic Wave.
 
-## Current milestone — 0.3.0
+## Скачать
 
-### Working features
-- Windows desktop application built with WPF and .NET 8
-- Dark interface and SONORA Windows application icon
-- Import MP3, WAV, AIFF and AIF audio files
-- Read title, artist, album, genre and year metadata
-- Extract embedded album artwork into the local artwork cache
-- Persistent local library and favourite tracks
-- Create and delete playlists; add tracks and play a playlist
-- Search local tracks by title, artist, album and genre
-- Playback, pause/resume, previous/next and automatic next-track playback
-- Playback queue, shuffle and repeat modes
-- Seek through the current track
-- Volume control
+**[⬇ Скачать SONORA для Windows](https://github.com/drugalochek/DRUGA-MUSIC/releases/latest/download/SONORA-win.zip)**
 
-## Data storage
+Распакуй архив и запусти `SONORA.exe`. Установка не нужна: .NET Framework 4.8 уже встроен в Windows 10 и 11.
+Если SmartScreen покажет предупреждение — «Подробнее» → «Выполнить в любом случае» (exe не подписан сертификатом).
 
-The library, playlists and extracted artwork are stored under:
+## Возможности
 
-`%LocalAppData%\SONORA`
+- Дизайн Sonic Wave: тёмная тема, фиолетово-розовые градиенты, шрифт Widock, нижняя навигация
+- Главная: приветствие, любимые исполнители, «Жанр получаса», «Миксы для тебя», «100% для вас», новинки
+- Исследовать (Все / Недавние / Долгие / Короткие / Случайно), Избранное, Поиск, страницы артистов и плейлистов
+- Плеер: мини-плеер, полноэкранный плеер с цветом обложки, перемотка, повтор, перемешивание, очередь, таймер сна, текст песни с караоке-подсветкой (LRC)
+- Свои плейлисты, любимые треки и исполнители, история прослушивания
+- Загрузка своих файлов (MP3, M4A, WAV, FLAC, OGG…) — кнопкой или перетаскиванием в окно
+- Вход и регистрация через Firebase: email + пароль, Google, сброс пароля, гостевой режим
+- Облачная синхронизация избранного и плейлистов между устройствами
+- Горячие клавиши: Пробел — пауза, ←/→ — перемотка, Ctrl+←/→ — трек, Ctrl+F — поиск, Esc — назад; колесо мыши в плеере — громкость
 
-On first launch after the rebrand, the application attempts to migrate the previous
-`%LocalAppData%\DrugaMusic` data directory so existing libraries are preserved.
+## Скриншоты
 
-## Build
+Скриншоты в папке [`screenshots/`](screenshots) делает само приложение (`SONORA.exe --shots <папка>`) при каждой сборке на GitHub Actions.
 
-Requirements: Windows 10/11 and .NET 8 SDK.
+## Сборка
 
-```powershell
-dotnet restore DrugaMusic.sln
-dotnet build DrugaMusic.sln --configuration Release
-dotnet publish DrugaMusic/DrugaMusic.csproj -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true
+```
+dotnet build Sonora/Sonora.csproj -c Release
 ```
 
-## Current scope
-
-SONORA currently plays local audio files. Streaming integrations, cloud accounts,
-lyrics, recommendations, installer packaging and an audio equalizer are not included.
-The player includes a volume control; no equalizer is exposed in this milestone.
-
-Third-party services will only be integrated through supported official APIs and
-permitted playback mechanisms.
+Готовый файл: `Sonora/bin/Release/net48/SONORA.exe`. Данные пользователя хранятся в `%LocalAppData%\SONORA`.
