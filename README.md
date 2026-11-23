@@ -25,6 +25,9 @@
 
 Скриншоты в папке [`screenshots/`](screenshots) делает само приложение (`SONORA.exe --shots <папка>`) при каждой сборке на GitHub Actions.
 
+<img src="screenshots/04-home.png" width="49%"> <img src="screenshots/13-player.png" width="49%">
+<img src="screenshots/01-welcome.png" width="49%"> <img src="screenshots/15-lyrics.png" width="49%">
+
 ## Сборка
 
 ```
