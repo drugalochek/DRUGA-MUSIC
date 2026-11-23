@@ -115,6 +115,7 @@ namespace Sonora
         public double Duration;
         public long Plays, AddedAt;
         public bool Verified;
+        public string Source, Ref, Isrc, Match;   // внешние сервисы: ya / sp / dz
         public bool IsLocal { get { return LocalPath != null; } }
         public bool HasLyrics { get { return !string.IsNullOrWhiteSpace(Lyrics); } }
     }
@@ -136,7 +137,7 @@ namespace Sonora
             }
         }
         public static void Invalidate() { all = null; }
-        public static Track Get(string id) { return All.FirstOrDefault(t => t.Id == id); }
+        public static Track Get(string id) { return All.FirstOrDefault(t => t.Id == id) ?? global::Sonora.Ext.Get(id); }
 
         public static async Task LoadAsync()
         {
@@ -191,6 +192,7 @@ namespace Sonora
         public static Task<string> AudioFile(Track t)
         {
             if (t.IsLocal) return Task.FromResult(t.LocalPath);
+            if (t.Source != null) return global::Sonora.Ext.StreamUrl(t);
             lock (Pending)
             {
                 if (Pending.TryGetValue(t.Id, out var p) && !p.IsFaulted && !p.IsCanceled) return p;
@@ -675,7 +677,7 @@ namespace Sonora
                     var q = ParseQuery(target);
                     bool ok = q.ContainsKey("code") || q.ContainsKey("error");
                     var html = ok
-                        ? "<!doctype html><html><head><meta charset='utf-8'><title>SONORA</title></head><body style='margin:0;height:100vh;display:flex;align-items:center;justify-content:center;background:#0A0A12;color:#F5F5F8;font-family:Segoe UI,sans-serif'><div style='text-align:center'><div style='width:64px;height:64px;border-radius:18px;margin:0 auto 18px;background:linear-gradient(135deg,#8b5cf6,#06b6d4)'></div><h2 style='margin:0 0 8px'>" + (q.ContainsKey("code") ? "Готово!" : "Вход отменён") + "</h2><p style='color:#82829A'>Можно закрыть вкладку и вернуться в SONORA.</p></div></body></html>"
+                        ? "<!doctype html><html><head><meta charset='utf-8'><title>SONORA</title></head><body style='margin:0;height:100vh;display:flex;align-items:center;justify-content:center;background:#0A0A12;color:#F5F5F8;font-family:Segoe UI,sans-serif'><div style='text-align:center'><div style='width:64px;height:64px;border-radius:18px;margin:0 auto 18px;background:linear-gradient(135deg,#60a5fa,#1d4ed8)'></div><h2 style='margin:0 0 8px'>" + (q.ContainsKey("code") ? "Готово!" : "Вход отменён") + "</h2><p style='color:#82829A'>Можно закрыть вкладку и вернуться в SONORA.</p></div></body></html>"
                         : "<!doctype html><html><body></body></html>";
                     var bytes = Encoding.UTF8.GetBytes(html);
                     var head = Encoding.ASCII.GetBytes("HTTP/1.1 " + (ok ? "200 OK" : "404 Not Found") + "\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: " + bytes.Length + "\r\nConnection: close\r\n\r\n");

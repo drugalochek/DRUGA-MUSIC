@@ -226,7 +226,8 @@ namespace Sonora
             body.Children.Add(Provider(U.Ico("heart", 20, fav ? Th.Heart : Th.Txt, fav), fav ? "Убрать из любимых" : "Добавить в любимые", () => { Library.ToggleFav(t.Id); CloseSheet(); }));
             body.Children.Add(Provider(U.Ico("plus", 20, Th.Txt), "Добавить в плейлист", () => AddToPlaylistSheet(t)));
             body.Children.Add(Provider(U.Ico("next", 20, Th.Txt), "Играть следующим", () => { Player.I.PlayNext(t); CloseSheet(); }));
-            if (!t.IsLocal) body.Children.Add(Provider(U.Ico("user", 20, Th.Txt), "Перейти к исполнителю", () => { CloseSheet(); Go("artist", t.Artist); }));
+            if (t.Source != null) body.Children.Add(Provider(U.Ico("search", 20, Th.Txt), "Найти исполнителя", () => { CloseSheet(); Go("search"); SetSearch((t.Artist ?? "").Split(',')[0].Trim()); }));
+            else if (!t.IsLocal) body.Children.Add(Provider(U.Ico("user", 20, Th.Txt), "Перейти к исполнителю", () => { CloseSheet(); Go("artist", t.Artist); }));
             body.Children.Add(Provider(U.Ico("share", 20, Th.Txt), "Скопировать название", () => { CopyTrack(t); CloseSheet(); }));
             if (playlistId != null && playlistId != Mixes.Uploaded)
                 body.Children.Add(Provider(U.Ico("trash", 20, Th.Danger), "Убрать из плейлиста", () => { Library.RemoveFromPlaylist(playlistId, t.Id); CloseSheet(); }));

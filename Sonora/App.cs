@@ -35,6 +35,7 @@ namespace Sonora
 
             Th.InitFont();
             Library.Load();
+            Ext.Load();
             if (ShotsDir == null) Auth.LoadSaved();
             var win = new MainWindow(ShotsDir != null);
             app.MainWindow = win;
@@ -144,6 +145,7 @@ namespace Sonora
                 if (all.Count > 0) { shell.Go("artist", all[0].Artist); await Snap("09-artist"); }
                 shell.Go("playlist", "__hour_genre__"); await Snap("10-playlist");
                 shell.Go("profile"); await Snap("11-profile");
+                shell.Go("services"); await Snap("17-services");
                 if (all.Count > 0)
                 {
                     shell.Go("home");

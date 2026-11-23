@@ -20,12 +20,16 @@ namespace Sonora
         // Синяя палитра: старые фиолетовые/розовые/бирюзовые оттенки переводятся в синие
         static readonly Dictionary<string, string> Remap = new Dictionary<string, string>
         {
-            ["8b5cf6"] = "3b82f6", ["ec4899"] = "1d4ed8", ["06b6d4"] = "0ea5e9", ["a78bfa"] = "93c5fd",
+            ["8b5cf6"] = "3b82f6", ["ec4899"] = "1d4ed8", ["06b6d4"] = "60a5fa", ["a78bfa"] = "93c5fd",
             ["f472b6"] = "60a5fa", ["7c3aed"] = "2563eb", ["db2777"] = "1e40af", ["c084fc"] = "93c5fd",
-            ["f59e0b"] = "0284c7", ["ef4444"] = "1e3a8a", ["10b981"] = "0d9488", ["6366f1"] = "4f46e5",
-            ["14b8a6"] = "0891b2", ["1e1e2a"] = "1c2230", ["16161f"] = "161b26", ["0f0f1a"] = "121722",
+            ["f59e0b"] = "0284c7", ["ef4444"] = "1e3a8a", ["10b981"] = "2563eb", ["6366f1"] = "3b82f6",
+            ["14b8a6"] = "1d4ed8", ["1e1e2a"] = "1c2230", ["16161f"] = "161b26", ["0f0f1a"] = "121722",
             ["14141e"] = "161b26", ["0a0a12"] = "07090d", ["d946ef"] = "2563eb", ["a855f7"] = "3b82f6",
-            ["f97316"] = "0369a1", ["e11d48"] = "1e40af", ["22c55e"] = "0e7490", ["eab308"] = "0284c7"
+            ["f97316"] = "0369a1", ["e11d48"] = "1e40af", ["22c55e"] = "2563eb", ["eab308"] = "0284c7",
+            // всё остальное цветное — тоже в синий
+            ["ff4d94"] = "3b82f6", ["ff5fa2"] = "60a5fa", ["d6246e"] = "1d4ed8", ["c2185b"] = "1e40af",
+            ["22d3ee"] = "60a5fa", ["38bdf8"] = "7ab0ff", ["0e4c5a"] = "1e3a8a", ["0ea5e9"] = "3b82f6",
+            ["0d9488"] = "1d4ed8", ["0891b2"] = "2563eb", ["4f46e5"] = "3b82f6", ["0e7490"] = "1d4ed8"
         };
         public static Color C(string hex, double a = 1)
         {
@@ -41,9 +45,9 @@ namespace Sonora
         public static readonly SolidColorBrush
             Bg = B("#050608"), Panel = B("#101216"), Bg2 = B("#15171C"), Card = B("#1A1D23"), Card2 = B("#22262E"),
             Border = B("#FFFFFF", .06), BorderHi = B("#FFFFFF", .12), Txt = B("#F5F7FA"), Dim = B("#8C93A1"),
-            Accent = B("#3B82F6"), Accent2 = B("#60A5FA"), Accent3 = B("#38BDF8"), Soft = B("#3B82F6", .14),
-            Heart = B("#FF4D94"),
-            Danger = B("#F43F5E"), Ok = B("#22D3EE"), White = B("#FFFFFF"), Clear = B("#000000", 0);
+            Accent = B("#3B82F6"), Accent2 = B("#60A5FA"), Accent3 = B("#7AB0FF"), Soft = B("#3B82F6", .14),
+            Heart = B("#5B9BFF"),
+            Danger = B("#F43F5E"), Ok = B("#60A5FA"), White = B("#FFFFFF"), Clear = B("#000000", 0);
         public static LinearGradientBrush G(string a, string b, bool diagonal = true)
         {
             var g = new LinearGradientBrush(C(a), C(b), new Point(0, 0), diagonal ? new Point(1, 1) : new Point(0, 1));
@@ -62,7 +66,7 @@ namespace Sonora
             g.Freeze();
             return g;
         }
-        public static readonly LinearGradientBrush Brand = G("#3b82f6", "#2563eb"), Hot = G("#3b82f6", "#2563eb"), Pink = G("#FF5FA2", "#D6246E");
+        public static readonly LinearGradientBrush Brand = G("#60A5FA", "#1D4ED8"), Hot = G("#60A5FA", "#1D4ED8"), Pink = G("#60A5FA", "#1D4ED8"), Ring = G("#93C5FD", "#1D4ED8");
         public static FontFamily LogoFont = new FontFamily("Segoe UI");
         // «стекло»: полупрозрачная заливка + светлая кромка сверху, гаснущая книзу
         public static readonly LinearGradientBrush GlassEdge = Edge(.16, .035), GlassEdgeSoft = Edge(.10, .02);
@@ -191,9 +195,8 @@ namespace Sonora
         }
         public static Brush PlayerGradient(Track t)
         {
-            var c = Dominant(t);
-            var d = Color.FromRgb((byte)Math.Max(0, c.R - 40), (byte)Math.Max(0, c.G - 40), (byte)Math.Max(0, c.B - 40));
-            return Th.G(c, d, false);
+            // единая синяя палитра вместо цвета обложки
+            return Th.G(Th.C("#1E3A8A"), Th.C("#0B1022"), false);
         }
     }
 

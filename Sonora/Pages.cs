@@ -30,6 +30,7 @@ namespace Sonora
                 case "playlist": return PlaylistPage(arg as string);
                 case "artists": return LikedArtistsPage();
                 case "profile": return ProfilePage();
+                case "services": return ServicesPage();
                 default: return Home();
             }
         }
@@ -572,7 +573,9 @@ namespace Sonora
             var tr = Catalog.All.Where(t => has(t.Title) || has(t.Artist) || has(t.Album) || Mixes.Genres(t.Genre).Any(g => g.Contains(q))).ToList();
             var ar = Mixes.Artists(Catalog.All.Where(t => has(t.Artist))).ToList();
             var pl = Library.D.Playlists.Where(p => has(p.Name)).ToList();
-            if (tr.Count == 0 && ar.Count == 0 && pl.Count == 0) { box.Children.Add(Empty("search", "Ничего не нашлось", "Попробуй изменить запрос.")); return; }
+            bool none = tr.Count == 0 && ar.Count == 0 && pl.Count == 0;
+            var extBox = new StackPanel();
+            if (none) { box.Children.Add(extBox); if (q.Length >= 2) ExtSearch(q, extBox, true); else extBox.Children.Add(Empty("search", "Ничего не нашлось", "Попробуй изменить запрос.")); return; }
             if (ar.Count > 0)
             {
                 box.Children.Add(SHead("Исполнители", ar.Count.ToString()));
@@ -590,6 +593,8 @@ namespace Sonora
                 foreach (var p in pl)
                     box.Children.Add(LRow(LCover(Th.G(p.Color ?? "#8b5cf6", Th.Shade(p.Color ?? "#8b5cf6", -30)), "music"), p.Name, U.Tn(p.TrackIds.Count), () => Go("playlist", p.Id)));
             }
+            box.Children.Add(extBox);
+            if (q.Length >= 2 && !ShotMode) ExtSearch(q, extBox, false);
         }
 
         // ---------- Artist ----------
@@ -660,23 +665,26 @@ namespace Sonora
         // ---------- Playlist / mix ----------
         FrameworkElement PlaylistPage(string id)
         {
+            bool ext = id != null && id.StartsWith("ext:");
+            Mix mix;
+            if (ext) { if (!Ext.Lists.TryGetValue(id, out mix)) return ExtListLoading(id); }
+            else mix = Mixes.Get(id);
             var sp = new StackPanel();
             sp.Children.Add(BackBtn());
-            var mix = Mixes.Get(id);
             if (mix == null) { sp.Children.Add(Empty("music", "Плейлист не найден", "Возможно, он был удалён.")); return sp; }
             var pl = Library.D.Playlists.FirstOrDefault(p => p.Id == id);
             var grad = Th.G(mix.From ?? "#8b5cf6", mix.To ?? "#06b6d4");
             var head = new Grid { Width = 220, Height = 220, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 8, 0, 20) };
             head.Children.Add(new Border { CornerRadius = new CornerRadius(20), Background = grad, Effect = U.Shadow(50, 20, .8) });
-            bool iconCover = id == Mixes.Liked || id.StartsWith("__mix_") || id == "__hour_genre__" || id == Mixes.Recent || id == Mixes.Uploaded;
+            bool iconCover = (ext && id.EndsWith(":likes")) || id == Mixes.Liked || id.StartsWith("__mix_") || id == "__hour_genre__" || id == Mixes.Recent || id == Mixes.Uploaded;
             if (iconCover)
             {
-                var c = new Border { CornerRadius = new CornerRadius(20), Background = grad, Child = U.Center(U.Ico(id == Mixes.Liked ? "heartFill" : mix.Icon, 100, Th.White)) };
+                var c = new Border { CornerRadius = new CornerRadius(20), Background = grad, Child = U.Center(U.Ico(id == Mixes.Liked || ext && id.EndsWith(":likes") ? "heartFill" : mix.Icon, 100, Th.White)) };
                 head.Children.Add(c);
             }
             else head.Children.Add(Mosaic(mix.Tracks, 220, 20, grad, mix.Icon, 70));
             sp.Children.Add(head);
-            var tag = new Border { HorizontalAlignment = HorizontalAlignment.Center, Padding = new Thickness(8, 3, 8, 3), CornerRadius = new CornerRadius(8), Background = Th.B("#8B5CF6", .15), Margin = new Thickness(0, 0, 0, 6), Child = U.Tx((mix.Tag ?? "").ToUpperInvariant(), 10, Th.Accent3) };
+            var tag = new Border { HorizontalAlignment = HorizontalAlignment.Center, Padding = new Thickness(8, 3, 8, 3), CornerRadius = new CornerRadius(8), Background = Th.B("#3B82F6", .16), Margin = new Thickness(0, 0, 0, 6), Child = U.Tx((mix.Tag ?? "").ToUpperInvariant(), 10, Th.Accent3) };
             sp.Children.Add(tag);
             var name = U.Wrap(mix.Name, 24, Th.Txt);
             name.TextAlignment = TextAlignment.Center;
@@ -694,6 +702,11 @@ namespace Sonora
             var items = new List<UIElement> { play, U.M(shuffle, 10, 0, 0, 0) };
             if (pl != null) items.Add(U.M(RoundBtn("edit", () => NewPlaylistSheet(pl)), 10, 0, 0, 0));
             if (id == Mixes.Uploaded) items.Add(U.M(RoundBtn("plus", PickFiles), 10, 0, 0, 0));
+            if (ext)
+            {
+                items.Add(U.M(RoundBtn("plus", () => SaveExtList(mix)), 10, 0, 0, 0));
+                items.Add(U.M(RoundBtn("refresh", () => RefreshExtList(id)), 10, 0, 0, 0));
+            }
             var left = U.Row(items.ToArray());
             FrameworkElement del = null;
             if (pl != null)
@@ -710,7 +723,7 @@ namespace Sonora
             {
                 sp.Children.Add(id == Mixes.Uploaded
                     ? Empty("upload", "Здесь пока пусто", "Перетащи аудиофайлы в окно или нажми «+».")
-                    : Empty("music", "Пока пусто", pl != null ? "Добавляй треки через меню «⋮» у трека." : "Лайкай треки и исполнителей ♥ — они появятся здесь."));
+                    : Empty("music", "Пока пусто", ext ? "В этом списке сервиса нет треков." : pl != null ? "Добавляй треки через меню «⋮» у трека." : "Лайкай треки и исполнителей ♥ — они появятся здесь."));
             }
             else sp.Children.Add(TrackList(mix.Tracks, int.MaxValue, pl != null ? pl.Id : (id == Mixes.Uploaded ? id : null)));
             return sp;
@@ -729,10 +742,12 @@ namespace Sonora
             var sp = new StackPanel();
             sp.Children.Add(BackBtn());
             var s = Auth.Current;
-            var avatar = new Border { Width = 110, Height = 110, CornerRadius = new CornerRadius(55), Background = Th.Hot, BorderBrush = Th.Card, BorderThickness = new Thickness(3), HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 10, 0, 16), Effect = U.Shadow(44, 16, .6) };
+            var avatar = new Border { Width = 98, Height = 98, CornerRadius = new CornerRadius(49), Background = Th.Hot };
+            var avRing = new Border { Width = 112, Height = 112, CornerRadius = new CornerRadius(56), Background = Th.Ring, Padding = new Thickness(3), HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 10, 0, 16), Effect = U.Shadow(44, 16, .6, Th.C("#2563EB")) };
+            avRing.Child = new Border { CornerRadius = new CornerRadius(53), Background = Th.Bg, Padding = new Thickness(4), Child = avatar };
             if (s != null && !string.IsNullOrWhiteSpace(s.Name ?? s.Email)) avatar.Child = U.Center(U.Tx((s.Name ?? s.Email).Trim().Substring(0, 1).ToUpperInvariant(), 44, Th.White));
             else avatar.Child = U.Center(U.Ico("user", 44, Th.White));
-            sp.Children.Add(avatar);
+            sp.Children.Add(avRing);
             var name = U.Tx(s != null ? (s.Name ?? s.Email) : "Гость", 22);
             name.HorizontalAlignment = HorizontalAlignment.Center;
             name.Margin = new Thickness(0, 0, 0, 6);

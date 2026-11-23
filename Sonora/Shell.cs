@@ -49,9 +49,9 @@ namespace Sonora
         StackPanel sideNav, sideLib;
         Border sideProfile;
         bool compact;
-        static readonly string[] Tabs = { "home", "search", "explore", "fav" };
-        static readonly string[] TabNames = { "Главная", "Поиск", "Исследовать", "Моя музыка" };
-        static readonly string[] TabIcons = { "home", "search", "explore", "heart" };
+        static readonly string[] Tabs = { "home", "search", "explore", "fav", "services" };
+        static readonly string[] TabNames = { "Главная", "Поиск", "Исследовать", "Моя музыка", "Сервисы" };
+        static readonly string[] TabIcons = { "home", "search", "explore", "heart", "globe" };
         string lastTab = "home";
         bool renderQueued;
         Action sheetClosed;
@@ -78,7 +78,7 @@ namespace Sonora
             layout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             ambient = new Grid { IsHitTestVisible = false, ClipToBounds = true };
             ambient.Children.Add(Glow("#2563EB", .30, 1000, 760, HorizontalAlignment.Left, VerticalAlignment.Top, new Thickness(-380, -300, 0, 0)));
-            ambient.Children.Add(Glow("#FF4D94", .13, 900, 700, HorizontalAlignment.Right, VerticalAlignment.Bottom, new Thickness(0, 0, -320, -300)));
+            ambient.Children.Add(Glow("#1D4ED8", .16, 900, 700, HorizontalAlignment.Right, VerticalAlignment.Bottom, new Thickness(0, 0, -320, -300)));
             trackGlow = Glow("#38BDF8", .12, 1100, 640, HorizontalAlignment.Center, VerticalAlignment.Bottom, new Thickness(0, 0, 0, -380));
             ambient.Children.Add(trackGlow);
             Children.Add(ambient);
@@ -138,6 +138,7 @@ namespace Sonora
             Children.Add(modal);
 
             Library.Changed += QueueRender;
+            Ext.Changed += QueueRender;
             Catalog.Changed += QueueRender;
             Auth.Changed += () => { UpdateProfileBtn(); QueueRender(); };
             Player.I.TrackChanged += () => { UpdateMini(); QueueRender(); };
@@ -259,8 +260,8 @@ namespace Sonora
             Action<string, string, string, Brush, Brush> item = (id, name, sub, bg, img) =>
             {
                 bool on = Page == "playlist" && (Arg as string) == id;
-                var cov = new Border { Width = 44, Height = 44, CornerRadius = new CornerRadius(id == Mixes.Liked ? 22 : 10), Background = img ?? bg };
-                if (img == null) cov.Child = U.Center(U.Ico(id == Mixes.Liked ? "heartFill" : id == Mixes.Uploaded ? "upload" : id == Mixes.Recent ? "clock" : "music", 19, Th.White));
+                var cov = new Border { Width = 44, Height = 44, CornerRadius = new CornerRadius(id == Mixes.Liked || id.EndsWith(":likes") ? 22 : 10), Background = img ?? bg };
+                if (img == null) cov.Child = U.Center(U.Ico(id == Mixes.Liked || id.EndsWith(":likes") ? "heartFill" : id == Mixes.Uploaded ? "upload" : id == Mixes.Recent ? "clock" : "music", 19, Th.White));
                 FrameworkElement content = cov;
                 if (!compact)
                 {
@@ -278,6 +279,9 @@ namespace Sonora
             item(Mixes.Liked, "Мне нравится", U.Tn(Library.D.Fav.Count), Th.Pink, null);
             if (Library.D.Recent.Count > 0) item(Mixes.Recent, "Недавно прослушанные", "История · " + U.Tn(Library.D.Recent.Count), Th.B("#1E3A5F"), null);
             if (Library.D.Local.Count > 0) item(Mixes.Uploaded, "Загруженная музыка", "С компьютера · " + U.Tn(Library.D.Local.Count), Th.B("#0E4C5A"), null);
+            if (Ext.YaOn) item("ext:ya:likes", "Мне нравится", "Яндекс Музыка", Th.Hot, null);
+            if (Ext.SpOn) item("ext:sp:likes", "Любимые треки", "Spotify", Th.Hot, null);
+            if (Ext.DzOn) item("ext:dz:likes", "Любимые треки", "Deezer", Th.Hot, null);
             foreach (var p in Library.D.Playlists)
             {
                 var first = p.TrackIds.Select(Catalog.Get).FirstOrDefault(t => t != null && !string.IsNullOrEmpty(t.Cover));
@@ -306,7 +310,7 @@ namespace Sonora
             var av = new Border { Width = 44, Height = 44, CornerRadius = new CornerRadius(22), Background = Th.Card2 };
             if (s != null && !string.IsNullOrWhiteSpace(nm)) av.Child = U.Center(U.Tx(nm.Trim().Substring(0, 1).ToUpperInvariant(), 18, Th.White));
             else av.Child = U.Center(U.Ico("user", 20, Th.Txt));
-            var ring = new Border { Width = 52, Height = 52, CornerRadius = new CornerRadius(26), Background = Th.G(Th.C("#FF4D94"), Th.C("#3B82F6")), Padding = new Thickness(2.5) };
+            var ring = new Border { Width = 52, Height = 52, CornerRadius = new CornerRadius(26), Background = Th.Ring, Padding = new Thickness(2.5) };
             ring.Child = new Border { CornerRadius = new CornerRadius(24), Background = Th.Bg, Padding = new Thickness(1.5), Child = av };
             FrameworkElement pc = ring;
             if (!compact)
@@ -315,7 +319,7 @@ namespace Sonora
                 n.Margin = new Thickness(0, 0, 0, 4);
                 var badgeTxt = U.Tx(s != null ? "Профиль" : "Войти", 12.5, Th.White);
                 badgeTxt.FontWeight = FontWeights.Bold;
-                var badge = new Border { CornerRadius = new CornerRadius(11), Background = Th.GH("#FF4D94", "#3B82F6"), Padding = new Thickness(10, 2, 11, 3), HorizontalAlignment = HorizontalAlignment.Left, Child = badgeTxt };
+                var badge = new Border { CornerRadius = new CornerRadius(11), Background = Th.GH("#60A5FA", "#1D4ED8"), Padding = new Thickness(10, 2, 11, 3), HorizontalAlignment = HorizontalAlignment.Left, Child = badgeTxt };
                 var info = U.Col(n, badge);
                 info.VerticalAlignment = VerticalAlignment.Center;
                 info.Margin = new Thickness(12, 0, 4, 0);
@@ -508,11 +512,11 @@ namespace Sonora
             bar.Visibility = t == null ? Visibility.Collapsed : Visibility.Visible;
             contentPanel.Margin = new Thickness(0, 14, 14, t == null ? 14 : 12);
             if (t == null) { Full.Close(); topGlow.Background = null; return; }
-            // цвет панели плеера и подсветки — из обложки трека
-            var dc = Img.Dominant(t);
-            Func<double, double, Color> tint = (k, add) => Color.FromRgb((byte)Math.Min(255, dc.R * k + add), (byte)Math.Min(255, dc.G * k + add), (byte)Math.Min(255, dc.B * k + add));
-            var bc = tint(.42, 14);
-            bar.Background = Th.B(Color.FromArgb(205, bc.R, bc.G, bc.B));
+            // панель плеера и подсветка — единый синий градиент
+            var dc = Th.C("#3B82F6");
+            var bg = new LinearGradientBrush(Th.C("#1E3A8A", .80), Th.C("#0F172A", .84), new Point(0, .5), new Point(1, .5));
+            bg.Freeze();
+            bar.Background = bg;
             trackGlow.Fill = GlowBrush(dc, .20);
             topGlow.Background = Th.G(Color.FromArgb(70, dc.R, dc.G, dc.B), Color.FromArgb(0, dc.R, dc.G, dc.B), false);
             var br = U.CoverBrush(t, 112);
