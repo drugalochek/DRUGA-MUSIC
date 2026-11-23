@@ -13,27 +13,31 @@ using System.Windows.Threading;
 
 namespace Sonora
 {
+    // Каркас окна в минималистичном стиле: боковая панель, контент, нижняя панель плеера
     public sealed partial class Shell : Grid
     {
         public static Shell I;
         public readonly bool ShotMode;
-        public const double ContentMax = 1040;
+        public const double ContentMax = 1180;
+        const double CompactWidth = 900;
 
-        readonly DockPanel dock = new DockPanel();
+        readonly Grid layout = new Grid();
         readonly Grid center = new Grid();
         readonly ScrollViewer scroll;
         readonly Border host;
         readonly Grid modal = new Grid();
         readonly Border sheet;
-        readonly TranslateTransform sheetMove = new TranslateTransform();
+        readonly ScaleTransform sheetScale = new ScaleTransform(1, 1);
         public readonly FullPlayer Full;
         Border toastBox; TextBlock toastText; DispatcherTimer toastTimer;
-        Border profileBtn, notifBadge;
-        readonly Border[] navNi = new Border[4];
-        readonly TextBlock[] navLabel = new TextBlock[4];
-        static readonly string[] Tabs = { "home", "explore", "fav", "search" };
-        static readonly string[] TabNames = { "Главная", "Исследовать", "Избранное", "Поиск" };
-        static readonly string[] TabIcons = { "home", "explore", "heart", "search" };
+        Border profileBtn, notifBadge, backBtn;
+        Border side;
+        StackPanel sideNav, sideLib;
+        Border sideProfile;
+        bool compact;
+        static readonly string[] Tabs = { "home", "search", "explore", "fav" };
+        static readonly string[] TabNames = { "Главная", "Поиск", "Исследовать", "Моя музыка" };
+        static readonly string[] TabIcons = { "home", "search", "explore", "heart" };
         string lastTab = "home";
         bool renderQueued;
         Action sheetClosed;
@@ -54,41 +58,58 @@ namespace Sonora
             TextOptions.SetTextRenderingMode(this, TextRenderingMode.ClearType);
             UseLayoutRounding = true;
 
-            Children.Add(Glow(new Point(.1, 0), .6, .4, Th.C("#8b5cf6", .14)));
-            Children.Add(Glow(new Point(1, .3), .5, .4, Th.C("#06b6d4", .09)));
-            Children.Add(dock);
+            layout.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            layout.ColumnDefinitions.Add(new ColumnDefinition());
+            layout.RowDefinitions.Add(new RowDefinition());
+            layout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            Children.Add(layout);
 
-            var top = BuildTopbar();
-            DockPanel.SetDock(top, Dock.Top);
-            dock.Children.Add(top);
-            var nav = BuildNav();
-            DockPanel.SetDock(nav, Dock.Bottom);
-            dock.Children.Add(nav);
-            dock.Children.Add(center);
+            side = BuildSide();
+            layout.Children.Add(side);
 
-            host = new Border { MaxWidth = ContentMax, Padding = new Thickness(16, 0, 16, 30) };
+            // панель контента
+            host = new Border { MaxWidth = ContentMax, Padding = new Thickness(28, 0, 28, 36) };
             scroll = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, Focusable = false, Content = host, PanningMode = PanningMode.VerticalOnly };
-            center.Children.Add(scroll);
-            center.Children.Add(BuildMini());
+            var topGlow = new Rectangle { Height = 280, VerticalAlignment = VerticalAlignment.Top, IsHitTestVisible = false, Fill = Th.G(Th.C("#3B82F6", .16), Th.C("#3B82F6", 0), false) };
+            var contentGrid = new Grid();
+            contentGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            contentGrid.RowDefinitions.Add(new RowDefinition());
+            var top = BuildTopbar();
+            Grid.SetRow(scroll, 1);
+            contentGrid.Children.Add(top);
+            contentGrid.Children.Add(scroll);
+            center.Children.Add(topGlow);
+            center.Children.Add(contentGrid);
             center.Children.Add(BuildToast());
+            var panel = new Border { CornerRadius = new CornerRadius(10), Background = Th.Panel, Margin = new Thickness(0, 8, 8, 0), Child = center };
+            U.ClipRound(center, 10);
+            Grid.SetColumn(panel, 1);
+            layout.Children.Add(panel);
+
+            var bar = BuildBar();
+            Grid.SetRow(bar, 1);
+            Grid.SetColumnSpan(bar, 2);
+            layout.Children.Add(bar);
 
             Full = new FullPlayer();
             Children.Add(Full);
 
-            modal.Background = Th.B("#000000", .55);
+            modal.Background = Th.B("#000000", .6);
             modal.Visibility = Visibility.Collapsed;
             modal.MouseLeftButtonDown += (s, e) => { if (e.OriginalSource == modal) CloseSheet(); };
             sheet = new Border
             {
-                MaxWidth = 540,
-                VerticalAlignment = VerticalAlignment.Bottom,
-                CornerRadius = new CornerRadius(24, 24, 0, 0),
+                MaxWidth = 460,
+                Margin = new Thickness(16),
+                VerticalAlignment = VerticalAlignment.Center,
+                CornerRadius = new CornerRadius(12),
                 Background = Th.Bg2,
-                BorderBrush = Th.BorderHi,
-                BorderThickness = new Thickness(1, 1, 1, 0),
-                Padding = new Thickness(20, 8, 20, 22),
-                RenderTransform = sheetMove,
-                Effect = U.Shadow(40, 0, .6)
+                BorderBrush = Th.Border,
+                BorderThickness = new Thickness(1),
+                Padding = new Thickness(24, 22, 24, 22),
+                RenderTransformOrigin = new Point(.5, .5),
+                RenderTransform = sheetScale,
+                Effect = U.Shadow(48, 12, .55)
             };
             sheet.MouseLeftButtonDown += (s, e) => e.Handled = true;
             modal.Children.Add(sheet);
@@ -100,6 +121,12 @@ namespace Sonora
             Player.I.TrackChanged += () => { UpdateMini(); QueueRender(); };
             Player.I.StateChanged += UpdateMini;
             Player.I.Tick += UpdateMiniProgress;
+
+            SizeChanged += (s, e) =>
+            {
+                bool c = ActualWidth < CompactWidth;
+                if (c != compact) { compact = c; UpdateSide(); }
+            };
 
             AllowDrop = true;
             DragOver += (s, e) => { e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop) ? DragDropEffects.Copy : DragDropEffects.None; e.Handled = true; };
@@ -125,42 +152,165 @@ namespace Sonora
             Render();
         }
 
-        static Rectangle Glow(Point c, double rx, double ry, Color col)
+        // ---------- Боковая панель ----------
+        Border BuildSide()
         {
-            var b = new RadialGradientBrush { Center = c, GradientOrigin = c, RadiusX = rx, RadiusY = ry };
-            b.GradientStops.Add(new GradientStop(col, 0));
-            b.GradientStops.Add(new GradientStop(Color.FromArgb(0, col.R, col.G, col.B), .55 / 1.0));
-            b.Freeze();
-            return new Rectangle { Fill = b, IsHitTestVisible = false };
+            sideNav = new StackPanel();
+            sideLib = new StackPanel();
+            var libScroll = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Content = sideLib, Focusable = false };
+            sideProfile = new Border();
+
+            var navBox = new Border { CornerRadius = new CornerRadius(10), Background = Th.Panel, Padding = new Thickness(10, 12, 10, 12), Margin = new Thickness(0, 0, 0, 8), Child = sideNav };
+            var libGrid = new Grid();
+            libGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            libGrid.RowDefinitions.Add(new RowDefinition());
+            libGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            libHead = new Border { Margin = new Thickness(6, 0, 0, 10) };
+            libGrid.Children.Add(libHead);
+            Grid.SetRow(libScroll, 1); libGrid.Children.Add(libScroll);
+            Grid.SetRow(sideProfile, 2); libGrid.Children.Add(sideProfile);
+            var libBox = new Border { CornerRadius = new CornerRadius(10), Background = Th.Panel, Padding = new Thickness(10, 14, 10, 10), Child = libGrid };
+
+            var dp = new DockPanel { LastChildFill = true };
+            DockPanel.SetDock(navBox, Dock.Top);
+            dp.Children.Add(navBox);
+            dp.Children.Add(libBox);
+            return new Border { Width = 260, Margin = new Thickness(8, 8, 8, 0), Child = dp };
+        }
+        Border libHead;
+
+        void UpdateSide()
+        {
+            side.Width = compact ? 76 : 260;
+            // логотип + навигация
+            sideNav.Children.Clear();
+            var logo = new Border { Width = 30, Height = 30, CornerRadius = new CornerRadius(8), Background = Th.Accent, Child = U.Center(U.Ico("wave", 17, Th.White)) };
+            var logoImg = Img.Res("logo.png");
+            if (logoImg != null) { logo.Background = new ImageBrush(logoImg) { Stretch = Stretch.UniformToFill }; logo.Child = null; }
+            var brand = U.Tx("SONORA", 18, Th.Txt);
+            brand.FontFamily = Th.LogoFont;
+            brand.VerticalAlignment = VerticalAlignment.Center;
+            brand.Margin = new Thickness(10, 0, 0, 0);
+            var brandRow = compact ? (FrameworkElement)U.Center(logo) : U.Row(logo, brand);
+            var brandBox = U.Click(new Border { Padding = new Thickness(compact ? 0 : 8, 2, 0, 14), Child = brandRow }, () => Go("home"), 1);
+            sideNav.Children.Add(brandBox);
+            for (int i = 0; i < Tabs.Length; i++)
+            {
+                int idx = i;
+                bool on = Tabs[i] == lastTab && (Page == Tabs[i] || !(Page == "playlist"));
+                var ic = U.Ico(TabIcons[i], 21, on ? Th.Txt : Th.Dim, on && TabIcons[i] == "heart" ? true : (bool?)null, on ? 2.4 : 2);
+                FrameworkElement content = ic;
+                if (!compact)
+                {
+                    var t = U.Tx(TabNames[i], 14, on ? Th.Txt : Th.Dim);
+                    t.FontWeight = FontWeights.SemiBold;
+                    t.VerticalAlignment = VerticalAlignment.Center;
+                    t.Margin = new Thickness(16, 0, 0, 0);
+                    content = U.Row(ic, t);
+                }
+                var b = new Border { Padding = new Thickness(compact ? 0 : 10, 9, 10, 9), CornerRadius = new CornerRadius(8), Child = compact ? U.Center(content) : content, Margin = new Thickness(0, 1, 0, 1) };
+                if (on) b.Background = Th.Card; else U.Hover(b, Th.Clear, Th.Card);
+                sideNav.Children.Add(U.Click(b, () => Go(Tabs[idx]), .98));
+            }
+
+            // медиатека
+            var libIco = U.Ico("queue", 20, Th.Dim);
+            FrameworkElement head;
+            var plus = U.IconBtn("plus", 30, 16, Th.Dim, () => NewPlaylistSheet(null));
+            if (compact) head = U.Center(plus);
+            else
+            {
+                var lt = U.Tx("Медиатека", 14, Th.Dim);
+                lt.FontWeight = FontWeights.SemiBold;
+                lt.VerticalAlignment = VerticalAlignment.Center;
+                lt.Margin = new Thickness(12, 0, 0, 0);
+                libIco.VerticalAlignment = VerticalAlignment.Center;
+                head = U.Cols("a * a", libIco, lt, plus);
+            }
+            libHead.Child = head;
+
+            sideLib.Children.Clear();
+            Action<string, string, string, Brush, Brush> item = (id, name, sub, bg, img) =>
+            {
+                bool on = Page == "playlist" && (Arg as string) == id;
+                var cov = new Border { Width = 44, Height = 44, CornerRadius = new CornerRadius(6), Background = img ?? bg };
+                if (img == null) cov.Child = U.Center(U.Ico(id == Mixes.Liked ? "heartFill" : id == Mixes.Uploaded ? "upload" : id == Mixes.Recent ? "clock" : "music", 18, Th.White));
+                FrameworkElement content = cov;
+                if (!compact)
+                {
+                    var t = U.Tx(name, 13.5, on ? Th.Accent2 : Th.Txt);
+                    t.Margin = new Thickness(0, 0, 0, 2);
+                    var info = U.Col(t, U.Tx(sub, 11.5, Th.Dim));
+                    info.VerticalAlignment = VerticalAlignment.Center;
+                    info.Margin = new Thickness(12, 0, 4, 0);
+                    content = U.Cols("a *", cov, info);
+                }
+                var b = new Border { Padding = new Thickness(6), CornerRadius = new CornerRadius(8), Child = compact ? U.Center(content) : content };
+                if (on) b.Background = Th.Card; else U.Hover(b, Th.Clear, Th.Card);
+                sideLib.Children.Add(U.Click(b, () => Go("playlist", id), .99));
+            };
+            item(Mixes.Liked, "Любимые треки", "Плейлист · " + U.Tn(Library.D.Fav.Count), Th.G("#2563EB", "#60A5FA"), null);
+            if (Library.D.Recent.Count > 0) item(Mixes.Recent, "Недавно прослушанные", "История · " + U.Tn(Library.D.Recent.Count), Th.B("#1E3A5F"), null);
+            if (Library.D.Local.Count > 0) item(Mixes.Uploaded, "Загруженная музыка", "С компьютера · " + U.Tn(Library.D.Local.Count), Th.B("#0E4C5A"), null);
+            foreach (var p in Library.D.Playlists)
+            {
+                var first = p.TrackIds.Select(Catalog.Get).FirstOrDefault(t => t != null && !string.IsNullOrEmpty(t.Cover));
+                item(p.Id, p.Name, "Плейлист · " + U.Tn(p.TrackIds.Count), Th.B(p.Color ?? "#3B82F6"), U.CoverBrush(first, 96));
+            }
+            if (!compact && Library.D.Playlists.Count == 0)
+            {
+                var hint = new Border { CornerRadius = new CornerRadius(8), Background = Th.Card, Padding = new Thickness(14, 12, 14, 14), Margin = new Thickness(0, 10, 0, 0) };
+                var ht = U.Tx("Создай свой первый плейлист", 13.5);
+                var hd = U.Wrap("Это проще, чем кажется.", 12, Th.Dim);
+                hd.Margin = new Thickness(0, 3, 0, 10);
+                var hb = new Border { CornerRadius = new CornerRadius(16), Background = Th.White, Padding = new Thickness(14, 6, 14, 6), HorizontalAlignment = HorizontalAlignment.Left, Child = U.Tx("Создать плейлист", 12.5, Th.B("#000000")) };
+                U.Click(hb, () => NewPlaylistSheet(null), .96);
+                hint.Child = U.Col(ht, hd, hb);
+                sideLib.Children.Add(hint);
+            }
+
+            // профиль внизу
+            var s = Auth.Current;
+            var av = new Border { Width = 32, Height = 32, CornerRadius = new CornerRadius(16), Background = Th.Accent };
+            string nm = s != null ? (s.Name ?? s.Email ?? "Профиль") : "Гость";
+            if (s != null && !string.IsNullOrWhiteSpace(nm)) av.Child = U.Center(U.Tx(nm.Trim().Substring(0, 1).ToUpperInvariant(), 13, Th.White));
+            else av.Child = U.Center(U.Ico("user", 16, Th.White));
+            FrameworkElement pc = av;
+            if (!compact)
+            {
+                var n = U.Tx(nm, 13, Th.Txt);
+                var sub = U.Tx(s != null ? "Аккаунт SONORA" : "Войти в аккаунт", 11, Th.Dim);
+                var info = U.Col(n, sub);
+                info.VerticalAlignment = VerticalAlignment.Center;
+                info.Margin = new Thickness(10, 0, 4, 0);
+                var gear = U.Ico("gear", 16, Th.Dim);
+                gear.VerticalAlignment = VerticalAlignment.Center;
+                pc = U.Cols("a * a", av, info, gear);
+            }
+            var pb = new Border { Padding = new Thickness(6, 8, 8, 8), CornerRadius = new CornerRadius(8), Margin = new Thickness(0, 8, 0, 0), BorderBrush = Th.Border, BorderThickness = new Thickness(0, 1, 0, 0), Child = compact ? U.Center(pc) : pc };
+            U.Hover(pb, Th.Clear, Th.Card);
+            sideProfile.Child = U.Click(pb, () => { if (Auth.Current == null) OpenWelcome(); else Go("profile"); }, .99);
         }
 
-        // ---------- Top bar ----------
+        // ---------- Верхняя строка контента ----------
         FrameworkElement BuildTopbar()
         {
-            var logo = new Border { Width = 30, Height = 30, CornerRadius = new CornerRadius(9), Background = Th.Brand, Effect = U.Shadow(16, 6, .6, Th.C("#8b5cf6")), Child = U.Center(U.Ico("wave", 17, Th.White)) };
-            var brandText = U.Tx("SONORA", 19);
-            brandText.VerticalAlignment = VerticalAlignment.Center;
-            brandText.Margin = new Thickness(9, 0, 0, 0);
-            var brand = U.Click(new Border { Child = U.Row(logo, brandText) }, () => Go("home"), 1);
-
+            backBtn = U.IconBtn("chevL", 34, 18, Th.Txt, Back, Th.B("#000000", .45));
             var bell = IBtn("bell", OpenNotifications);
-            notifBadge = new Border { MinWidth = 16, Height = 16, CornerRadius = new CornerRadius(8), Background = Th.Danger, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, -2, -2, 0), Padding = new Thickness(4, 0, 4, 0), Child = U.Center(U.Tx("1", 9, Th.White)), IsHitTestVisible = false };
-            var bellWrap = new Grid { Margin = new Thickness(0, 0, 10, 0) };
+            notifBadge = new Border { Width = 9, Height = 9, CornerRadius = new CornerRadius(5), Background = Th.Accent2, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 6, 7, 0), IsHitTestVisible = false };
+            var bellWrap = new Grid { Margin = new Thickness(0, 0, 8, 0) };
             bellWrap.Children.Add(bell);
             bellWrap.Children.Add(notifBadge);
-
-            profileBtn = new Border { Width = 38, Height = 38, CornerRadius = new CornerRadius(19), Background = Th.Hot, BorderBrush = Th.Accent, BorderThickness = new Thickness(2) };
-            U.Click(profileBtn, () => Go("profile"), .9);
-
-            var g = U.Cols("a * a a", brand, null, bellWrap, profileBtn);
-            g.MaxWidth = ContentMax;
-            g.Margin = new Thickness(16, 12, 16, 10);
-            return new Border { Child = g, Background = Th.G(Th.C("#0A0A12", .7), Th.C("#0A0A12", 0), false) };
+            profileBtn = new Border { Width = 34, Height = 34, CornerRadius = new CornerRadius(17), Background = Th.Accent, BorderBrush = Th.B("#000000", .5), BorderThickness = new Thickness(3) };
+            U.Click(profileBtn, () => Go("profile"), .92);
+            var g = U.Cols("a * a a", backBtn, null, bellWrap, profileBtn);
+            g.Margin = new Thickness(20, 14, 20, 8);
+            return g;
         }
         public static Border IBtn(string icon, Action a)
         {
-            var b = new Border { Width = 38, Height = 38, CornerRadius = new CornerRadius(19), Background = Th.Card, BorderBrush = Th.Border, BorderThickness = new Thickness(1), Child = U.Center(U.Ico(icon, 18, Th.Dim)) };
-            return U.Click(b, a, .9);
+            var b = new Border { Width = 34, Height = 34, CornerRadius = new CornerRadius(17), Background = Th.B("#000000", .45), Child = U.Center(U.Ico(icon, 17, Th.Txt)) };
+            return U.Click(b, a, .92);
         }
         void UpdateProfileBtn()
         {
@@ -168,98 +318,186 @@ namespace Sonora
             if (s != null && !string.IsNullOrWhiteSpace(s.Name ?? s.Email))
             {
                 var letter = (s.Name ?? s.Email).Trim().Substring(0, 1).ToUpperInvariant();
-                profileBtn.Child = U.Center(U.Tx(letter, 15, Th.White));
+                profileBtn.Child = U.Center(U.Tx(letter, 13, Th.White));
             }
-            else profileBtn.Child = U.Center(U.Ico("user", 18, Th.White));
+            else profileBtn.Child = U.Center(U.Ico("user", 15, Th.White));
             notifBadge.Visibility = Library.D.UpdatedAt == 0 || ShotMode ? Visibility.Visible : Visibility.Collapsed;
-        }
-
-        // ---------- Bottom navigation ----------
-        FrameworkElement BuildNav()
-        {
-            var ug = new UniformGrid { Columns = 4, Rows = 1, MaxWidth = 720 };
-            for (int i = 0; i < 4; i++)
-            {
-                int idx = i;
-                navNi[i] = new Border { Width = 42, Height = 30, CornerRadius = new CornerRadius(11), HorizontalAlignment = HorizontalAlignment.Center };
-                navLabel[i] = U.Tx(TabNames[i], 10.5, Th.Dim);
-                navLabel[i].HorizontalAlignment = HorizontalAlignment.Center;
-                navLabel[i].Margin = new Thickness(0, 3, 0, 0);
-                var sp = U.Col(navNi[i], navLabel[i]);
-                sp.VerticalAlignment = VerticalAlignment.Center;
-                var cell = new Border { MinHeight = 54, Padding = new Thickness(4, 5, 4, 5), Child = sp };
-                U.Click(cell, () => Go(Tabs[idx]), .95);
-                ug.Children.Add(cell);
-            }
-            return new Border { Background = Th.B("#0A0A12", .92), BorderBrush = Th.BorderHi, BorderThickness = new Thickness(0, 1, 0, 0), Padding = new Thickness(0, 6, 0, 6), Child = ug };
         }
         void UpdateNav()
         {
             if (Tabs.Contains(Page)) lastTab = Page;
-            for (int i = 0; i < 4; i++)
-            {
-                bool on = Tabs[i] == lastTab;
-                navNi[i].Background = on ? Th.Hot : null;
-                navNi[i].Effect = on ? U.Shadow(18, 8, .8, Th.C("#8b5cf6")) : null;
-                navNi[i].Child = U.Center(U.Ico(TabIcons[i], on ? 22 : 21, on ? Th.White : Th.Dim));
-                navLabel[i].Foreground = on ? Th.Txt : Th.Dim;
-            }
+            backBtn.Opacity = history.Count > 0 ? 1 : .4;
+            UpdateSide();
         }
 
-        // ---------- Mini player ----------
-        Border mini, miniCover, miniPlay, miniFav, miniProg;
-        Grid miniTrack;
-        TextBlock miniTitle, miniArtist;
-        FrameworkElement BuildMini()
+        // ---------- Нижняя панель плеера ----------
+        Border bar, barCover, barPlay, barFav, barShuffle, barRepeat, barLyrics, barQueue, barTimer, barVolIco;
+        Grid barSeek, volBar;
+        Border barFill, barThumb, volFill;
+        TextBlock barTitle, barArtist, barCur, barDur;
+        bool barDrag, volDrag;
+        double lastVol = .8;
+
+        FrameworkElement BuildBar()
         {
-            miniCover = new Border { Width = 42, Height = 42, CornerRadius = new CornerRadius(9), Background = Th.B("#000000", .3) };
-            miniTitle = U.Tx("", 13, Th.White);
-            miniTitle.Margin = new Thickness(0, 0, 0, 2);
-            miniArtist = U.Tx("", 11, Th.White, .85);
-            var info = U.Col(miniTitle, miniArtist);
+            barCover = new Border { Width = 56, Height = 56, CornerRadius = new CornerRadius(6), Background = Th.Card };
+            U.Click(barCover, OpenFull, .96);
+            barTitle = U.Tx("", 13.5, Th.Txt);
+            barTitle.Cursor = Cursors.Hand;
+            barTitle.MouseLeftButtonUp += (s, e) => OpenFull();
+            barTitle.Margin = new Thickness(0, 0, 0, 3);
+            barArtist = U.Tx("", 11.5, Th.Dim);
+            barArtist.Cursor = Cursors.Hand;
+            barArtist.MouseLeftButtonUp += (s, e) => { var t = Player.I.Current; if (t != null && !t.IsLocal) Go("artist", t.Artist); };
+            var info = U.Col(barTitle, barArtist);
             info.VerticalAlignment = VerticalAlignment.Center;
-            info.Margin = new Thickness(10, 0, 10, 0);
-            miniPlay = U.Click(U.Circle(38, Th.B("#FFFFFF", .22)), () => Player.I.Toggle(), .9);
-            miniFav = U.Click(U.Circle(34, null), () => { var t = Player.I.Current; if (t != null) Library.ToggleFav(t.Id); UpdateMini(); }, .85);
-            miniFav.Margin = new Thickness(6, 0, 0, 0);
-            var close = U.IconBtn("close", 30, 15, Th.B("#FFFFFF", .85), () => Player.I.Stop());
-            close.Margin = new Thickness(2, 0, 0, 0);
-            var g = U.Cols("a * a a a", miniCover, info, miniPlay, miniFav, close);
-            g.Margin = new Thickness(7, 7, 10, 7);
-            miniProg = new Border { Background = Th.White, HorizontalAlignment = HorizontalAlignment.Left, Width = 0 };
-            miniTrack = new Grid { Height = 2, VerticalAlignment = VerticalAlignment.Bottom, Background = Th.B("#FFFFFF", .18) };
-            miniTrack.Children.Add(miniProg);
-            var root = new Grid();
-            root.Children.Add(g);
-            root.Children.Add(miniTrack);
-            U.ClipRound(root, 14);
-            mini = new Border { CornerRadius = new CornerRadius(14), Margin = new Thickness(10, 0, 10, 6), VerticalAlignment = VerticalAlignment.Bottom, MaxWidth = ContentMax - 20, Child = root, Effect = U.Shadow(36, 14, .85), Visibility = Visibility.Collapsed };
-            U.Click(mini, OpenFull, 1);
-            return mini;
+            info.Margin = new Thickness(14, 0, 10, 0);
+            barFav = U.IconBtn("heart", 32, 17, Th.Dim, () => { var t = Player.I.Current; if (t != null) Library.ToggleFav(t.Id); UpdateMini(); });
+            var left = U.Cols("a * a", barCover, info, barFav);
+            left.VerticalAlignment = VerticalAlignment.Center;
+
+            barShuffle = SmallBtn("shuffle", () => Player.I.ToggleShuffle());
+            var prev = U.IconBtn("prev", 34, 19, Th.Txt, () => Player.I.Prev());
+            barPlay = U.Click(new Border { Width = 36, Height = 36, CornerRadius = new CornerRadius(18), Background = Th.White, Margin = new Thickness(12, 0, 12, 0) }, () => Player.I.Toggle(), .92);
+            var next = U.IconBtn("next", 34, 19, Th.Txt, () => Player.I.Next());
+            barRepeat = SmallBtn("repeat", () => Player.I.CycleRepeat());
+            var ctrls = U.Row(U.M(barShuffle, 0, 0, 8, 0), prev, barPlay, next, U.M(barRepeat, 8, 0, 0, 0));
+            ctrls.HorizontalAlignment = HorizontalAlignment.Center;
+            foreach (FrameworkElement c in ctrls.Children) c.VerticalAlignment = VerticalAlignment.Center;
+
+            barCur = U.Tx("0:00", 11, Th.Dim); barCur.TextAlignment = TextAlignment.Right; barCur.Width = 40; barCur.VerticalAlignment = VerticalAlignment.Center;
+            barDur = U.Tx("0:00", 11, Th.Dim); barDur.Width = 40; barDur.VerticalAlignment = VerticalAlignment.Center;
+            barSeek = Bar(out barFill, out barThumb);
+            barSeek.Margin = new Thickness(10, 0, 10, 0);
+            barSeek.MouseLeftButtonDown += (s, e) => { barDrag = true; barSeek.CaptureMouse(); SeekBar(e.GetPosition(barSeek).X, false); e.Handled = true; };
+            barSeek.MouseMove += (s, e) => { if (barDrag) SeekBar(e.GetPosition(barSeek).X, false); };
+            barSeek.MouseLeftButtonUp += (s, e) => { if (!barDrag) return; barDrag = false; barSeek.ReleaseMouseCapture(); SeekBar(e.GetPosition(barSeek).X, true); };
+            var seekRow = U.Cols("a * a", barCur, barSeek, barDur);
+            seekRow.Margin = new Thickness(0, 6, 0, 0);
+            var mid = U.Col(ctrls, seekRow);
+            mid.VerticalAlignment = VerticalAlignment.Center;
+            mid.MaxWidth = 620;
+
+            barLyrics = SmallBtn("lyrics", () => Full.OpenLyrics());
+            barQueue = SmallBtn("queue", QueueSheet);
+            barTimer = SmallBtn("timer", TimerSheet);
+            barVolIco = SmallBtn("volume", () =>
+            {
+                if (Player.I.Volume > 0) { lastVol = Player.I.Volume; Player.I.Volume = 0; }
+                else Player.I.Volume = lastVol > 0 ? lastVol : .8;
+                UpdateVolume();
+            });
+            Border volThumb;
+            volBar = Bar(out volFill, out volThumb);
+            volBar.Width = 96;
+            volBar.Margin = new Thickness(2, 0, 10, 0);
+            volBar.MouseLeftButtonDown += (s, e) => { volDrag = true; volBar.CaptureMouse(); SetVol(e.GetPosition(volBar).X); e.Handled = true; };
+            volBar.MouseMove += (s, e) => { if (volDrag) SetVol(e.GetPosition(volBar).X); };
+            volBar.MouseLeftButtonUp += (s, e) => { volDrag = false; volBar.ReleaseMouseCapture(); Library.Save(false); };
+            volBar.MouseWheel += (s, e) => { Player.I.Volume += e.Delta > 0 ? .05 : -.05; UpdateVolume(); e.Handled = true; };
+            var expand = SmallBtn("expand", OpenFull);
+            var right = U.Row(barLyrics, barQueue, barTimer, U.M(barVolIco, 6, 0, 0, 0), volBar, expand);
+            right.HorizontalAlignment = HorizontalAlignment.Right;
+            foreach (FrameworkElement c in right.Children) c.VerticalAlignment = VerticalAlignment.Center;
+
+            var g = new Grid();
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(3, GridUnitType.Star), MinWidth = 180 });
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(4, GridUnitType.Star) });
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(3, GridUnitType.Star) });
+            Grid.SetColumn(mid, 1); Grid.SetColumn(right, 2);
+            g.Children.Add(left); g.Children.Add(mid); g.Children.Add(right);
+            right.ClipToBounds = true;
+            bar = new Border { Height = 88, Padding = new Thickness(16, 8, 16, 8), Background = Th.Bg, Child = g, Visibility = Visibility.Collapsed };
+            return bar;
         }
+        static Border SmallBtn(string icon, Action a)
+        {
+            var b = new Border { Width = 32, Height = 32, CornerRadius = new CornerRadius(16), Background = Th.Clear, Child = U.Center(U.Ico(icon, 17, Th.Dim)) };
+            return U.Click(b, a, .9);
+        }
+        static void SetSmall(Border b, string icon, bool on, bool enabled = true, string badge = null)
+        {
+            var g = new Grid();
+            g.Children.Add(U.Center(U.Ico(icon, 17, on ? Th.Accent2 : enabled ? Th.Dim : Th.B("#FFFFFF", .25))));
+            if (badge != null) { var t = U.Tx(badge, 8, Th.Accent2); t.HorizontalAlignment = HorizontalAlignment.Center; t.VerticalAlignment = VerticalAlignment.Center; t.Margin = new Thickness(0, 0, 0, 1); g.Children.Add(t); }
+            if (on) g.Children.Add(new Ellipse { Width = 4, Height = 4, Fill = Th.Accent2, VerticalAlignment = VerticalAlignment.Bottom, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 0, 0, 1) });
+            b.Child = g;
+        }
+        static Grid Bar(out Border fill, out Border thumb)
+        {
+            var g = new Grid { Height = 16, Background = Th.Clear, Cursor = Cursors.Hand };
+            var line = new Border { Height = 4, CornerRadius = new CornerRadius(2), Background = Th.B("#FFFFFF", .18), VerticalAlignment = VerticalAlignment.Center };
+            var f = new Border { Height = 4, CornerRadius = new CornerRadius(2), Background = Th.Txt, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center, Width = 0 };
+            var th = new Border { Width = 12, Height = 12, CornerRadius = new CornerRadius(6), Background = Th.White, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center, Visibility = Visibility.Hidden, IsHitTestVisible = false };
+            g.Children.Add(line); g.Children.Add(f); g.Children.Add(th);
+            g.MouseEnter += (s, e) => { f.Background = Th.Accent2; th.Visibility = Visibility.Visible; };
+            g.MouseLeave += (s, e) => { if (Mouse.Captured == g) return; f.Background = Th.Txt; th.Visibility = Visibility.Hidden; };
+            g.LostMouseCapture += (s, e) => { if (!g.IsMouseOver) { f.Background = Th.Txt; th.Visibility = Visibility.Hidden; } };
+            fill = f; thumb = th;
+            return g;
+        }
+        static void SetBar(Border fill, Border thumb, double r, double w)
+        {
+            r = Math.Max(0, Math.Min(1, r));
+            fill.Width = r * w;
+            thumb.Margin = new Thickness(Math.Max(0, r * w - 6), 0, 0, 0);
+        }
+        void SeekBar(double x, bool commit)
+        {
+            var len = Player.I.Length; var w = barSeek.ActualWidth;
+            if (len <= 0 || w <= 0) return;
+            var r = Math.Max(0, Math.Min(1, x / w));
+            SetBar(barFill, barThumb, r, w);
+            barCur.Text = U.Time(r * len);
+            if (commit) Player.I.Seek(r * len);
+        }
+        void SetVol(double x)
+        {
+            var w = volBar.ActualWidth;
+            if (w <= 0) return;
+            Player.I.Volume = Math.Max(0, Math.Min(1, x / w));
+            UpdateVolume();
+        }
+        void UpdateVolume()
+        {
+            var v = Player.I.Volume;
+            volFill.Width = v * (volBar.ActualWidth > 0 ? volBar.ActualWidth : 96);
+            barVolIco.Child = U.Center(U.Ico(v <= 0.001 ? "mute" : "volume", 17, Th.Dim));
+        }
+
         public bool MiniVisible { get { return Player.I.Current != null; } }
         void UpdateMini()
         {
             var t = Player.I.Current;
-            mini.Visibility = t == null ? Visibility.Collapsed : Visibility.Visible;
-            host.Padding = new Thickness(16, 0, 16, t == null ? 30 : 96);
+            bar.Visibility = t == null ? Visibility.Collapsed : Visibility.Visible;
             if (t == null) { Full.Close(); return; }
-            var br = U.CoverBrush(t, 96);
-            miniCover.Background = br ?? (Brush)Th.B("#000000", .3);
-            miniCover.Child = br == null ? U.Center(U.Ico("music", 18, Th.White)) : null;
-            miniTitle.Text = t.Title;
-            miniArtist.Text = t.Artist;
-            miniPlay.Child = U.Center(U.Ico(Player.I.IsPlaying ? "pause" : "play", 16, Th.White));
+            var br = U.CoverBrush(t, 112);
+            barCover.Background = br ?? (Brush)Th.Card;
+            barCover.Child = br == null ? U.Center(U.Ico("music", 20, Th.Dim)) : null;
+            barTitle.Text = t.Title;
+            barArtist.Text = t.Artist;
+            var black = Th.B("#000000");
+            barPlay.Child = U.Center(U.Ico(Player.I.IsPlaying ? "pause" : "play", 16, black));
             bool fav = Library.IsFav(t.Id);
-            miniFav.Child = U.Center(U.Ico("heart", 17, Th.B("#FFFFFF", .9), fav));
-            mini.Background = Img.PlayerGradient(t);
+            barFav.Child = U.Center(U.Ico("heart", 17, fav ? Th.Accent2 : Th.Dim, fav));
+            SetSmall(barShuffle, "shuffle", Player.I.Shuffle);
+            SetSmall(barRepeat, "repeat", Player.I.Repeat > 0, true, Player.I.Repeat == 2 ? "1" : null);
+            SetSmall(barLyrics, "lyrics", false, t.HasLyrics);
+            SetSmall(barQueue, "queue", false);
+            SetSmall(barTimer, "timer", Player.I.SleepAt.HasValue);
+            UpdateVolume();
             Full.Update();
         }
         void UpdateMiniProgress()
         {
-            var len = Player.I.Length;
-            var w = miniTrack.ActualWidth;
-            miniProg.Width = len > 0 && w > 0 ? Math.Max(0, Math.Min(w, w * Player.I.Position / len)) : 0;
+            if (!barDrag && bar.Visibility == Visibility.Visible)
+            {
+                var len = Player.I.Length;
+                var pos = Player.I.Position;
+                barCur.Text = U.Time(pos);
+                barDur.Text = U.Time(len);
+                SetBar(barFill, barThumb, len > 0 ? pos / len : 0, barSeek.ActualWidth);
+            }
             Full.Tick();
         }
         public void OpenFull() { if (Player.I.Current != null) Full.Open(); }
@@ -267,23 +505,21 @@ namespace Sonora
         // ---------- Toast ----------
         FrameworkElement BuildToast()
         {
-            toastText = U.Wrap("", 12.5, Th.White);
+            toastText = U.Wrap("", 13, Th.B("#000000"));
             toastText.TextAlignment = TextAlignment.Center;
             toastBox = new Border
             {
-                Padding = new Thickness(16, 10, 16, 10),
-                Background = Th.B("#14141E", .94),
-                BorderBrush = Th.BorderHi,
-                BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(11),
+                Padding = new Thickness(16, 9, 16, 9),
+                Background = Th.Txt,
+                CornerRadius = new CornerRadius(8),
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Bottom,
-                Margin = new Thickness(16, 0, 16, 84),
-                MaxWidth = 360,
+                Margin = new Thickness(16, 0, 16, 24),
+                MaxWidth = 420,
                 Child = toastText,
                 IsHitTestVisible = false,
                 Visibility = Visibility.Collapsed,
-                Effect = U.Shadow(24, 8, .6)
+                Effect = U.Shadow(36, 6, .5)
             };
             toastTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2.6) };
             toastTimer.Tick += (s, e) => { toastTimer.Stop(); toastBox.Visibility = Visibility.Collapsed; };
@@ -303,27 +539,40 @@ namespace Sonora
             }));
         }
 
-        // ---------- Sheets ----------
+        // ---------- Диалоги ----------
         public bool SheetOpen { get { return modal.Visibility == Visibility.Visible; } }
         public void OpenSheet(string title, string desc, UIElement body, Action onClosed = null)
         {
             var sp = new StackPanel();
-            sp.Children.Add(new Border { Width = 36, Height = 4, CornerRadius = new CornerRadius(2), Background = Th.BorderHi, Margin = new Thickness(0, 6, 0, 14), HorizontalAlignment = HorizontalAlignment.Center });
-            if (title != null) sp.Children.Add(U.M(U.Tx(title, 17), 0, 0, 0, 5));
-            if (desc != null) sp.Children.Add(U.M(U.Wrap(desc, 12.5, Th.Dim, 0, 18.75), 0, 0, 0, 14));
+            var close = U.IconBtn("close", 30, 15, Th.Dim, CloseSheet);
+            close.HorizontalAlignment = HorizontalAlignment.Right;
+            close.VerticalAlignment = VerticalAlignment.Top;
+            var head = new Grid();
+            if (title != null)
+            {
+                var tt = U.Wrap(title, 20, Th.Txt);
+                tt.FontWeight = FontWeights.Bold;
+                tt.Margin = new Thickness(0, 0, 36, 6);
+                head.Children.Add(tt);
+            }
+            else head.Height = 26;
+            head.Children.Add(close);
+            sp.Children.Add(head);
+            if (desc != null) sp.Children.Add(U.M(U.Wrap(desc, 13, Th.Dim, 0, 19), 0, 0, 0, 16));
             if (body != null) sp.Children.Add(body);
             var sv = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Content = sp, Focusable = false };
-            sv.MaxHeight = Math.Max(320, (ActualHeight > 0 ? ActualHeight : 800) - 90);
+            sv.MaxHeight = Math.Max(320, (ActualHeight > 0 ? ActualHeight : 800) - 80);
             sheet.Child = sv;
-            var prev = sheetClosed;
             sheetClosed = onClosed;
             if (modal.Visibility != Visibility.Visible)
             {
                 modal.Visibility = Visibility.Visible;
                 if (!ShotMode)
                 {
-                    U.Fade(modal, 0, 1, 200);
-                    sheetMove.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(420, 0, TimeSpan.FromMilliseconds(320)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
+                    U.Fade(modal, 0, 1, 160);
+                    var a = new DoubleAnimation(.96, 1, TimeSpan.FromMilliseconds(200)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } };
+                    sheetScale.BeginAnimation(ScaleTransform.ScaleXProperty, a);
+                    sheetScale.BeginAnimation(ScaleTransform.ScaleYProperty, a);
                 }
             }
         }
@@ -374,7 +623,7 @@ namespace Sonora
             }
         }
 
-        // ---------- Navigation & rendering ----------
+        // ---------- Навигация ----------
         public void QueueRender()
         {
             if (renderQueued) return;
@@ -413,7 +662,7 @@ namespace Sonora
         }
         public void Back()
         {
-            if (history.Count == 0) { Go(lastTab); return; }
+            if (history.Count == 0) { if (Page != lastTab) Go(lastTab); return; }
             var kv = history[history.Count - 1];
             history.RemoveAt(history.Count - 1);
             Page = kv.Key;

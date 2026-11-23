@@ -17,9 +17,20 @@ namespace Sonora
 {
     public static class Th
     {
+        // Синяя палитра: старые фиолетовые/розовые/бирюзовые оттенки переводятся в синие
+        static readonly Dictionary<string, string> Remap = new Dictionary<string, string>
+        {
+            ["8b5cf6"] = "3b82f6", ["ec4899"] = "1d4ed8", ["06b6d4"] = "0ea5e9", ["a78bfa"] = "93c5fd",
+            ["f472b6"] = "60a5fa", ["7c3aed"] = "2563eb", ["db2777"] = "1e40af", ["c084fc"] = "93c5fd",
+            ["f59e0b"] = "0284c7", ["ef4444"] = "1e3a8a", ["10b981"] = "0d9488", ["6366f1"] = "4f46e5",
+            ["14b8a6"] = "0891b2", ["1e1e2a"] = "1c2230", ["16161f"] = "161b26", ["0f0f1a"] = "121722",
+            ["14141e"] = "161b26", ["0a0a12"] = "07090d", ["d946ef"] = "2563eb", ["a855f7"] = "3b82f6",
+            ["f97316"] = "0369a1", ["e11d48"] = "1e40af", ["22c55e"] = "0e7490", ["eab308"] = "0284c7"
+        };
         public static Color C(string hex, double a = 1)
         {
-            hex = hex.TrimStart('#');
+            hex = hex.TrimStart('#').ToLowerInvariant();
+            if (Remap.TryGetValue(hex, out var m)) hex = m;
             byte r = byte.Parse(hex.Substring(0, 2), NumberStyles.HexNumber);
             byte g = byte.Parse(hex.Substring(2, 2), NumberStyles.HexNumber);
             byte b = byte.Parse(hex.Substring(4, 2), NumberStyles.HexNumber);
@@ -28,10 +39,10 @@ namespace Sonora
         public static SolidColorBrush B(string hex, double a = 1) { var b = new SolidColorBrush(C(hex, a)); b.Freeze(); return b; }
         public static SolidColorBrush B(Color c) { var b = new SolidColorBrush(c); b.Freeze(); return b; }
         public static readonly SolidColorBrush
-            Bg = B("#0A0A12"), Bg2 = B("#0F0F1A"), Card = B("#16161F"), Card2 = B("#1E1E2A"),
-            Border = B("#FFFFFF", .07), BorderHi = B("#FFFFFF", .14), Txt = B("#F5F5F8"), Dim = B("#82829A"),
-            Accent = B("#8B5CF6"), Accent2 = B("#EC4899"), Accent3 = B("#06B6D4"), Soft = B("#8B5CF6", .16),
-            Danger = B("#F43F5E"), Ok = B("#10B981"), White = B("#FFFFFF"), Clear = B("#000000", 0);
+            Bg = B("#07090D"), Panel = B("#10141C"), Bg2 = B("#121722"), Card = B("#161B26"), Card2 = B("#1C2230"),
+            Border = B("#FFFFFF", .06), BorderHi = B("#FFFFFF", .12), Txt = B("#F3F6FB"), Dim = B("#8A94A8"),
+            Accent = B("#3B82F6"), Accent2 = B("#60A5FA"), Accent3 = B("#38BDF8"), Soft = B("#3B82F6", .14),
+            Danger = B("#F43F5E"), Ok = B("#22D3EE"), White = B("#FFFFFF"), Clear = B("#000000", 0);
         public static LinearGradientBrush G(string a, string b, bool diagonal = true)
         {
             var g = new LinearGradientBrush(C(a), C(b), new Point(0, 0), diagonal ? new Point(1, 1) : new Point(0, 1));
@@ -50,7 +61,8 @@ namespace Sonora
             g.Freeze();
             return g;
         }
-        public static readonly LinearGradientBrush Brand = G("#8b5cf6", "#06b6d4"), Hot = G("#8B5CF6", "#EC4899"), Pink = G("#ec4899", "#8b5cf6");
+        public static readonly LinearGradientBrush Brand = G("#3b82f6", "#2563eb"), Hot = G("#3b82f6", "#2563eb"), Pink = G("#60a5fa", "#3b82f6");
+        public static FontFamily LogoFont = new FontFamily("Segoe UI");
         public static FontFamily Font = new FontFamily("Segoe UI");
 
         public static void InitFont()
@@ -65,7 +77,7 @@ namespace Sonora
                     if (!File.Exists(file) || new FileInfo(file).Length != s.Length)
                         using (var f = File.Create(file)) s.CopyTo(f);
                 }
-                Font = new FontFamily(new Uri(dir.TrimEnd('\\') + "\\"), "./#Widock TRIAL, Segoe UI");
+                LogoFont = new FontFamily(new Uri(dir.TrimEnd('\\') + "\\"), "./#Widock TRIAL, Segoe UI");
             }
             catch (Exception ex) { Log.W("font: " + ex.Message); }
         }
@@ -130,7 +142,7 @@ namespace Sonora
         }
         public static Color Dominant(Track t)
         {
-            var fallback = Color.FromRgb(139, 92, 246);
+            var fallback = Color.FromRgb(59, 130, 246);
             if (t == null || string.IsNullOrEmpty(t.Cover)) return fallback;
             if (colors.TryGetValue(t.Id, out var c0)) return c0;
             var res = fallback;
@@ -211,6 +223,8 @@ namespace Sonora
         public static TextBlock Tx(string s, double size, Brush fg = null, double opacity = 1, bool trim = true)
         {
             var t = new TextBlock { Text = s ?? "", FontSize = size, Foreground = fg ?? Th.Txt, Opacity = opacity, FontFamily = Th.Font };
+            bool dim = fg == Th.Dim || opacity < 1;
+            t.FontWeight = size >= 19 ? FontWeights.Bold : size >= 13 && !dim ? FontWeights.SemiBold : FontWeights.Normal;
             if (trim) { t.TextTrimming = TextTrimming.CharacterEllipsis; t.TextWrapping = TextWrapping.NoWrap; }
             return t;
         }
@@ -228,6 +242,7 @@ namespace Sonora
 
         public static DropShadowEffect Shadow(double blur, double depth, double opacity, Color? color = null)
         {
+            if (color != null || blur < 36) return null; // минимализм: без цветных свечений и мелких теней
             var e = new DropShadowEffect { BlurRadius = blur, ShadowDepth = depth, Opacity = opacity, Direction = 270, Color = color ?? Colors.Black, RenderingBias = RenderingBias.Performance };
             e.Freeze();
             return e;
