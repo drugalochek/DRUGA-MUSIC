@@ -31,6 +31,7 @@ namespace Sonora
                 case "artists": return LikedArtistsPage();
                 case "profile": return ProfilePage();
                 case "services": return ServicesPage();
+                case "settings": return SettingsPage();
                 default: return Home();
             }
         }
@@ -506,6 +507,7 @@ namespace Sonora
             sp.Children.Add(LRow(LCover(Th.Brand, "user", true), "Любимые исполнители", Library.D.FavArtists.Count + " " + U.Plural(Library.D.FavArtists.Count, "исполнитель", "исполнителя", "исполнителей"), () => Go("artists")));
             var recent = Library.D.Recent.Count(id => Catalog.Get(id) != null);
             sp.Children.Add(LRow(LCover(Th.G("#8b5cf6", "#06b6d4"), "clock"), "Недавно прослушанные", U.Tn(recent), () => Go("playlist", Mixes.Recent)));
+            sp.Children.Add(LRow(LCover(Th.G("#2DD4BF", "#2563EB"), "download"), "Скачанные", Library.D.Offline.Count > 0 ? U.Tn(Library.D.Offline.Count) + " · офлайн" : "Слушай без интернета", () => Go("playlist", Mixes.Downloaded)));
 
             sp.Children.Add(SHead("Любимые треки", favs.Count > 0 ? U.Tn(favs.Count) : ""));
             if (favs.Count == 0) sp.Children.Add(Note("Лайкай треки и исполнителей ♥ — они появятся здесь."));
@@ -532,12 +534,9 @@ namespace Sonora
         }
         public void PickFiles()
         {
-            var dlg = new Microsoft.Win32.OpenFileDialog { Multiselect = true, Title = "Добавить музыку", Filter = "Аудио|*.mp3;*.m4a;*.aac;*.wav;*.wma;*.flac;*.mp4|Все файлы|*.*" };
-            if (dlg.ShowDialog() == true)
-            {
-                int n = Library.AddFiles(dlg.FileNames);
-                Toast(n > 0 ? "Добавлено: " + U.Tn(n) : "Эти файлы уже есть в библиотеке");
-            }
+            if (!Guard.Need("Загрузка своей музыки")) return;
+            var dlg = new Microsoft.Win32.OpenFileDialog { Multiselect = true, Title = L.T("Добавить музыку"), Filter = L.T("Аудио|*.mp3;*.m4a;*.aac;*.wav;*.wma;*.flac;*.mp4|Все файлы|*.*") };
+            if (dlg.ShowDialog() == true) AddFilesUi(dlg.FileNames);
         }
 
         // ---------- Search ----------
@@ -568,7 +567,16 @@ namespace Sonora
             var box = searchResults;
             box.Children.Clear();
             var q = (searchInput.Text ?? "").Trim().ToLowerInvariant();
-            if (q.Length == 0) { box.Children.Add(Empty("search", "Начни вводить", "Поиск по трекам, исполнителям и плейлистам.")); return; }
+            if (q.Length == 0) { box.Children.Add(Empty("search", "Начни вводить", "Поиск по трекам, исполнителям и плейлистам. Можно вставить ссылку на трек.")); return; }
+            var sharedId = Share.Parse(searchInput.Text);
+            if (sharedId != null)
+            {
+                var st = Catalog.Get(sharedId);
+                if (st == null) { box.Children.Add(Empty("link", "Трек по ссылке не найден", Catalog.Loaded ? "Возможно, его удалили из каталога." : "Каталог ещё загружается — попробуй через пару секунд.")); return; }
+                box.Children.Add(SHead("Трек по ссылке"));
+                box.Children.Add(TrackList(new List<Track> { st }));
+                return;
+            }
             Func<string, bool> has = s => !string.IsNullOrEmpty(s) && s.ToLowerInvariant().Contains(q);
             var tr = Catalog.All.Where(t => has(t.Title) || has(t.Artist) || has(t.Album) || Mixes.Genres(t.Genre).Any(g => g.Contains(q))).ToList();
             var ar = Mixes.Artists(Catalog.All.Where(t => has(t.Artist))).ToList();
@@ -676,7 +684,7 @@ namespace Sonora
             var grad = Th.G(mix.From ?? "#8b5cf6", mix.To ?? "#06b6d4");
             var head = new Grid { Width = 220, Height = 220, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 8, 0, 20) };
             head.Children.Add(new Border { CornerRadius = new CornerRadius(20), Background = grad, Effect = U.Shadow(50, 20, .8) });
-            bool iconCover = (ext && id.EndsWith(":likes")) || id == Mixes.Liked || id.StartsWith("__mix_") || id == "__hour_genre__" || id == Mixes.Recent || id == Mixes.Uploaded;
+            bool iconCover = (ext && id.EndsWith(":likes")) || id == Mixes.Liked || id.StartsWith("__mix_") || id == "__hour_genre__" || id == Mixes.Recent || id == Mixes.Uploaded || id == Mixes.Downloaded;
             if (iconCover)
             {
                 var c = new Border { CornerRadius = new CornerRadius(20), Background = grad, Child = U.Center(U.Ico(id == Mixes.Liked || ext && id.EndsWith(":likes") ? "heartFill" : mix.Icon, 100, Th.White)) };
@@ -702,6 +710,11 @@ namespace Sonora
             var items = new List<UIElement> { play, U.M(shuffle, 10, 0, 0, 0) };
             if (pl != null) items.Add(U.M(RoundBtn("edit", () => NewPlaylistSheet(pl)), 10, 0, 0, 0));
             if (id == Mixes.Uploaded) items.Add(U.M(RoundBtn("plus", PickFiles), 10, 0, 0, 0));
+            if (id != Mixes.Downloaded && mix.Tracks.Any(Offline.CanDownload))
+            {
+                bool allDone = mix.Tracks.Where(Offline.CanDownload).All(t => Offline.Has(t.Id));
+                items.Add(U.M(RoundBtn(allDone ? "check" : "download", () => { if (!Guard.Need("Скачивание треков")) return; Offline.DownloadAll(mix.Tracks); }), 10, 0, 0, 0));
+            }
             if (ext)
             {
                 items.Add(U.M(RoundBtn("plus", () => SaveExtList(mix)), 10, 0, 0, 0));
@@ -780,9 +793,11 @@ namespace Sonora
                 sp.Children.Add(SetBtn("refresh", "Синхронизировать сейчас", Cloud.Status, async () => { await Cloud.SyncNow(); Toast(Cloud.Status); Render(); }));
                 sp.Children.Add(SetBtn("logout", "Выйти из аккаунта", null, ConfirmLogout, Th.Danger));
             }
+            sp.Children.Add(SetBtn("gear", "Настройки", L.En ? "English" : "Русский", () => Go("settings")));
             sp.Children.Add(SetTitle("Данные"));
             var mb = Catalog.CacheSize() / 1024.0 / 1024.0;
             sp.Children.Add(SetBtn("upload", "Добавить музыку с компьютера", U.Tn(Library.D.Local.Count), PickFiles));
+            sp.Children.Add(SetBtn("download", "Скачанные", U.Tn(Library.D.Offline.Count), () => Go("playlist", Mixes.Downloaded)));
             sp.Children.Add(SetBtn("trash", "Очистить кэш аудио", mb.ToString("0.0") + " МБ", () => { Catalog.ClearCache(); Toast("Кэш очищен"); Render(); }));
             sp.Children.Add(SetBtn("refresh", "Обновить каталог", U.Tn(Catalog.Remote.Count), async () => { await Catalog.LoadAsync(); Toast("Каталог обновлён"); }));
             sp.Children.Add(SetBtn("music", "Папка данных", null, () => { try { System.Diagnostics.Process.Start("explorer.exe", "\"" + Paths.Data + "\""); } catch { } }));
@@ -790,13 +805,13 @@ namespace Sonora
             sp.Children.Add(SetBtn("star", "SONORA для Windows", "версия " + typeof(Shell).Assembly.GetName().Version.ToString(3), () => Toast("Пробел — пауза, ←/→ — перемотка, Ctrl+←/→ — треки")));
             return sp;
         }
-        static FrameworkElement SetTitle(string s)
+        internal static FrameworkElement SetTitle(string s)
         {
             var t = U.Tx(s.ToUpperInvariant(), 11, Th.Dim);
             t.Margin = new Thickness(0, 22, 0, 10);
             return t;
         }
-        static FrameworkElement SetBtn(string icon, string text, string right, Action a, Brush color = null)
+        internal static FrameworkElement SetBtn(string icon, string text, string right, Action a, Brush color = null)
         {
             var ic = U.Ico(icon, 20, color ?? Th.Dim);
             ic.VerticalAlignment = VerticalAlignment.Center;

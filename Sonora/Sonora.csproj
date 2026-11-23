@@ -9,7 +9,7 @@
     <RootNamespace>Sonora</RootNamespace>
     <StartupObject>Sonora.Program</StartupObject>
     <ApplicationIcon>Assets\sonora.ico</ApplicationIcon>
-    <Version>1.0.0</Version>
+    <Version>1.5.0</Version>
     <Product>SONORA</Product>
     <Company>SONORA</Company>
     <Description>SONORA — музыкальный плеер для Windows</Description>
@@ -24,6 +24,8 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+    <PackageReference Include="NAudio.Wasapi" Version="2.2.1" />
+    <PackageReference Include="Microsoft.Windows.SDK.Contracts" Version="10.0.19041.1" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="System.Net.Http" />
@@ -36,4 +38,12 @@
     <EmbeddedResource Include="Assets\logo.png" LogicalName="logo.png" />
     <EmbeddedResource Include="Assets\sonora.ico" LogicalName="sonora.ico" />
   </ItemGroup>
+  <!-- NAudio вшивается в SONORA.exe как ресурс (загружается через AssemblyResolve) -->
+  <Target Name="EmbedNAudio" AfterTargets="ResolveAssemblyReferences">
+    <ItemGroup>
+      <EmbeddedResource Include="@(ReferenceCopyLocalPaths)" Condition="'%(ReferenceCopyLocalPaths.Extension)' == '.dll' And $([System.String]::Copy('%(ReferenceCopyLocalPaths.Filename)').StartsWith('NAudio'))">
+        <LogicalName>%(ReferenceCopyLocalPaths.Filename)%(ReferenceCopyLocalPaths.Extension)</LogicalName>
+      </EmbeddedResource>
+    </ItemGroup>
+  </Target>
 </Project>

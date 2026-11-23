@@ -156,16 +156,15 @@ namespace Sonora
             Drop += (s, e) =>
             {
                 if (!(e.Data.GetData(DataFormats.FileDrop) is string[] files)) return;
-                int n = Library.AddFiles(files);
-                Toast(n > 0 ? "Добавлено: " + U.Tn(n) : "Подходящих аудиофайлов не найдено");
-                if (n > 0) Go("playlist", Mixes.Uploaded);
+                if (!Guard.Need("Загрузка своей музыки")) return;
+                AddFilesUi(files, true);
             };
 
             var clock = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
             long slot = Mixes.Slot;
             clock.Tick += (s, e) =>
             {
-                if (hourSub != null && Page == "home") hourSub.Text = "Каждые 30 минут новый жанр · " + Mixes.HourCountdown();
+                if (hourSub != null && Page == "home") hourSub.Text = L.T("Каждые 30 минут новый жанр · ") + Mixes.HourCountdown();
                 if (Mixes.Slot != slot) { slot = Mixes.Slot; if (Page == "home") QueueRender(); }
             };
             clock.Start();
@@ -261,7 +260,7 @@ namespace Sonora
             {
                 bool on = Page == "playlist" && (Arg as string) == id;
                 var cov = new Border { Width = 44, Height = 44, CornerRadius = new CornerRadius(id == Mixes.Liked || id.EndsWith(":likes") ? 22 : 10), Background = img ?? bg };
-                if (img == null) cov.Child = U.Center(U.Ico(id == Mixes.Liked || id.EndsWith(":likes") ? "heartFill" : id == Mixes.Uploaded ? "upload" : id == Mixes.Recent ? "clock" : "music", 19, Th.White));
+                if (img == null) cov.Child = U.Center(U.Ico(id == Mixes.Liked || id.EndsWith(":likes") ? "heartFill" : id == Mixes.Uploaded ? "upload" : id == Mixes.Recent ? "clock" : id == Mixes.Downloaded ? "download" : "music", 19, Th.White));
                 FrameworkElement content = cov;
                 if (!compact)
                 {
@@ -278,10 +277,11 @@ namespace Sonora
             };
             item(Mixes.Liked, "Мне нравится", U.Tn(Library.D.Fav.Count), Th.Pink, null);
             if (Library.D.Recent.Count > 0) item(Mixes.Recent, "Недавно прослушанные", "История · " + U.Tn(Library.D.Recent.Count), Th.B("#1E3A5F"), null);
+            if (Library.D.Offline.Count > 0) item(Mixes.Downloaded, "Скачанные", "Офлайн · " + U.Tn(Library.D.Offline.Count), Th.G("#2DD4BF", "#2563EB"), null);
             if (Library.D.Local.Count > 0) item(Mixes.Uploaded, "Загруженная музыка", "С компьютера · " + U.Tn(Library.D.Local.Count), Th.B("#0E4C5A"), null);
-            if (Ext.YaOn) item("ext:ya:likes", "Мне нравится", "Яндекс Музыка", Th.Hot, null);
-            if (Ext.SpOn) item("ext:sp:likes", "Любимые треки", "Spotify", Th.Hot, null);
-            if (Ext.DzOn) item("ext:dz:likes", "Любимые треки", "Deezer", Th.Hot, null);
+            if (Ext.YaOn) item("ext:ya:likes", "Мне нравится", "Яндекс Музыка", Th.Pink, null);
+            if (Ext.SpOn) item("ext:sp:likes", "Любимые треки", "Spotify", Th.Pink, null);
+            if (Ext.DzOn) item("ext:dz:likes", "Любимые треки", "Deezer", Th.Pink, null);
             foreach (var p in Library.D.Playlists)
             {
                 var first = p.TrackIds.Select(Catalog.Get).FirstOrDefault(t => t != null && !string.IsNullOrEmpty(t.Cover));
@@ -341,7 +341,10 @@ namespace Sonora
             bellWrap.Children.Add(notifBadge);
             profileBtn = new Border { Width = 34, Height = 34, CornerRadius = new CornerRadius(17), Background = Th.Accent, BorderBrush = Th.B("#000000", .5), BorderThickness = new Thickness(3) };
             U.Click(profileBtn, () => Go("profile"), .92);
-            var g = U.Cols("a * a a", backBtn, null, bellWrap, profileBtn);
+            var gear = IBtn("gear", () => Go("settings"));
+            gear.Margin = new Thickness(0, 0, 8, 0);
+            gear.ToolTip = L.T("Настройки");
+            var g = U.Cols("a * a a a", backBtn, null, gear, bellWrap, profileBtn);
             g.Margin = new Thickness(20, 14, 20, 8);
             return g;
         }
@@ -371,7 +374,9 @@ namespace Sonora
         // ---------- Нижняя панель плеера ----------
         Border bar, barCover, barPlay, barFav, barShuffle, barRepeat, barLyrics, barQueue, barTimer, barVolIco;
         Grid barSeek, volBar;
-        Border barFill, barThumb, volFill;
+        Border barFill, barThumb, volFill, volThumb;
+        Liquid barLiquid;
+        string barColorId;
         TextBlock barTitle, barArtist, barCur, barDur;
         bool barDrag, volDrag;
         double lastVol = .8;
@@ -427,8 +432,8 @@ namespace Sonora
                 else Player.I.Volume = lastVol > 0 ? lastVol : .8;
                 UpdateVolume();
             });
-            Border volThumb;
             volBar = Bar(out volFill, out volThumb);
+            volBar.SizeChanged += (s, e) => UpdateVolume();
             volBar.Width = 110;
             volBar.Margin = new Thickness(2, 0, 10, 0);
             volBar.MouseLeftButtonDown += (s, e) => { volDrag = true; volBar.CaptureMouse(); SetVol(e.GetPosition(volBar).X); e.Handled = true; };
@@ -436,6 +441,7 @@ namespace Sonora
             volBar.MouseLeftButtonUp += (s, e) => { volDrag = false; volBar.ReleaseMouseCapture(); Library.Save(false); };
             volBar.MouseWheel += (s, e) => { Player.I.Volume += e.Delta > 0 ? .05 : -.05; UpdateVolume(); e.Handled = true; };
             var expand = SmallBtn("expand", OpenFull);
+            expand.ToolTip = L.T("Развернуть плеер");
             var right = U.Row(barLyrics, barQueue, barTimer, U.M(barVolIco, 6, 0, 0, 0), volBar, expand);
             right.HorizontalAlignment = HorizontalAlignment.Right;
             foreach (FrameworkElement c in right.Children) c.VerticalAlignment = VerticalAlignment.Center;
@@ -447,7 +453,15 @@ namespace Sonora
             Grid.SetColumn(mid, 1); Grid.SetColumn(right, 2);
             g.Children.Add(left); g.Children.Add(mid); g.Children.Add(right);
             right.ClipToBounds = true;
-            bar = new Border { Height = 100, CornerRadius = new CornerRadius(24), Margin = new Thickness(0, 0, 14, 14), Padding = new Thickness(16, 8, 22, 8), Background = Th.B("#1A1D24", .8), BorderBrush = Th.GlassEdge, BorderThickness = new Thickness(1), Child = g, Visibility = Visibility.Collapsed };
+            g.Margin = new Thickness(16, 8, 22, 8);
+            barLiquid = new Liquid(false);
+            var shade = new Border { Background = Th.G(Th.C("#000000", .18), Th.C("#000000", .38), true), IsHitTestVisible = false };
+            var stack = new Grid();
+            stack.Children.Add(barLiquid);
+            stack.Children.Add(shade);
+            stack.Children.Add(g);
+            U.ClipRound(stack, 23);
+            bar = new Border { Height = 100, CornerRadius = new CornerRadius(24), Margin = new Thickness(0, 0, 14, 14), Background = Th.B("#1A1D24", .9), BorderBrush = Th.GlassEdge, BorderThickness = new Thickness(1), Child = stack, Visibility = Visibility.Collapsed };
             return bar;
         }
         static Border SmallBtn(string icon, Action a)
@@ -480,7 +494,7 @@ namespace Sonora
         {
             r = Math.Max(0, Math.Min(1, r));
             fill.Width = r * w;
-            thumb.Margin = new Thickness(Math.Max(0, r * w - 6), 0, 0, 0);
+            thumb.Margin = new Thickness(Math.Max(0, Math.Min(w - 12, r * w - 6)), 0, 0, 0);
         }
         void SeekBar(double x, bool commit)
         {
@@ -501,8 +515,9 @@ namespace Sonora
         void UpdateVolume()
         {
             var v = Player.I.Volume;
-            volFill.Width = v * (volBar.ActualWidth > 0 ? volBar.ActualWidth : 110);
-            barVolIco.Child = U.Center(U.Ico(v <= 0.001 ? "mute" : "volume", 22, Th.B("#FFFFFF", .88)));
+            SetBar(volFill, volThumb, v, volBar.ActualWidth > 0 ? volBar.ActualWidth : 110);
+            barVolIco.Child = U.Center(U.Ico(v <= 0.001 ? "mute" : v < .5 ? "volLow" : "volume", 22, Th.B("#FFFFFF", .88)));
+            barVolIco.ToolTip = L.T("Громкость: ") + (int)Math.Round(v * 100) + "%";
         }
 
         public bool MiniVisible { get { return Player.I.Current != null; } }
@@ -512,13 +527,16 @@ namespace Sonora
             bar.Visibility = t == null ? Visibility.Collapsed : Visibility.Visible;
             contentPanel.Margin = new Thickness(0, 14, 14, t == null ? 14 : 12);
             if (t == null) { Full.Close(); topGlow.Background = null; return; }
-            // панель плеера и подсветка — единый синий градиент
-            var dc = Th.C("#3B82F6");
-            var bg = new LinearGradientBrush(Th.C("#1E3A8A", .80), Th.C("#0F172A", .84), new Point(0, .5), new Point(1, .5));
-            bg.Freeze();
-            bar.Background = bg;
-            trackGlow.Fill = GlowBrush(dc, .20);
-            topGlow.Background = Th.G(Color.FromArgb(70, dc.R, dc.G, dc.B), Color.FromArgb(0, dc.R, dc.G, dc.B), false);
+            // панель плеера и подсветка — в цветах обложки, «живая вода»
+            if (barColorId != t.Id)
+            {
+                barColorId = t.Id;
+                var pal = Palette.Of(t);
+                var dc = pal[0];
+                barLiquid.SetColors(pal, IsLoaded && !ShotMode);
+                trackGlow.Fill = GlowBrush(dc, .22);
+                topGlow.Background = Th.G(Color.FromArgb(70, dc.R, dc.G, dc.B), Color.FromArgb(0, dc.R, dc.G, dc.B), false);
+            }
             var br = U.CoverBrush(t, 112);
             barCover.Background = br ?? (Brush)Th.Card;
             barCover.Child = br == null ? U.Center(U.Ico("music", 20, Th.Dim)) : null;
@@ -579,7 +597,7 @@ namespace Sonora
             if (s == null) return;
             s.Dispatcher.BeginInvoke(new Action(() =>
             {
-                s.toastText.Text = msg;
+                s.toastText.Text = L.T(msg);
                 s.toastBox.Visibility = Visibility.Visible;
                 U.Fade(s.toastBox, 0, 1);
                 s.toastTimer.Stop();

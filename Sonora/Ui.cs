@@ -46,7 +46,7 @@ namespace Sonora
             Bg = B("#050608"), Panel = B("#101216"), Bg2 = B("#15171C"), Card = B("#1A1D23"), Card2 = B("#22262E"),
             Border = B("#FFFFFF", .06), BorderHi = B("#FFFFFF", .12), Txt = B("#F5F7FA"), Dim = B("#8C93A1"),
             Accent = B("#3B82F6"), Accent2 = B("#60A5FA"), Accent3 = B("#7AB0FF"), Soft = B("#3B82F6", .14),
-            Heart = B("#5B9BFF"),
+            Heart = B("#FF4F9A"),
             Danger = B("#F43F5E"), Ok = B("#60A5FA"), White = B("#FFFFFF"), Clear = B("#000000", 0);
         public static LinearGradientBrush G(string a, string b, bool diagonal = true)
         {
@@ -66,7 +66,7 @@ namespace Sonora
             g.Freeze();
             return g;
         }
-        public static readonly LinearGradientBrush Brand = G("#60A5FA", "#1D4ED8"), Hot = G("#60A5FA", "#1D4ED8"), Pink = G("#60A5FA", "#1D4ED8"), Ring = G("#93C5FD", "#1D4ED8");
+        public static readonly LinearGradientBrush Brand = G("#60A5FA", "#1D4ED8"), Hot = G("#60A5FA", "#1D4ED8"), Pink = G("#FF6BAE", "#D81B72"), Ring = G("#93C5FD", "#1D4ED8");
         public static FontFamily LogoFont = new FontFamily("Segoe UI");
         // «стекло»: полупрозрачная заливка + светлая кромка сверху, гаснущая книзу
         public static readonly LinearGradientBrush GlassEdge = Edge(.16, .035), GlassEdgeSoft = Edge(.10, .02);
@@ -195,8 +195,9 @@ namespace Sonora
         }
         public static Brush PlayerGradient(Track t)
         {
-            // единая синяя палитра вместо цвета обложки
-            return Th.G(Th.C("#1E3A8A"), Th.C("#0B1022"), false);
+            // цвет обложки
+            var p = Palette.Of(t);
+            return Th.G(Palette.Darken(p[0], .55), Palette.Darken(p[2], .35), false);
         }
     }
 
@@ -238,7 +239,7 @@ namespace Sonora
 
         public static TextBlock Tx(string s, double size, Brush fg = null, double opacity = 1, bool trim = true)
         {
-            var t = new TextBlock { Text = s ?? "", FontSize = size, Foreground = fg ?? Th.Txt, Opacity = opacity, FontFamily = Th.Font };
+            var t = new TextBlock { Text = L.T(s) ?? "", FontSize = size, Foreground = fg ?? Th.Txt, Opacity = opacity, FontFamily = Th.Font };
             bool dim = fg == Th.Dim || opacity < 1;
             // фирменный шрифт Widock — для заголовков, названий и навигации; мелкий служебный текст — Segoe UI
             // Widock — капсовый акцидентный шрифт: только для крупных заголовков; остальной текст — Segoe UI
@@ -379,6 +380,8 @@ namespace Sonora
 
         public static string Plural(int n, string one, string few, string many)
         {
+            var en = L.Plural(n, one, few, many);
+            if (en != null) return en;
             int a = Math.Abs(n) % 100, b = a % 10;
             if (a > 10 && a < 20) return many;
             if (b > 1 && b < 5) return few;

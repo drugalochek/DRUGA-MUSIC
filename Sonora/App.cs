@@ -14,13 +14,44 @@ namespace Sonora
     public static class Program
     {
         public static string ShotsDir;
-        public const string Version = "1.0.0";
+        public const string Version = "1.5.0";
+        public static string[] StartArgs = new string[0];
+        static readonly System.Collections.Generic.Dictionary<string, System.Reflection.Assembly> embedded = new System.Collections.Generic.Dictionary<string, System.Reflection.Assembly>();
+        // NAudio вшит в SONORA.exe — подгружаем из ресурсов, чтобы хватало одного файла
+        static System.Reflection.Assembly Resolve(object sender, ResolveEventArgs e)
+        {
+            try
+            {
+                var name = new System.Reflection.AssemblyName(e.Name).Name + ".dll";
+                lock (embedded)
+                {
+                    if (embedded.TryGetValue(name, out var a)) return a;
+                    using (var st = typeof(Program).Assembly.GetManifestResourceStream(name))
+                    {
+                        if (st == null) return null;
+                        var ms = new MemoryStream();
+                        st.CopyTo(ms);
+                        a = System.Reflection.Assembly.Load(ms.ToArray());
+                        embedded[name] = a;
+                        return a;
+                    }
+                }
+            }
+            catch { return null; }
+        }
 
         [STAThread]
         public static int Main(string[] args)
         {
+            AppDomain.CurrentDomain.AssemblyResolve += Resolve;
             for (int i = 0; i < args.Length; i++)
                 if (args[i] == "--shots" && i + 1 < args.Length) ShotsDir = Path.GetFullPath(args[i + 1]);
+            StartArgs = ShotsDir != null ? new string[0] : args.Where(a => !a.StartsWith("--")).ToArray();
+            if (ShotsDir == null)
+            {
+                try { if (!Single.TryFirst(StartArgs)) return 0; }
+                catch (Exception ex) { Log.W("single start: " + ex.Message); }
+            }
 
             System.Net.ServicePointManager.SecurityProtocol |= System.Net.SecurityProtocolType.Tls12;
             var app = new Application { ShutdownMode = ShutdownMode.OnMainWindowClose };
@@ -35,10 +66,13 @@ namespace Sonora
 
             Th.InitFont();
             Library.Load();
+            L.Init(ShotsDir != null && Environment.GetEnvironmentVariable("SONORA_LANG") == "en" ? "en" : Library.D.Lang);
             Ext.Load();
             if (ShotsDir == null) Auth.LoadSaved();
             var win = new MainWindow(ShotsDir != null);
             app.MainWindow = win;
+            Single.Received += items => app.Dispatcher.BeginInvoke(new Action(() => Shell.I?.HandleArgs(items)));
+            app.Exit += (s, e) => Single.Release();
             win.Show();
             return app.Run();
         }
@@ -68,7 +102,7 @@ namespace Sonora
             shell = new Shell(shots);
             Content = shell;
             PreviewKeyDown += (s, e) => shell.HandleKey(e);
-            SourceInitialized += (s, e) => DarkTitle();
+            SourceInitialized += (s, e) => { DarkTitle(); if (!shots) InitSystem(); };
             Loaded += async (s, e) => await Start();
             Closing += (s, e) => { try { Library.Save(false); } catch { } };
         }
@@ -86,10 +120,18 @@ namespace Sonora
             catch { }
         }
 
+        void InitSystem()
+        {
+            try { Smtc.Init(new WindowInteropHelper(this).Handle); } catch (Exception ex) { Log.W("smtc init: " + ex.Message); }
+            try { Taskbar.Init(this); } catch (Exception ex) { Log.W("taskbar: " + ex.Message); }
+            Task.Run(() => WinReg.Register());
+        }
+
         async Task Start()
         {
             if (shots) { await Shots(); return; }
             if (Auth.Current == null && !Library.D.GuestChosen) shell.OpenWelcome();
+            if (Program.StartArgs.Length > 0) shell.HandleArgs(Program.StartArgs);
             try { await Catalog.LoadAsync(); } catch (Exception ex) { Log.W("catalog start: " + ex.Message); }
             if (Auth.Current != null)
             {
@@ -146,6 +188,7 @@ namespace Sonora
                 shell.Go("playlist", "__hour_genre__"); await Snap("10-playlist");
                 shell.Go("profile"); await Snap("11-profile");
                 shell.Go("services"); await Snap("17-services");
+                shell.Go("settings"); await Snap("18-settings");
                 if (all.Count > 0)
                 {
                     shell.Go("home");
@@ -158,6 +201,9 @@ namespace Sonora
                     shell.CloseSheet();
                     if (withLyrics >= 0) { shell.Full.OpenLyrics(); await Snap("15-lyrics"); shell.CloseSheet(); }
                     shell.TimerSheet(); await Snap("16-timer");
+                    shell.CloseSheet();
+                    shell.Full.Close();
+                    shell.NeedAccount("Скачивание треков"); await Snap("19-guest");
                     shell.CloseSheet();
                 }
             }

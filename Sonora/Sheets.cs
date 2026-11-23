@@ -65,13 +65,13 @@ namespace Sonora
             var body = new StackPanel();
             body.Children.Add(new Border { Padding = new Thickness(12), CornerRadius = new CornerRadius(12), Background = Th.Soft, Margin = new Thickness(0, 0, 0, 14), Child = benefits });
             body.Children.Add(Provider(U.Ico("login", 20, Th.White), "Войти или создать аккаунт", OpenAuth, true));
-            body.Children.Add(Provider(U.Ico("user", 20, Th.Txt), "Продолжить без аккаунта", () =>
+            body.Children.Add(Provider(U.Ico("user", 20, Th.Txt), "Продолжить как гость (30 секунд)", () =>
             {
                 Library.D.GuestChosen = true;
                 Library.Save(false);
                 CloseSheet();
             }, false, true));
-            OpenSheet("Добро пожаловать в SONORA", "Войди или создай аккаунт, чтобы сохранять треки в облаке. Или продолжай без аккаунта.", body, () =>
+            OpenSheet("Добро пожаловать в SONORA", "Войди или создай аккаунт: лайки, плейлисты, своя музыка, скачивание и сервисы. Без аккаунта можно только слушать — по 30 секунд от трека.", body, () =>
             {
                 if (!Library.D.GuestChosen && Auth.Current == null) { Library.D.GuestChosen = true; Library.Save(false); }
             });
@@ -227,7 +227,12 @@ namespace Sonora
             body.Children.Add(Provider(U.Ico("next", 20, Th.Txt), "Играть следующим", () => { Player.I.PlayNext(t); CloseSheet(); }));
             if (t.Source != null) body.Children.Add(Provider(U.Ico("search", 20, Th.Txt), "Найти исполнителя", () => { CloseSheet(); Go("search"); SetSearch((t.Artist ?? "").Split(',')[0].Trim()); }));
             else if (!t.IsLocal) body.Children.Add(Provider(U.Ico("user", 20, Th.Txt), "Перейти к исполнителю", () => { CloseSheet(); Go("artist", t.Artist); }));
-            body.Children.Add(Provider(U.Ico("share", 20, Th.Txt), "Скопировать название", () => { CopyTrack(t); CloseSheet(); }));
+            if (Offline.CanDownload(t))
+            {
+                if (Offline.Has(t.Id)) body.Children.Add(Provider(U.Ico("check", 20, Th.Accent2), "Удалить из скачанных", () => { Offline.Remove(t.Id); CloseSheet(); }));
+                else body.Children.Add(Provider(U.Ico("download", 20, Th.Txt), Offline.Busy(t.Id) ? "Скачивается…" : "Скачать для офлайна", () => { CloseSheet(); if (Guard.Need("Скачивание треков")) { var _ = Offline.Download(t); } }));
+            }
+            body.Children.Add(Provider(U.Ico(Share.Link(t) != null ? "link" : "share", 20, Th.Txt), Share.Link(t) != null ? "Поделиться ссылкой" : "Скопировать название", () => { CloseSheet(); CopyTrack(t); }));
             if (playlistId != null && playlistId != Mixes.Uploaded)
                 body.Children.Add(Provider(U.Ico("trash", 20, Th.Danger), "Убрать из плейлиста", () => { Library.RemoveFromPlaylist(playlistId, t.Id); CloseSheet(); }));
             if (t.IsLocal)
@@ -236,11 +241,18 @@ namespace Sonora
         }
         public static void CopyTrack(Track t)
         {
-            try { Clipboard.SetText(t.Artist + " — " + t.Title); Toast("Скопировано: " + t.Artist + " — " + t.Title); }
+            if (!Guard.Need("Отправка треков по ссылке")) return;
+            var link = Share.Link(t);
+            try
+            {
+                if (link != null) { Clipboard.SetText(t.Artist + " — " + t.Title + "\n" + link); Toast("Ссылка на трек скопирована — отправь её другу"); }
+                else { Clipboard.SetText(t.Artist + " — " + t.Title); Toast(t.IsLocal ? "Свой файл нельзя отправить ссылкой — скопировано название" : "Скопировано: " + t.Artist + " — " + t.Title); }
+            }
             catch { Toast("Не удалось скопировать"); }
         }
         void AddToPlaylistSheet(Track t)
         {
+            if (!Guard.Need("Плейлисты")) return;
             var body = new StackPanel();
             foreach (var p in Library.D.Playlists)
             {
@@ -259,6 +271,7 @@ namespace Sonora
         }
         void NewPlaylistSheet(Playlist edit, Track addAfter = null)
         {
+            if (!Guard.Need("Плейлисты")) return;
             var inp = new Input("Название плейлиста");
             if (edit != null) inp.Text = edit.Name;
             string color = edit?.Color ?? Library.PlColors[Library.D.Playlists.Count % Library.PlColors.Length];

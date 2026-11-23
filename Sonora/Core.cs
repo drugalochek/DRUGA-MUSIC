@@ -9,6 +9,7 @@ using System.Net.Http;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Web.Script.Serialization;
 using System.Windows.Threading;
@@ -132,7 +133,11 @@ namespace Sonora
         {
             get
             {
-                if (all == null) all = Remote.Concat(Library.LocalTracks()).ToList();
+                if (all == null)
+                {
+                    var ids = new HashSet<string>(Remote.Select(t => t.Id));
+                    all = Remote.Concat(Library.LocalTracks()).Concat(global::Sonora.Offline.Tracks().Where(t => !ids.Contains(t.Id))).ToList();
+                }
                 return all;
             }
         }
@@ -192,6 +197,8 @@ namespace Sonora
         public static Task<string> AudioFile(Track t)
         {
             if (t.IsLocal) return Task.FromResult(t.LocalPath);
+            var off = global::Sonora.Offline.FileOf(t.Id);
+            if (off != null) return Task.FromResult(off);
             if (t.Source != null) return global::Sonora.Ext.StreamUrl(t);
             lock (Pending)
             {
@@ -201,7 +208,7 @@ namespace Sonora
                 return task;
             }
         }
-        static string Safe(string id)
+        public static string Safe(string id)
         {
             var sb = new StringBuilder();
             foreach (var c in id) sb.Append(char.IsLetterOrDigit(c) || c == '-' || c == '_' ? c : '_');
@@ -263,6 +270,7 @@ namespace Sonora
         public string Artist { get; set; }
         public double Duration { get; set; }
         public long AddedAt { get; set; }
+        public string Sig { get; set; }
     }
 
     public sealed class LibData
@@ -273,6 +281,10 @@ namespace Sonora
         public List<Playlist> Playlists { get; set; } = new List<Playlist>();
         public List<LocalFile> Local { get; set; } = new List<LocalFile>();
         public bool GuestChosen { get; set; }
+        public List<OfflineItem> Offline { get; set; } = new List<OfflineItem>();
+        public string Lang { get; set; } = "ru";
+        public bool LiquidBg { get; set; } = true;
+        public bool BeatGlow { get; set; } = true;
         public double Volume { get; set; } = 0.8;
         public long UpdatedAt { get; set; }
     }
@@ -298,6 +310,9 @@ namespace Sonora
             if (D.Recent == null) D.Recent = new List<string>();
             if (D.Playlists == null) D.Playlists = new List<Playlist>();
             if (D.Local == null) D.Local = new List<LocalFile>();
+            if (D.Offline == null) D.Offline = new List<OfflineItem>();
+            D.Offline.RemoveAll(o => o == null || string.IsNullOrEmpty(o.Id));
+            if (D.Lang != "en") D.Lang = "ru";
             foreach (var p in D.Playlists) if (p.TrackIds == null) p.TrackIds = new List<string>();
             D.Local.RemoveAll(l => l == null || string.IsNullOrEmpty(l.Path));
             if (D.Volume <= 0 || D.Volume > 1) D.Volume = 0.8;
@@ -320,9 +335,9 @@ namespace Sonora
             return D.Local.Select(l => new Track { Id = l.Id, Title = l.Title, Artist = l.Artist, Album = "", Genre = "", Lyrics = "", Duration = l.Duration, LocalPath = l.Path, AddedAt = l.AddedAt }).ToList();
         }
         public static bool IsFav(string id) { return D.Fav.Contains(id); }
-        public static void ToggleFav(string id) { if (!D.Fav.Remove(id)) D.Fav.Insert(0, id); Save(); }
+        public static void ToggleFav(string id) { if (!Guard.Need("Лайки")) return; if (!D.Fav.Remove(id)) D.Fav.Insert(0, id); Save(); }
         public static bool IsFavArtist(string a) { return D.FavArtists.Contains(a); }
-        public static void ToggleFavArtist(string a) { if (!D.FavArtists.Remove(a)) D.FavArtists.Insert(0, a); Save(); }
+        public static void ToggleFavArtist(string a) { if (!Guard.Need("Любимые исполнители")) return; if (!D.FavArtists.Remove(a)) D.FavArtists.Insert(0, a); Save(); }
         public static void AddRecent(string id)
         {
             D.Recent.Remove(id);
@@ -337,28 +352,51 @@ namespace Sonora
         }
 
         public static readonly string[] AudioExt = { ".mp3", ".m4a", ".aac", ".wav", ".wma", ".flac", ".mp4" };
-        public static int AddFiles(IEnumerable<string> paths)
+        public sealed class AddResult { public int Added, Dupes; public List<Junk.Result> Rejected = new List<Junk.Result>(); }
+        static IEnumerable<string> Expand(IEnumerable<string> paths)
         {
-            int n = 0;
             foreach (var p in paths)
             {
-                try
+                if (Directory.Exists(p))
                 {
-                    if (Directory.Exists(p)) { n += AddFiles(Directory.GetFiles(p, "*.*", SearchOption.AllDirectories)); continue; }
-                    if (!File.Exists(p) || !AudioExt.Contains(Path.GetExtension(p).ToLowerInvariant())) continue;
-                    var full = Path.GetFullPath(p);
-                    if (D.Local.Any(l => string.Equals(l.Path, full, StringComparison.OrdinalIgnoreCase))) continue;
-                    var name = Path.GetFileNameWithoutExtension(full);
-                    string artist = "Неизвестный исполнитель", title = name.Trim();
-                    int dash = name.IndexOf(" - ", StringComparison.Ordinal);
-                    if (dash > 0) { artist = name.Substring(0, dash).Trim(); title = name.Substring(dash + 3).Trim(); }
-                    D.Local.Insert(0, new LocalFile { Id = "local_" + Hash(full.ToLowerInvariant()), Path = full, Title = title, Artist = artist, AddedAt = Now });
-                    n++;
+                    string[] files;
+                    try { files = Directory.GetFiles(p, "*.*", SearchOption.AllDirectories); } catch { continue; }
+                    foreach (var f in files) yield return f;
                 }
-                catch (Exception ex) { Log.W("add file: " + ex.Message); }
+                else yield return p;
             }
-            if (n > 0) Save(false);
-            return n;
+        }
+        // Добавление файлов с проверкой: формат, длительность, тишина, дубликаты, «голосовые»
+        public static async Task<AddResult> AddFilesAsync(IEnumerable<string> paths)
+        {
+            var res = new AddResult();
+            if (Guard.Guest) return res;
+            var files = Expand(paths).Where(p => File.Exists(p) && AudioExt.Contains(Path.GetExtension(p).ToLowerInvariant())).Select(Path.GetFullPath).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            var fresh = files.Where(f => !D.Local.Any(l => string.Equals(l.Path, f, StringComparison.OrdinalIgnoreCase))).ToList();
+            res.Dupes = files.Count - fresh.Count;
+            var known = D.Local.ToList();
+            var checks = await Task.Run(() =>
+            {
+                foreach (var l in known) if (string.IsNullOrEmpty(l.Sig) && File.Exists(l.Path)) { try { l.Sig = Junk.Signature(l.Path, new FileInfo(l.Path).Length); } catch { } }
+                return fresh.AsParallel().AsOrdered().WithDegreeOfParallelism(Math.Max(1, Math.Min(4, Environment.ProcessorCount))).Select(Junk.Check).ToList();
+            });
+            var sigs = new HashSet<string>(D.Local.Where(l => !string.IsNullOrEmpty(l.Sig)).Select(l => l.Sig));
+            foreach (var c in checks)
+            {
+                if (!c.Ok) { res.Rejected.Add(c); continue; }
+                if (c.Sig != null && !sigs.Add(c.Sig)) { c.Reason = "такой же файл уже есть в библиотеке"; res.Rejected.Add(c); continue; }
+                var full = c.Path;
+                var name = Path.GetFileNameWithoutExtension(full);
+                string artist = "Неизвестный исполнитель", title = name.Trim();
+                int dash = name.IndexOf(" - ", StringComparison.Ordinal);
+                if (dash > 0) { artist = name.Substring(0, dash).Trim(); title = name.Substring(dash + 3).Trim(); }
+                title = Regex.Replace(title, @"^\d{1,3}[\s._-]+(?=\D)", "").Trim();
+                if (title.Length == 0) title = name.Trim();
+                D.Local.Insert(0, new LocalFile { Id = "local_" + Hash(full.ToLowerInvariant()), Path = full, Title = title, Artist = artist, AddedAt = Now, Duration = c.Duration, Sig = c.Sig });
+                res.Added++;
+            }
+            if (res.Added > 0 || known.Any(l => l.Sig != null)) Save(false);
+            return res;
         }
         public static void RemoveLocal(string id) { D.Local.RemoveAll(l => l.Id == id); D.Fav.Remove(id); Save(false); }
         public static string Hash(string s)

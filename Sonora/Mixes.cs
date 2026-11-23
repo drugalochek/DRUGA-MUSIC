@@ -20,7 +20,7 @@ namespace Sonora
 
     public static class Mixes
     {
-        public const string Liked = "__liked__", LikedArtists = "__liked_artists__", Uploaded = "__uploaded__", Recent = "__recent__";
+        public const string Liked = "__liked__", LikedArtists = "__liked_artists__", Uploaded = "__uploaded__", Recent = "__recent__", Downloaded = "__offline__";
         const long HalfHour = 30 * 60 * 1000;
 
         public static List<Track> FavTracks() { return Library.D.Fav.Select(Catalog.Get).Where(t => t != null).ToList(); }
@@ -124,7 +124,8 @@ namespace Sonora
         public static Mix Get(string id)
         {
             if (id == null) return null;
-            if (id == Liked) return new Mix { Id = id, Name = "Любимые треки", Tag = "Избранное", Tracks = FavTracks(), Icon = "heart", From = "#FF5FA2", To = "#C2185B" };
+            if (id == Liked) return new Mix { Id = id, Name = "Любимые треки", Tag = "Избранное", Tracks = FavTracks(), Icon = "heart", From = "#FF6BAE", To = "#D81B72" };
+            if (id == Downloaded) return new Mix { Id = id, Name = "Скачанные", Tag = "Офлайн", Tracks = Offline.Tracks(), Icon = "download", From = "#2DD4BF", To = "#2563EB" };
             if (id == Uploaded) return new Mix { Id = id, Name = "Загруженная музыка", Tag = "С компьютера", Tracks = Library.LocalTracks(), Icon = "upload", From = "#06b6d4", To = "#10b981" };
             if (id == Recent) return new Mix { Id = id, Name = "Недавно прослушанные", Tag = "История", Tracks = Library.D.Recent.Select(Catalog.Get).Where(t => t != null).ToList(), Icon = "clock", From = "#8b5cf6", To = "#06b6d4" };
             if (id == "__hour_genre__") return GenreOfHour();

@@ -23,7 +23,7 @@ namespace Sonora
         public DateTime? SleepAt;
         public event Action TrackChanged, StateChanged, Tick;
         int gen;
-        bool opened;
+        bool opened, guestHint;
 
         public Track Current { get { return Index >= 0 && Index < Queue.Count ? Queue[Index] : null; } }
 
@@ -57,6 +57,12 @@ namespace Sonora
                     SleepAt = null;
                     Pause();
                     Shell.Toast("Таймер сна: воспроизведение остановлено");
+                }
+                if (Guard.Guest && IsPlaying && opened && Position >= Guard.GuestSeconds)
+                {
+                    mp.Pause(); IsPlaying = false;
+                    StateChanged?.Invoke();
+                    Shell.I?.GuestLimit();
                 }
                 Tick?.Invoke();
             };
@@ -121,7 +127,9 @@ namespace Sonora
                 mp.Open(new Uri(file));
                 opened = true;
                 mp.Play();
-                Library.AddRecent(t.Id);
+                if (!Guard.Guest) Library.AddRecent(t.Id);
+                Beat.Analyze(t, file);
+                if (Guard.Guest && !guestHint) { guestHint = true; Shell.Toast("Гостевой режим: по 30 секунд от каждого трека. Зарегистрируйся, чтобы слушать целиком"); }
             }
             catch (Exception ex)
             {
@@ -140,6 +148,7 @@ namespace Sonora
             else
             {
                 if (!opened) { Start(); return; }
+                if (Guard.Guest && Position >= Guard.GuestSeconds - .3) { Shell.I?.GuestLimit(); return; }
                 mp.Play(); IsPlaying = true;
             }
             StateChanged?.Invoke();

@@ -22,7 +22,11 @@ namespace Sonora
         readonly Border seekFill, seekThumb;
         readonly TextBlock repeatBadge;
         bool dragging;
+        readonly Liquid liquid;
+        Border dlBtn;
+        string colorId;
         public bool IsOpen { get; private set; }
+        public void SyncLiquid() { liquid.Sync(); }
 
         List<KeyValuePair<double, string>> lyr;
         List<Border> lyrLines;
@@ -35,7 +39,9 @@ namespace Sonora
             RenderTransform = move;
             ClipToBounds = true;
             Children.Add(bg);
-            Children.Add(new Rectangle { Fill = Th.G(Th.C("#000000", .1), Th.C("#000000", .45), false), IsHitTestVisible = false });
+            liquid = new Liquid(true);
+            Children.Add(liquid);
+            Children.Add(new Rectangle { Fill = Th.G(Th.C("#000000", .22), Th.C("#000000", .55), false), IsHitTestVisible = false });
             TextElement.SetForeground(this, Th.White);
 
             var col = new Grid { MaxWidth = 520, Margin = new Thickness(20, 10, 20, 16) };
@@ -76,8 +82,19 @@ namespace Sonora
             var share = Act("share", () => { var t = Player.I.Current; if (t != null) Shell.CopyTrack(t); }, false);
             var menu = Act("dots", () => { var t = Player.I.Current; if (t != null) Shell.I.TrackMenu(t); }, true);
             favBtn = Act("heart", () => { var t = Player.I.Current; if (t == null) return; Library.ToggleFav(t.Id); Update(); }, false);
+            dlBtn = Act("download", () =>
+            {
+                var t = Player.I.Current;
+                if (t == null) return;
+                if (!Guard.Need("Скачивание треков")) return;
+                if (!Offline.CanDownload(t)) { Shell.Toast("Скачать можно только треки каталога SONORA"); return; }
+                if (Offline.Has(t.Id)) { Shell.Toast("Трек уже скачан — играет без интернета"); return; }
+                var _ = Offline.Download(t);
+            }, false);
+            Offline.Changed += () => Dispatcher.BeginInvoke(new Action(UpdateDl));
+            Library.Changed += UpdateDl;
             var acts = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 0, 0, 16) };
-            acts.Children.Add(share); acts.Children.Add(U.M(menu, 38, 0, 38, 0)); acts.Children.Add(favBtn);
+            acts.Children.Add(dlBtn); acts.Children.Add(U.M(share, 14, 0, 0, 0)); acts.Children.Add(U.M(menu, 30, 0, 30, 0)); acts.Children.Add(favBtn);
             Add(col, acts, 2);
 
             cur = U.Tx("0:00", 11, Th.White, .85); cur.MinWidth = 34; cur.TextAlignment = TextAlignment.Center; cur.VerticalAlignment = VerticalAlignment.Center;
@@ -150,6 +167,15 @@ namespace Sonora
         }
 
         static void Add(Grid g, UIElement el, int row) { Grid.SetRow(el, row); g.Children.Add(el); }
+        void UpdateDl()
+        {
+            var t = Player.I.Current;
+            if (dlBtn == null || t == null) return;
+            bool has = Offline.Has(t.Id), busy = Offline.Busy(t.Id);
+            dlBtn.Child = U.Center(busy ? (FrameworkElement)U.Tx("···", 16, Th.White) : U.Ico(has ? "check" : "download", 21, has ? Th.Accent3 : Th.White));
+            dlBtn.Opacity = Offline.CanDownload(t) ? 1 : .35;
+            dlBtn.ToolTip = L.T(has ? "Скачано — играет без интернета" : "Скачать для офлайна");
+        }
 
         static Border Act(string icon, Action a, bool big)
         {
@@ -215,7 +241,13 @@ namespace Sonora
         {
             var t = Player.I.Current;
             if (t == null) return;
-            bg.Background = Img.PlayerGradient(t);
+            if (colorId != t.Id)
+            {
+                colorId = t.Id;
+                bg.Background = Img.PlayerGradient(t);
+                liquid.SetColors(Palette.Of(t), IsOpen && !(Shell.I != null && Shell.I.ShotMode));
+            }
+            UpdateDl();
             headTitle.Text = string.IsNullOrEmpty(t.Album) ? (t.Artist ?? "—") : t.Album;
             title.Text = t.Title;
             artist.Text = string.IsNullOrEmpty(t.Album) ? t.Artist : t.Artist + " — " + t.Album;

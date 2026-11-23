@@ -176,6 +176,7 @@ namespace Sonora
         }
         void SaveExtList(Mix mix)
         {
+            if (!Guard.Need("Музыкальные сервисы")) return;
             var p = Library.NewPlaylist(mix.Name + " · " + mix.Tag, "#3b82f6");
             foreach (var t in mix.Tracks) if (!p.TrackIds.Contains(t.Id)) p.TrackIds.Add(t.Id);
             Library.Save();
@@ -224,6 +225,7 @@ namespace Sonora
         // Яндекс: вход по коду (как на телевизорах). Ничего копировать из браузера не нужно.
         public void YandexSheet()
         {
+            if (!Guard.Need("Музыкальные сервисы")) return;
             var status = U.Wrap("", 12.5, Th.Dim);
             status.Margin = new Thickness(2, 0, 2, 10);
             status.Visibility = Visibility.Collapsed;
@@ -320,6 +322,7 @@ namespace Sonora
 
         public void SpotifySheet()
         {
+            if (!Guard.Need("Музыкальные сервисы")) return;
             var err = U.Wrap("", 12.5, Th.Danger);
             err.Visibility = Visibility.Collapsed;
             err.Margin = new Thickness(2, 0, 2, 10);
@@ -360,6 +363,7 @@ namespace Sonora
 
         public void DeezerSheet(bool linkOnly)
         {
+            if (!Guard.Need("Музыкальные сервисы")) return;
             var err = U.Wrap("", 12.5, Th.Danger);
             err.Visibility = Visibility.Collapsed;
             err.Margin = new Thickness(2, 0, 2, 10);
