@@ -134,6 +134,12 @@ object Audio {
         val p = player()
         p.repeatMode = when (p.repeatMode) { Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL; Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE; else -> Player.REPEAT_MODE_OFF }
     }
+    // соседний трек (с учётом перемешивания) — для обложек prev/next в плеере
+    fun neighbor(d: Int): Track? {
+        val p = exo ?: return queue.getOrNull(index + d)
+        val i = if (d < 0) p.previousMediaItemIndex else p.nextMediaItemIndex
+        return if (i == androidx.media3.common.C.INDEX_UNSET) null else queue.getOrNull(i)
+    }
     fun position(): Long = exo?.currentPosition ?: 0L
     fun duration(): Long = exo?.duration?.takeIf { it > 0 } ?: ((current?.duration ?: 0.0) * 1000).toLong()
 
