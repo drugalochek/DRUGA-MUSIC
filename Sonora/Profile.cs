@@ -130,6 +130,7 @@ namespace Sonora
             if (s == null) sp.Children.Add(SetBtn("login", "Войти или создать аккаунт", null, OpenWelcome));
             else
             {
+                sp.Children.Add(SetBtn("crown", "SONORA Plus", Plus.Active ? L.T("активен до ") + Plus.UntilText : Plus.Price + " ₽ / " + Plus.Days + L.T(" дней"), () => PlusSheet()));
                 sp.Children.Add(SetBtn("edit", "Редактировать профиль", null, EditProfileSheet));
                 sp.Children.Add(SetBtn("refresh", "Синхронизировать сейчас", Cloud.Status, async () => { await Cloud.SyncNow(); Toast(Cloud.Status); Render(); }));
                 sp.Children.Add(SetBtn("logout", "Выйти из аккаунта", null, ConfirmLogout, Th.Danger));

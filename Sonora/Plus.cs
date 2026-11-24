@@ -48,36 +48,28 @@ namespace Sonora
             catch (Exception ex) { Log.W("plus: " + ex.Message); }
         }
 
-        // Открывает оплату ЮMoney. type: "AC" — банковская карта, "PC" — кошелёк ЮMoney.
-        // Форма quickpay принимает только POST, поэтому открываем маленькую страницу, которая сама отправляет форму.
+        // Ссылка на оплату ЮMoney. type: "AC" — банковская карта, "PC" — кошелёк ЮMoney.
+        // quickpay/confirm принимает и GET: сразу перенаправляет на страницу оплаты (проверено).
+        public static string PayUrl(string type, string label = null)
+        {
+            var uid = label ?? Auth.Current?.Uid ?? "";
+            return "https://yoomoney.ru/quickpay/confirm?receiver=" + Wallet + "&quickpay-form=button&paymentType=" + type +
+                   "&sum=" + Price + "&label=" + Uri.EscapeDataString(uid);
+        }
+
         public static void Pay(string type)
         {
-            var s = Auth.Current;
-            if (s == null) return;
-            string E(string v) { return WebUtility.HtmlEncode(v ?? ""); }
-            var html = "<!doctype html><html><head><meta charset=\"utf-8\"><title>SONORA Plus — оплата</title>" +
-                "<style>body{background:#0b0d12;color:#fff;font:16px Segoe UI,Arial;display:flex;align-items:center;justify-content:center;height:100vh;margin:0}" +
-                "button{background:#2563EB;color:#fff;border:0;border-radius:12px;padding:14px 26px;font-size:16px;cursor:pointer}</style></head>" +
-                "<body onload=\"document.forms[0].submit()\"><form method=\"POST\" action=\"https://yoomoney.ru/quickpay/confirm\">" +
-                "<input type=\"hidden\" name=\"receiver\" value=\"" + E(Wallet) + "\">" +
-                "<input type=\"hidden\" name=\"quickpay-form\" value=\"button\">" +
-                "<input type=\"hidden\" name=\"paymentType\" value=\"" + E(type) + "\">" +
-                "<input type=\"hidden\" name=\"sum\" value=\"" + Price + "\" data-type=\"number\">" +
-                "<input type=\"hidden\" name=\"label\" value=\"" + E(s.Uid) + "\">" +
-                "<p>Переходим к оплате SONORA Plus…</p><noscript><button type=\"submit\">Оплатить " + Price + " ₽</button></noscript>" +
-                "</form></body></html>";
+            if (Auth.Current == null) return;
             try
             {
-                var file = Path.Combine(Paths.Sub("cache"), "plus-pay.html");
-                File.WriteAllText(file, html, new UTF8Encoding(false));
-                Process.Start(new ProcessStartInfo(file) { UseShellExecute = true });
+                Process.Start(new ProcessStartInfo(PayUrl(type)) { UseShellExecute = true });
                 Poll();
             }
             catch (Exception ex) { Log.W("plus pay: " + ex.Message); Shell.Toast("Не удалось открыть браузер: " + ex.Message); }
         }
 
         // После перехода к оплате 15 минут раз в 10 секунд проверяем, не включился ли Plus
-        static async void Poll()
+        public static async void Poll()
         {
             int gen = ++pollGen;
             var before = Until;
@@ -89,6 +81,7 @@ namespace Sonora
                 if (Until > before && Active)
                 {
                     Shell.Toast("SONORA Plus активен до " + UntilText + " — спасибо!");
+                    Shell.I?.PlusPaid();
                     return;
                 }
             }
@@ -97,39 +90,75 @@ namespace Sonora
 
     public sealed partial class Shell
     {
-        public void PlusSheet()
+        bool plusSheetOpen;
+        public void PlusPaid() { if (plusSheetOpen) { CloseSheet(); PlusSheet(); } }
+
+        // Золотая плашка «PLUS» — фирменный цвет подписки
+        public static readonly Brush PlusGold = Th.G("#FDE68A", "#F59E0B");
+        public static readonly Brush PlusInk = Th.B("#1C1305");
+
+        public void PlusSheet() { PlusSheet(false); }
+        public void PlusSheet(bool preview)
         {
-            if (!Guard.Need("SONORA Plus")) return;
+            if (!preview && !Guard.Need("SONORA Plus")) return;
+            bool active = Plus.Active && !preview;
             var body = new StackPanel();
 
-            var badge = new Border
+            var crown = U.Ico("crown", 30, PlusInk, null, 2.2);
+            crown.VerticalAlignment = VerticalAlignment.Center;
+            var bt = new TextBlock { Text = "SONORA PLUS", FontFamily = Th.Font, FontSize = 24, Foreground = PlusInk };
+            var bs = U.Tx(active ? "Активен до " + Plus.UntilText : Plus.Price + " ₽ за " + Plus.Days + " дней · без автосписаний", 13, Th.B("#1C1305", .8));
+            bs.Margin = new Thickness(0, 3, 0, 0);
+            var bcol = U.Col(bt, bs);
+            bcol.Margin = new Thickness(14, 0, 0, 0);
+            bcol.VerticalAlignment = VerticalAlignment.Center;
+            body.Children.Add(new Border
             {
-                Padding = new Thickness(18, 16, 18, 16), CornerRadius = new CornerRadius(18), Margin = new Thickness(0, 0, 0, 14),
-                Background = Th.Hot, Effect = U.Shadow(30, 10, .55, Th.C("#2563EB")),
-            };
-            var bt = new TextBlock { Text = "SONORA PLUS", FontFamily = Th.Font, FontSize = 26, Foreground = Th.White };
-            var bs = U.Tx(Plus.Active ? "Активен до " + Plus.UntilText : Plus.Price + " ₽ за " + Plus.Days + " дней", 13.5, Th.B("#FFFFFF", .85));
-            bs.Margin = new Thickness(0, 4, 0, 0);
-            badge.Child = U.Col(bt, bs);
-            body.Children.Add(badge);
+                Padding = new Thickness(18, 14, 18, 14), CornerRadius = new CornerRadius(18), Margin = new Thickness(0, 0, 0, 12),
+                Background = PlusGold, Effect = U.Shadow(30, 8, .45, Th.C("#F59E0B")), Child = U.Cols("a *", crown, bcol),
+            });
 
             Action<string, string> perk = (icon, text) =>
             {
                 var t = U.Wrap(text, 13.5, Th.Txt);
                 t.Margin = new Thickness(12, 0, 0, 0);
                 t.VerticalAlignment = VerticalAlignment.Center;
-                body.Children.Add(new Border { Padding = new Thickness(4, 7, 4, 7), Child = U.Cols("a *", U.Ico(icon, 20, Th.Accent3), t) });
+                body.Children.Add(new Border { Padding = new Thickness(4, 5, 4, 5), Child = U.Cols("a *", U.Ico(icon, 19, Th.B("#FBBF24")), t) });
             };
             perk("globe", "До 100 публичных треков вместо 2");
             perk("upload", "Файлы до 40 МБ и до 30 минут");
-            perk("star", "Значок PLUS в профиле и ранний доступ к новым функциям");
+            perk("crown", "Значок PLUS в профиле и ранний доступ к новому");
             perk("heart", "Поддержка SONORA — без рекламы, как и раньше");
 
-            body.Children.Add(U.M(Note(Plus.Active
-                ? "Оплата продлевает Plus ещё на " + Plus.Days + " дней от текущей даты окончания. Автосписаний нет: продлеваешь, только когда сам захочешь."
-                : "Оплата разовая, автосписаний нет. Plus включится сам через минуту после оплаты: платёж привязывается к твоему аккаунту SONORA."), 0, 10, 0, 6));
+            // QR-код: оплата с телефона
+            var uid = preview ? "preview-uid-000000000000000000" : Auth.Current.Uid;
+            FrameworkElement qrBox;
+            try
+            {
+                var src = Qr.Image(Plus.PayUrl("AC", uid));
+                double units = src.Width, px = Math.Max(2, Math.Floor(150 / units)) * units;
+                var img = new Image { Source = src, Width = px, Height = px, SnapsToDevicePixels = true };
+                RenderOptions.SetEdgeMode(img, EdgeMode.Aliased);
+                qrBox = new Border { CornerRadius = new CornerRadius(14), Background = Brushes.White, Padding = new Thickness(4), Child = img, VerticalAlignment = VerticalAlignment.Center };
+            }
+            catch (Exception ex) { Log.W("qr: " + ex.Message); qrBox = null; }
+            if (qrBox != null)
+            {
+                var qt = U.Tx(active ? "Продлить с телефона" : "Оплата с телефона", 15, Th.Txt);
+                qt.FontWeight = FontWeights.SemiBold;
+                var qd = U.Wrap("Наведи камеру на QR-код — откроется оплата " + Plus.Price + " ₽ картой в ЮMoney. Plus включится здесь сам, примерно через минуту.", 12.5, Th.Dim);
+                qd.Margin = new Thickness(0, 6, 0, 0);
+                var qcol = U.Col(qt, qd);
+                qcol.Margin = new Thickness(16, 0, 0, 0);
+                qcol.VerticalAlignment = VerticalAlignment.Center;
+                body.Children.Add(new Border
+                {
+                    CornerRadius = new CornerRadius(18), Background = Th.Glass(.05), BorderBrush = Th.GlassEdge, BorderThickness = new Thickness(1),
+                    Padding = new Thickness(12), Margin = new Thickness(0, 12, 0, 12), Child = U.Cols("a *", qrBox, qcol),
+                });
+            }
 
-            body.Children.Add(Acts(SheetBtn("Картой · " + Plus.Price + " ₽", () => Plus.Pay("AC"))));
+            body.Children.Add(Acts(SheetBtn("Картой на компьютере · " + Plus.Price + " ₽", () => Plus.Pay("AC"))));
             body.Children.Add(Acts(
                 SheetBtn("Кошельком ЮMoney", () => Plus.Pay("PC"), "ghost"),
                 SheetBtn("Я оплатил — проверить", async () =>
@@ -140,7 +169,10 @@ namespace Sonora
                                       : "Оплата пока не пришла. Обычно это до минуты — попробуй чуть позже");
                     if (Plus.Active) CloseSheet();
                 }, "ghost")));
-            OpenSheet(Plus.Active ? "SONORA Plus активен" : "SONORA Plus", null, body);
+            OpenSheet(active ? "SONORA Plus активен" : "SONORA Plus", null, body, () => plusSheetOpen = false);
+            plusSheetOpen = true;
+            // пока открыт экран оплаты, ждём платёж (например, по QR с телефона)
+            if (!preview && !active) Plus.Poll();
         }
     }
 }

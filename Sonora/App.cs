@@ -238,6 +238,9 @@ namespace Sonora
                 shell.Go("profile"); await Snap("11-profile");
                 shell.Go("services"); await Snap("17-services");
                 shell.Go("settings"); await Snap("18-settings");
+                try { Qr.SelfTest(Path.Combine(Program.ShotsDir, "qr-selftest.txt")); } catch (Exception ex) { Log.W("qr selftest: " + ex); }
+                shell.Go("home"); shell.PlusSheet(true); await Snap("20-plus");
+                shell.CloseSheet();
                 if (all.Count > 0)
                 {
                     shell.Go("home");

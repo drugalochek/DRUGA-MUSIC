@@ -197,6 +197,7 @@ namespace Sonora
 
         void UpdateSide()
         {
+            UpdatePlusPill();
             side.Width = compact ? 92 : 292;
             side.Padding = compact ? new Thickness(10, 0, 10, 14) : new Thickness(18, 0, 18, 14);
             // логотип (иконка из репозитория) + фирменный шрифт
@@ -317,9 +318,10 @@ namespace Sonora
             {
                 var n = U.Tx(nm, 15, Th.Txt);
                 n.Margin = new Thickness(0, 0, 0, 4);
-                var badgeTxt = U.Tx(s != null ? "Профиль" : "Войти", 12.5, Th.White);
+                bool plusOn = s != null && Plus.Active;
+                var badgeTxt = U.Tx(s != null ? (plusOn ? "PLUS" : "Профиль") : "Войти", 12.5, plusOn ? PlusInk : Th.White);
                 badgeTxt.FontWeight = FontWeights.Bold;
-                var badge = new Border { CornerRadius = new CornerRadius(11), Background = Th.GH("#60A5FA", "#1D4ED8"), Padding = new Thickness(10, 2, 11, 3), HorizontalAlignment = HorizontalAlignment.Left, Child = badgeTxt };
+                var badge = new Border { CornerRadius = new CornerRadius(11), Background = plusOn ? PlusGold : Th.GH("#60A5FA", "#1D4ED8"), Padding = new Thickness(10, 2, 11, 3), HorizontalAlignment = HorizontalAlignment.Left, Child = badgeTxt };
                 var info = U.Col(n, badge);
                 info.VerticalAlignment = VerticalAlignment.Center;
                 info.Margin = new Thickness(12, 0, 4, 0);
@@ -348,7 +350,10 @@ namespace Sonora
             notifBadge = new Border { Width = 9, Height = 9, CornerRadius = new CornerRadius(5), Background = Th.Heart, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 7, 7, 0), IsHitTestVisible = false };
             var gear = IBtn("gear", () => Go("settings"));
             gear.ToolTip = L.T("Настройки");
-            var g = U.Cols("a * a", backBtn, null, gear);
+            plusPill = new Border { Height = 34, CornerRadius = new CornerRadius(17), Padding = new Thickness(12, 0, 15, 0), Margin = new Thickness(0, 0, 10, 0), Background = PlusGold, Effect = U.Shadow(18, 0, .55, Th.C("#F59E0B")) };
+            U.Click(plusPill, () => PlusSheet(), .95);
+            UpdatePlusPill();
+            var g = U.Cols("a * a a", backBtn, null, plusPill, gear);
             g.Margin = new Thickness(20, 14, 20, 8);
             return g;
         }
@@ -356,6 +361,21 @@ namespace Sonora
         {
             var b = new Border { Width = 34, Height = 34, CornerRadius = new CornerRadius(17), Background = Th.B("#000000", .45), Child = U.Center(U.Ico(icon, 17, Th.Txt)) };
             return U.Click(b, a, .92);
+        }
+        Border plusPill;
+        void UpdatePlusPill()
+        {
+            if (plusPill == null) return;
+            var ic = U.Ico("crown", 16, PlusInk, null, 2.4);
+            ic.VerticalAlignment = VerticalAlignment.Center;
+            var t = U.Tx(Plus.Active ? "PLUS" : "Подключить PLUS", 13, PlusInk);
+            t.FontWeight = FontWeights.Bold;
+            t.VerticalAlignment = VerticalAlignment.Center;
+            t.Margin = new Thickness(7, 0, 0, 0);
+            var row = U.Row(ic, t);
+            row.VerticalAlignment = VerticalAlignment.Center;
+            plusPill.Child = row;
+            plusPill.ToolTip = Plus.Active ? L.T("SONORA Plus активен до ") + Plus.UntilText : L.T("SONORA Plus — ") + Plus.Price + " ₽ / " + Plus.Days + L.T(" дней");
         }
         void UpdateProfileBtn()
         {

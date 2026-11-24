@@ -6,6 +6,7 @@ namespace Sonora
     {
         public static readonly Dictionary<string, Ico> All = new Dictionary<string, Ico>
         {
+            ["crown"] = new Ico("F1 M 2.5 7 L 7 11.5 L 12 4 L 17 11.5 L 21.5 7 L 19.5 18 H 4.5 Z M 5 21 H 19", false),
             ["wave"] = new Ico("F1 M 3 12 c 1.5 -4 4 -6 6 -6 2 0 3 1 3 3 M 21 12 c -1.5 4 -4 6 -6 6 -2 0 -3 -1 -3 -3", false),
             ["bell"] = new Ico("F1 M 18 8 A 6 6 0 0 0 6 8 c 0 7 -3 9 -3 9 h 18 s -3 -2 -3 -9 M 13.73 21 a 2 2 0 0 1 -3.46 0", false),
             ["user"] = new Ico("F1 M 20 21 v -2 a 4 4 0 0 0 -4 -4 H 8 a 4 4 0 0 0 -4 4 v 2 M 8 7 A 4 4 0 1 0 16 7 A 4 4 0 1 0 8 7 Z", false),

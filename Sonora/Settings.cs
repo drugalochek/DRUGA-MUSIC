@@ -65,9 +65,6 @@ namespace Sonora
             sp.Children.Add(SetTitle("Экран"));
             sp.Children.Add(SetBtn("expand", "Полноэкранный режим", "F11", () => (Window.GetWindow(this) as MainWindow)?.ToggleFullscreen()));
 
-            sp.Children.Add(SetTitle("Подписка"));
-            sp.Children.Add(SetBtn("star", "SONORA Plus", Plus.Active ? "до " + Plus.UntilText : Plus.Price + " ₽ / " + Plus.Days + " дней", PlusSheet));
-
             sp.Children.Add(SetTitle("О приложении"));
             sp.Children.Add(SetBtn("star", "SONORA для Windows", "версия " + Program.Version, () => Toast("Пробел — пауза, ←/→ — перемотка, Ctrl+←/→ — треки")));
             return sp;
