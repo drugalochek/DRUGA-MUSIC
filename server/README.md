@@ -10,7 +10,8 @@
 3. Запомни адрес вида `https://sonora-plus.<твой-поддомен>.workers.dev`.
 
 ## 2. Секреты (Settings → Variables and Secrets → Add, тип **Secret**)
-- `FB_SECRET` — Firebase Console → проект **sonora-ab012** → ⚙ Project settings → **Service accounts** → **Database secrets** → Show → скопировать.
+- `FB_SA` — Firebase Console → проект **sonora-ab012** → ⚙ Project settings → **Service accounts** → **Generate new private key** → открыть скачанный `.json` и вставить **весь** его текст как значение секрета.
+  (Если в консоли ещё есть раздел **Database secrets**, вместо `FB_SA` можно задать `FB_SECRET` с этим секретом.)
 - `YM_SECRET` — yoomoney.ru/transfer/myservices/http-notification → «Секретное слово» (кнопка «Показать секрет»).
 
 Проверка: открой `https://sonora-plus.<поддомен>.workers.dev/health` — должно быть `"ymSecret":true,"fbSecret":true`.

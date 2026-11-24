@@ -1,8 +1,10 @@
 // SONORA Plus — приём HTTP-уведомлений ЮMoney (Cloudflare Worker).
 //
-// Переменные (Workers → sonora-plus → Settings → Variables and Secrets), обе типа «Secret»:
+// Переменные (Workers → sonora-plus → Settings → Variables and Secrets), тип «Secret»:
 //   YM_SECRET — секретное слово из настроек HTTP-уведомлений ЮMoney
-//   FB_SECRET — секрет базы Firebase sonora-ab012 (Project settings → Service accounts → Database secrets)
+//   FB_SA     — весь текст JSON-ключа сервисного аккаунта Firebase
+//               (Project settings → Service accounts → Generate new private key)
+//   (вместо FB_SA можно FB_SECRET — старый «Database secret», если он есть в консоли)
 //
 // Адрес для ЮMoney: https://<имя-воркера>.<поддомен>.workers.dev/yoomoney
 // Проверка, что воркер жив: https://<имя-воркера>.<поддомен>.workers.dev/health
@@ -40,8 +42,53 @@ async function checkSha1(p, secret) {
   return safeEq(hex(await crypto.subtle.digest("SHA-1", enc.encode(str))), p.sha1_hash);
 }
 
+// --- доступ к базе: OAuth-токен сервисного аккаунта (FB_SA) или старый секрет (FB_SECRET) ---
+const b64url = (data) => {
+  const bytes = typeof data === "string" ? enc.encode(data) : new Uint8Array(data);
+  let bin = ""; for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+};
+let tokenCache = { token: null, exp: 0 };
+
+function serviceAccount(env) {
+  if (!env.FB_SA) return null;
+  const sa = typeof env.FB_SA === "string" ? JSON.parse(env.FB_SA) : env.FB_SA;
+  if (!sa.client_email || !sa.private_key) throw new Error("FB_SA: нет client_email/private_key");
+  return sa;
+}
+
+async function accessToken(sa) {
+  const now = Math.floor(Date.now() / 1000);
+  if (tokenCache.token && tokenCache.exp - 60 > now) return tokenCache.token;
+  const pem = sa.private_key.replace(/\\n/g, "\n").replace(/-----[^-]+-----/g, "").replace(/\s+/g, "");
+  const der = Uint8Array.from(atob(pem), (c) => c.charCodeAt(0));
+  const key = await crypto.subtle.importKey("pkcs8", der, { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }, false, ["sign"]);
+  const head = b64url(JSON.stringify({ alg: "RS256", typ: "JWT" }));
+  const claim = b64url(JSON.stringify({
+    iss: sa.client_email,
+    scope: "https://www.googleapis.com/auth/firebase.database https://www.googleapis.com/auth/userinfo.email",
+    aud: "https://oauth2.googleapis.com/token", iat: now, exp: now + 3600,
+  }));
+  const sig = b64url(await crypto.subtle.sign("RSASSA-PKCS1-v1_5", key, enc.encode(head + "." + claim)));
+  const r = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: "grant_type=" + encodeURIComponent("urn:ietf:params:oauth:grant-type:jwt-bearer") + "&assertion=" + head + "." + claim + "." + sig,
+  });
+  if (!r.ok) throw new Error("google token: " + r.status + " " + (await r.text()));
+  const j = await r.json();
+  tokenCache = { token: j.access_token, exp: now + (Number(j.expires_in) || 3600) };
+  return j.access_token;
+}
+
+async function authQuery(env) {
+  const sa = serviceAccount(env);
+  if (sa) return "access_token=" + encodeURIComponent(await accessToken(sa));
+  return "auth=" + encodeURIComponent(env.FB_SECRET);
+}
+
 async function db(env, method, path, body) {
-  const r = await fetch(DB + "/" + path + ".json?auth=" + encodeURIComponent(env.FB_SECRET), {
+  const r = await fetch(DB + "/" + path + ".json?" + (await authQuery(env)), {
     method,
     headers: body ? { "Content-Type": "application/json" } : {},
     body: body ? JSON.stringify(body) : undefined,
@@ -58,11 +105,11 @@ export default {
     const url = new URL(request.url);
 
     if (url.pathname === "/health") {
-      return Response.json({ ok: true, ymSecret: !!env.YM_SECRET, fbSecret: !!env.FB_SECRET, price: PRICE, days: DAYS });
+      return Response.json({ ok: true, ymSecret: !!env.YM_SECRET, firebase: env.FB_SA ? "service-account" : env.FB_SECRET ? "secret" : false, price: PRICE, days: DAYS });
     }
     if (url.pathname !== "/yoomoney") return bad("SONORA Plus", 404);
     if (request.method !== "POST") return bad("POST only", 405);
-    if (!env.YM_SECRET || !env.FB_SECRET) return bad("secrets are not configured", 500);
+    if (!env.YM_SECRET || (!env.FB_SA && !env.FB_SECRET)) return bad("secrets are not configured", 500);
 
     const form = await request.formData();
     const p = {};
