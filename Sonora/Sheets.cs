@@ -238,9 +238,35 @@ namespace Sonora
                 body.Children.Add(Provider(U.Ico("trash", 20, Th.Danger), "Убрать из плейлиста", () => { Library.RemoveFromPlaylist(playlistId, t.Id); CloseSheet(); }));
             if (t.IsLocal && Library.D.Local.Any(l => l.Id == t.Id))
                 body.Children.Add(Provider(U.Ico("gear", 20, Th.Txt), "Настройки трека", () => { CloseSheet(); TrackSettingsSheet(t); }));
+            if (Catalog.IsMine(t))
+                body.Children.Add(Provider(U.Ico("trash", 20, Th.Danger), "Удалить из каталога SONORA", () => ConfirmDeletePublished(t)));
             if (t.IsLocal)
-                body.Children.Add(Provider(U.Ico("trash", 20, Th.Danger), "Убрать из загруженных", () => { if (Player.I.Current?.Id == t.Id) Player.I.Stop(); Library.RemoveLocal(t.Id); CloseSheet(); }));
+                body.Children.Add(Provider(U.Ico("trash", 20, Th.Danger), "Убрать из загруженных", () =>
+                {
+                    if (string.IsNullOrEmpty(t.PubId)) { if (Player.I.Current?.Id == t.Id) Player.I.Stop(); Library.RemoveLocal(t.Id); CloseSheet(); return; }
+                    Confirm("Убрать трек?", "Он опубликован — вместе с файлом в SONORA трек удалится и из общего каталога.", "Убрать и удалить", async () =>
+                    {
+                        if (!await Publish.Delete(t)) return;
+                        if (Player.I.Current?.Id == t.Id) Player.I.Stop();
+                        Library.RemoveLocal(t.Id);
+                        Render();
+                    });
+                }));
             OpenSheet(null, null, body);
+        }
+        void ConfirmDeletePublished(Track t)
+        {
+            Confirm("Удалить из каталога?", t.IsLocal
+                ? "Трек «" + t.Title + "» пропадёт из общего каталога SONORA у всех. Файл на компьютере останется и будет виден только тебе."
+                : "Трек «" + t.Title + "» пропадёт из общего каталога SONORA у всех. Действие нельзя отменить.", "Удалить", async () =>
+            {
+                bool playing = Player.I.Current != null && !Player.I.Current.IsLocal && Player.I.Current.Id == Catalog.PubIdOf(t);
+                if (await Publish.Delete(t))
+                {
+                    if (playing) Player.I.Stop();
+                    Render();
+                }
+            });
         }
         public static void CopyTrack(Track t)
         {

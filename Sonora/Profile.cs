@@ -114,15 +114,15 @@ namespace Sonora
             stat(Library.D.Fav.Count.ToString(), "в любимых");
             stat(Library.D.Playlists.Count.ToString(), "плейлистов");
             stat(Library.D.Recent.Count.ToString(), "прослушано");
-            stat(Library.D.Local.Count(l => l.Public) + " / " + Publish.FreeLimit, "публичных треков");
+            stat(Publish.MyCount() + " / " + Publish.FreeLimit, "публичных треков");
             sp.Children.Add(stats);
 
             // свои треки
-            var mine = Library.LocalTracks();
+            var mine = Catalog.All.Where(t => t.IsLocal || Catalog.IsMine(t)).ToList();
             if (mine.Count > 0)
             {
-                sp.Children.Add(SHead("Мои треки", L.T("публичных: ") + Library.D.Local.Count(l => l.Public) + " · " + U.Tn(mine.Count)));
-                sp.Children.Add(Note("Нажми «⋮» у трека → «Настройки трека»: название, обложка, текст, 18+ и доступ — только ты или все."));
+                sp.Children.Add(SHead("Мои треки", L.T("публичных: ") + Publish.MyCount() + " · " + U.Tn(mine.Count)));
+                sp.Children.Add(Note("Нажми «⋮» у трека → «Настройки трека»: название, обложка, текст, 18+ и доступ — только ты или все. Опубликованный трек можно удалить из каталога там же, в «⋮»."));
                 sp.Children.Add(TrackList(mine.Take(8).ToList(), int.MaxValue, Mixes.Uploaded));
             }
 
@@ -334,7 +334,7 @@ namespace Sonora
         public static string CanPublish(LocalFile l)
         {
             if (Auth.Current == null) return L.T("Публиковать треки можно только с аккаунтом");
-            if (Library.D.Local.Count(x => x.Public) >= FreeLimit) return (Plus.Active ? L.T("С Plus можно опубликовать до ") : L.T("Без подписки можно опубликовать до ")) + FreeLimit + L.T(" треков — сделай один из них приватным") + (Plus.Active ? "" : L.T(" или оформи SONORA Plus"));
+            if (MyCount() >= FreeLimit) return (Plus.Active ? L.T("С Plus можно опубликовать до ") : L.T("Без подписки можно опубликовать до ")) + FreeLimit + L.T(" треков — сделай один из них приватным") + (Plus.Active ? "" : L.T(" или оформи SONORA Plus"));
             if (!File.Exists(l.Path)) return L.T("Файл трека не найден на компьютере");
             var mb = new FileInfo(l.Path).Length / 1024.0 / 1024.0;
             if (mb > MaxMb) return L.T("Файл больше ") + MaxMb + L.T(" МБ") + NoSub;
@@ -419,22 +419,65 @@ namespace Sonora
                 Shell.Toast("Не удалось опубликовать: " + msg);
             }
         }
+        // сколько треков автора сейчас в каталоге (с этого ПК и с других устройств)
+        public static int MyCount()
+        {
+            var me = Auth.Current;
+            var ids = new HashSet<string>(Library.D.Local.Where(x => x.Public && !string.IsNullOrEmpty(x.PubId)).Select(x => x.PubId));
+            if (me != null) foreach (var t in Catalog.Remote) if (t.Db != null && t.OwnerId == me.Uid) ids.Add(t.Id);
+            return ids.Count;
+        }
+        // удалить карточку и аудио из каталога; true — в каталоге трека больше нет
+        static async Task<bool> Erase(string pubId)
+        {
+            var tok = await Auth.Token();
+            if (string.IsNullOrEmpty(tok)) throw new Exception("Сессия устарела — выйди и войди в аккаунт заново");
+            var r = await Net.Send("DELETE", Url("audio/" + pubId, tok));   // сначала аудио: правило сверяет автора по карточке
+            if (!r.Ok) throw new Exception(Why(r, "delete audio"));
+            r = await Net.Send("DELETE", Url("tracks/" + pubId, tok));
+            if (!r.Ok) throw new Exception(Why(r, "delete track"));
+            return true;
+        }
+        static void Unlink(string pubId)
+        {
+            foreach (var x in Library.D.Local.Where(x => x.PubId == pubId)) { x.Public = false; x.PubId = null; }
+            Library.Save(false);
+        }
+        static string Fail(Exception ex)
+        {
+            return ex is System.Net.Http.HttpRequestException || ex is TaskCanceledException ? "Нет связи с сервером SONORA — проверь интернет или VPN" : ex.Message;
+        }
         public static async Task Down(LocalFile l)
         {
             try
             {
-                if (!string.IsNullOrEmpty(l.PubId) && Auth.Current != null)
-                {
-                    var tok = await Auth.Token();
-                    await Net.Send("DELETE", Url("audio/" + l.PubId, tok));   // сначала аудио: правило сверяет автора по карточке
-                    await Net.Send("DELETE", Url("tracks/" + l.PubId, tok));
-                }
+                if (!string.IsNullOrEmpty(l.PubId) && Auth.Current != null) await Erase(l.PubId);
                 l.Public = false; l.PubId = null;
                 Library.Save(false);
                 Shell.Toast("Трек снова виден только тебе");
                 try { await Catalog.LoadAsync(); } catch { }
             }
-            catch (Exception ex) { Log.W("unpublish: " + ex.Message); Shell.Toast("Не удалось скрыть трек — проверь интернет"); }
+            catch (Exception ex) { Log.W("unpublish: " + ex.Message); Shell.Toast("Не удалось скрыть трек: " + Fail(ex)); }
+        }
+        // автор удаляет свой трек из каталога SONORA (файл на ПК, если он есть, остаётся приватным)
+        public static async Task<bool> Delete(Track t)
+        {
+            var id = Catalog.PubIdOf(t);
+            if (string.IsNullOrEmpty(id) || !Catalog.IsMine(t)) { Shell.Toast("Удалять из каталога может только автор трека"); return false; }
+            try
+            {
+                Shell.Toast("Удаляем трек из каталога…");
+                await Erase(id);
+                Unlink(id);
+                try { global::Sonora.Offline.Remove(id); } catch { }
+                Catalog.Remote.RemoveAll(x => x.Id == id);
+                Catalog.Invalidate();
+                Library.Touch();
+                Shell.Toast("Трек удалён из каталога SONORA");
+                try { await Catalog.LoadAsync(); } catch { }
+                return true;
+            }
+            catch (Exception ex) { Log.W("delete published: " + ex.Message); Shell.Toast("Не удалось удалить: " + Fail(ex)); return false; }
         }
         public static async Task UpdateMeta(LocalFile l)
         {

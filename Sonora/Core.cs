@@ -119,6 +119,7 @@ namespace Sonora
         public string Source, Ref, Isrc, Match;   // внешние сервисы: ya / sp / dz
         public string Db;                         // null — каталог Sonic Wave, иначе база SONORA (треки пользователей)
         public string OwnerId;
+        public string PubId;                      // свой файл, опубликованный в каталоге SONORA, — id карточки в каталоге
         public bool IsLocal { get { return LocalPath != null; } }
         public bool HasLyrics { get { return !string.IsNullOrWhiteSpace(Lyrics); } }
     }
@@ -137,14 +138,49 @@ namespace Sonora
             {
                 if (all == null)
                 {
-                    var ids = new HashSet<string>(Remote.Select(t => t.Id));
-                    all = Remote.Concat(Library.LocalTracks()).Concat(global::Sonora.Offline.Tracks().Where(t => !ids.Contains(t.Id))).ToList();
+                    // свой опубликованный трек показываем ОДИН раз: если файл есть на этом ПК — локальную версию,
+                    // иначе — версию из каталога. Второй id остаётся псевдонимом, чтобы лайки и плейлисты не терялись.
+                    var alias = new Dictionary<string, string>();
+                    var hideRemote = new HashSet<string>();
+                    var hideLocal = new HashSet<string>();
+                    var remoteIds = new HashSet<string>(Remote.Select(t => t.Id));
+                    foreach (var l in Library.D.Local)
+                    {
+                        if (!l.Public || string.IsNullOrEmpty(l.PubId) || !remoteIds.Contains(l.PubId)) continue;
+                        bool here = false;
+                        try { here = !string.IsNullOrEmpty(l.Path) && File.Exists(l.Path); } catch { }
+                        if (here) { hideRemote.Add(l.PubId); alias[l.PubId] = l.Id; }
+                        else { hideLocal.Add(l.Id); alias[l.Id] = l.PubId; }
+                    }
+                    var ids = new HashSet<string>(remoteIds);
+                    all = Remote.Where(t => !hideRemote.Contains(t.Id))
+                        .Concat(Library.LocalTracks().Where(t => !hideLocal.Contains(t.Id)))
+                        .Concat(global::Sonora.Offline.Tracks().Where(t => !ids.Contains(t.Id) && !alias.ContainsKey(t.Id)))
+                        .ToList();
+                    aliases = alias;
                 }
                 return all;
             }
         }
+        static Dictionary<string, string> aliases = new Dictionary<string, string>();
         public static void Invalidate() { all = null; }
-        public static Track Get(string id) { return All.FirstOrDefault(t => t.Id == id) ?? global::Sonora.Ext.Get(id); }
+        public static Track Get(string id)
+        {
+            var list = All;
+            var t = list.FirstOrDefault(x => x.Id == id);
+            string other;
+            if (t == null && id != null && aliases.TryGetValue(id, out other)) t = list.FirstOrDefault(x => x.Id == other);
+            return t ?? global::Sonora.Ext.Get(id);
+        }
+        // свой трек в каталоге SONORA (опубликован с этого или другого устройства)
+        public static bool IsMine(Track t)
+        {
+            var me = Auth.Current;
+            if (t == null || me == null) return false;
+            if (t.IsLocal) return !string.IsNullOrEmpty(t.PubId);
+            return t.Db != null && t.Source == null && t.OwnerId == me.Uid;
+        }
+        public static string PubIdOf(Track t) { return t == null ? null : t.IsLocal ? t.PubId : t.Id; }
 
         // Треки, которые пользователи SONORA публикуют сами (база SONORA, раздел catalog)
         public static string UserDb { get { return Auth.Db + "/catalog"; } }
@@ -379,7 +415,7 @@ namespace Sonora
 
         public static List<Track> LocalTracks()
         {
-            return D.Local.Select(l => new Track { Id = l.Id, Title = l.Title, Artist = l.Artist, Album = l.Album ?? "", Genre = l.Genre ?? "", Lyrics = l.Lyrics ?? "", Year = l.Year, Cover = l.Cover, Explicit = l.Explicit, Duration = l.Duration, LocalPath = l.Path, AddedAt = l.AddedAt }).ToList();
+            return D.Local.Select(l => new Track { Id = l.Id, Title = l.Title, Artist = l.Artist, Album = l.Album ?? "", Genre = l.Genre ?? "", Lyrics = l.Lyrics ?? "", Year = l.Year, Cover = l.Cover, Explicit = l.Explicit, Duration = l.Duration, LocalPath = l.Path, AddedAt = l.AddedAt, PubId = l.Public ? l.PubId : null, OwnerId = l.Public && Auth.Current != null ? Auth.Current.Uid : null }).ToList();
         }
         public static void Touch() { Changed?.Invoke(); }
         public static bool IsFav(string id) { return D.Fav.Contains(id); }

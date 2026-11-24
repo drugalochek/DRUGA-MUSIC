@@ -421,7 +421,8 @@ namespace Sonora
         public const string Site = "https://drugalochek.github.io/Sonic-Wave/";
         public static string Link(Track t)
         {
-            if (t == null || t.IsLocal || t.Source != null) return null;
+            if (t == null || t.Source != null) return null;
+            if (t.IsLocal) return string.IsNullOrEmpty(t.PubId) ? null : Site + "?t=" + Uri.EscapeDataString(t.PubId);
             return Site + "?t=" + Uri.EscapeDataString(t.Id);
         }
         public static string Parse(string s)

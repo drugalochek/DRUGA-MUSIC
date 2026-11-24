@@ -187,6 +187,8 @@ namespace Sonora
                 meta.Children.Add(new Border { Margin = new Thickness(6, 0, 0, 0), Padding = new Thickness(7, 2, 7, 2), CornerRadius = new CornerRadius(9), Background = Th.B("#06B6D4", .2), VerticalAlignment = VerticalAlignment.Center, Child = U.Tx("ТЕКСТ", 9, Th.Accent3) });
             if (t.IsLocal)
                 meta.Children.Add(new Border { Margin = new Thickness(6, 0, 0, 0), Padding = new Thickness(7, 2, 7, 2), CornerRadius = new CornerRadius(9), Background = Th.B("#10B981", .18), VerticalAlignment = VerticalAlignment.Center, Child = U.Tx("ПК", 9, Th.Ok) });
+            if (Catalog.IsMine(t))
+                meta.Children.Add(new Border { Margin = new Thickness(6, 0, 0, 0), Padding = new Thickness(7, 2, 7, 2), CornerRadius = new CornerRadius(9), Background = Th.B("#3B82F6", .2), VerticalAlignment = VerticalAlignment.Center, Child = U.Tx("В КАТАЛОГЕ", 9, Th.Accent3) });
             var info = U.Col(title, meta);
             info.VerticalAlignment = VerticalAlignment.Center;
             info.Margin = new Thickness(12, 0, 8, 0);
