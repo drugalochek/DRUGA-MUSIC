@@ -384,6 +384,17 @@ namespace Sonora
         public static void Touch() { Changed?.Invoke(); }
         public static bool IsFav(string id) { return D.Fav.Contains(id); }
         public static void ToggleFav(string id) { if (!Guard.Need("Лайки")) return; if (!D.Fav.Remove(id)) D.Fav.Insert(0, id); Save(); }
+        // «Лайкнуть всё»: on=true — добавляет в любимые все треки (порядок плейлиста сохраняется), false — убирает. Возвращает сколько изменилось, -1 — нужен вход
+        public static int SetFavAll(IEnumerable<string> ids, bool on)
+        {
+            if (!Guard.Need("Лайки")) return -1;
+            var list = ids.Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+            int n = 0;
+            if (on) { for (int i = list.Count - 1; i >= 0; i--) if (!D.Fav.Contains(list[i])) { D.Fav.Insert(0, list[i]); n++; } }
+            else foreach (var id in list) if (D.Fav.Remove(id)) n++;
+            if (n > 0) Save();
+            return n;
+        }
         public static bool IsFavArtist(string a) { return D.FavArtists.Contains(a); }
         public static void ToggleFavArtist(string a) { if (!Guard.Need("Любимые исполнители")) return; if (!D.FavArtists.Remove(a)) D.FavArtists.Insert(0, a); Save(); }
         public static void AddRecent(string id)

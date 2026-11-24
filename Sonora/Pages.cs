@@ -736,6 +736,20 @@ namespace Sonora
             U.Click(play, () => { if (mix.Tracks.Count > 0) { Player.I.PlayList(mix.Tracks, 0); OpenFull(); } }, .96);
             var shuffle = RoundBtn("shuffle", () => { if (mix.Tracks.Count > 0) { Player.I.PlayList(Mixes.Shuffle(mix.Tracks, "s" + Environment.TickCount), 0); OpenFull(); } });
             var items = new List<UIElement> { play, U.M(shuffle, 10, 0, 0, 0) };
+            if (id != Mixes.Liked && mix.Tracks.Count > 0)
+            {
+                bool allFav = mix.Tracks.All(t => Library.IsFav(t.Id));
+                var likeAll = U.IconBtn("heart", 50, 20, allFav ? Th.Heart : Th.Txt, () =>
+                {
+                    int n = Library.SetFavAll(mix.Tracks.Select(t => t.Id), !allFav);
+                    if (n < 0) return;
+                    Toast(allFav ? "Убрано из «Мне нравится»: " + U.Tn(n) : n == 0 ? "Все треки уже в «Мне нравится»" : "Добавлено в «Мне нравится»: " + U.Tn(n));
+                    Render();
+                }, Th.Card, allFav);
+                likeAll.BorderBrush = Th.BorderHi; likeAll.BorderThickness = new Thickness(1);
+                likeAll.ToolTip = allFav ? "Убрать все из «Мне нравится»" : "Лайкнуть всё";
+                items.Add(U.M(likeAll, 10, 0, 0, 0));
+            }
             if (pl != null) items.Add(U.M(RoundBtn("edit", () => NewPlaylistSheet(pl)), 10, 0, 0, 0));
             if (id == Mixes.Uploaded) items.Add(U.M(RoundBtn("plus", PickFiles), 10, 0, 0, 0));
             if (id != Mixes.Downloaded && mix.Tracks.Any(Offline.CanDownload))
