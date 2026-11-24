@@ -103,8 +103,9 @@ namespace Sonora
         {
             var now = DateTime.Now;
             var next = now.Minute < 30 ? new DateTime(now.Year, now.Month, now.Day, now.Hour, 30, 0) : new DateTime(now.Year, now.Month, now.Day, now.Hour, 0, 0).AddHours(1);
-            var left = next - now;
-            return ((int)left.TotalMinutes).ToString("00") + ":" + left.Seconds.ToString("00");
+            // считаем в целых секундах (без долей), чтобы отсчёт шёл ровно 1 с за тик и не терял секунды
+            long left = Math.Max(0, next.Ticks / TimeSpan.TicksPerSecond - now.Ticks / TimeSpan.TicksPerSecond);
+            return (left / 60).ToString("00") + ":" + (left % 60).ToString("00");
         }
 
         // «Жанр получаса» выбирается ОДИН раз на слот и запоминается (hour.json).

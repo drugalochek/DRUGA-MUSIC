@@ -162,20 +162,20 @@ namespace Sonora
                 AddFilesUi(files, true);
             };
 
-            var clock = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
             long slot = Mixes.Slot;
-            clock.Tick += (s, e) =>
+            int lastMin = DateTime.Now.Minute;
+            U.SecondTicker(() =>
             {
                 if (hourSub != null && Page == "home") hourSub.Text = L.T("Каждые 30 минут новый жанр · ") + Mixes.HourCountdown();
                 if (Mixes.Slot != slot) { slot = Mixes.Slot; if (Page == "home") QueueRender(); }
                 // таймер Plus: раз в минуту обновляем «PLUS · N дн», а при окончании подписки — весь экран
-                if (DateTime.Now.Second == 0 || plusWas != Plus.Active)
+                if (DateTime.Now.Minute != lastMin || plusWas != Plus.Active)
                 {
+                    lastMin = DateTime.Now.Minute;
                     if (plusWas != Plus.Active) { plusWas = Plus.Active; UpdateSide(); QueueRender(); }
                     UpdatePlusPill();
                 }
-            };
-            clock.Start();
+            });
 
             UpdateProfileBtn();
             UpdateMini();

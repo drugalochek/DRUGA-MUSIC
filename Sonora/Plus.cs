@@ -34,7 +34,7 @@ namespace Sonora
             get { return new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddMilliseconds(Until).ToLocalTime().ToString("d MMMM yyyy, HH:mm"); }
         }
         // ---------- таймер до окончания ----------
-        public static TimeSpan Left { get { var ms = Until - Library.Now; return ms > 0 ? TimeSpan.FromMilliseconds(ms) : TimeSpan.Zero; } }
+        public static TimeSpan Left { get { long s = Until / 1000 - Library.Now / 1000; return Until > Library.Now && s > 0 ? TimeSpan.FromSeconds(s) : TimeSpan.Zero; } }
         public static bool Ending { get { return Active && Left.TotalDays < 3; } }
         static string Dn(int n) { int a = n % 100, b = n % 10; return a >= 11 && a <= 14 ? "дней" : b == 1 ? "день" : b >= 2 && b <= 4 ? "дня" : "дней"; }
         // коротко: «29 дн», «5 ч», «12 мин»
@@ -153,15 +153,13 @@ namespace Sonora
                 Padding = new Thickness(16, 14, 16, 14), Margin = new Thickness(0, 0, 0, 12), Child = U.Col(cap, big, until, bar),
             };
             StopPlusTimer();
-            plusTimer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
-            plusTimer.Tick += (s, e) =>
+            plusTimer = U.SecondTicker(() =>
             {
                 if (!plusSheetOpen) { StopPlusTimer(); return; }
                 big.Text = Plus.LeftLong;
                 fill.Width = Math.Max(6, bar.ActualWidth * Plus.LeftFrac);
                 if (!Plus.Active) { StopPlusTimer(); CloseSheet(); UpdatePlusPill(); QueueRender(); }
-            };
-            plusTimer.Start();
+            });
             return box;
         }
 

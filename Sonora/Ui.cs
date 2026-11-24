@@ -300,6 +300,17 @@ namespace Sonora
 
     public static class U
     {
+        // Секундный таймер, выровненный по границе секунды: тик приходит через ~20 мс после смены секунды,
+        // поэтому обратный отсчёт уменьшается ровно на 1 и не перескакивает через секунды.
+        public static System.Windows.Threading.DispatcherTimer SecondTicker(Action tick)
+        {
+            var t = new System.Windows.Threading.DispatcherTimer(System.Windows.Threading.DispatcherPriority.Normal);
+            Func<TimeSpan> wait = () => TimeSpan.FromMilliseconds(1020 - DateTime.Now.Millisecond);
+            t.Tick += (s, e) => { t.Interval = wait(); tick(); };
+            t.Interval = wait();
+            t.Start();
+            return t;
+        }
         static readonly Dictionary<string, Geometry> geos = new Dictionary<string, Geometry>();
         public static Geometry Geo(string d)
         {
