@@ -284,6 +284,8 @@ namespace Sonora
             cov.Children.Add(shadowHolder);
             cov.Children.Add(Mosaic(m.Tracks, size, 16, Th.Hot, m.Icon, 70));
             var stripeHost = new Grid { Width = size, Height = size, IsHitTestVisible = false };
+            stripeHost.Children.Add(TopShade(size * .5));
+            stripeHost.Children.Add(CardKicker(m.Tag, size >= 180 ? 22 : 17));
             stripeHost.Children.Add(CardStripe(m.Name));
             U.Fixed(stripeHost, size, size, 16);
             cov.Children.Add(stripeHost);
@@ -337,8 +339,11 @@ namespace Sonora
             var cov = new Grid { Width = 140, Height = 140 };
             cov.Children.Add(new Border { CornerRadius = new CornerRadius(14), Background = Th.Card, Effect = U.Shadow(24, 10, .6) });
             var bg = Th.G(p.Color ?? "#8b5cf6", Th.Shade(p.Color ?? "#8b5cf6", -30));
-            cov.Children.Add(Mosaic(tracks, 140, 14, bg, "music", 40));
+            var pcb = PlCoverBrush(p, 280);
+            if (pcb != null) { var pc = new Border { Width = 140, Height = 140, Background = pcb }; U.Fixed(pc, 140, 140, 14); cov.Children.Add(pc); }
+            else cov.Children.Add(Mosaic(tracks, 140, 14, bg, "music", 40));
             var ps = new Grid { Width = 140, Height = 140, IsHitTestVisible = false };
+            ps.Children.Add(TopShade(64, .55));
             ps.Children.Add(CardStripe(null));
             U.Fixed(ps, 140, 140, 14);
             cov.Children.Add(ps);
@@ -394,6 +399,26 @@ namespace Sonora
         FrameworkElement BackBtn() { return new Border { Height = 0 }; }
 
         // полоска внизу обложки — фирменный синий градиент; текст (если есть) фирменным шрифтом
+        // затемнение сверху, как на карточках «100%»
+        static Border TopShade(double h, double a = .62)
+        {
+            return new Border { Height = h, VerticalAlignment = VerticalAlignment.Top, IsHitTestVisible = false, Background = Th.G(Th.C("#000000", a), Th.C("#000000", 0), false) };
+        }
+        static TextBlock CardKicker(string text, double size)
+        {
+            var k = new TextBlock { Text = L.T(text ?? ""), FontFamily = Th.Font, FontSize = size, FontWeight = FontWeights.Black, Foreground = Th.White, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(12, 10, 12, 0), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top, IsHitTestVisible = false, Effect = U.Shadow(10, 2, .85) };
+            return k;
+        }
+        public static Brush PlCoverBrush(Playlist p, int px)
+        {
+            if (p == null || string.IsNullOrEmpty(p.Cover)) return null;
+            var img = Img.FromData("pl:" + p.Id + ":" + p.Cover.Length + ":" + p.Cover.GetHashCode(), p.Cover, px);
+            if (img == null) return null;
+            var b = new ImageBrush(img) { Stretch = Stretch.UniformToFill };
+            if (b.CanFreeze) b.Freeze();
+            return b;
+        }
+
         static Border CardStripe(string text, double h = 30)
         {
             var b = new Border { Height = text == null ? 6 : h, VerticalAlignment = VerticalAlignment.Bottom, Background = Th.GH("#60A5FA", "#1D4ED8"), Padding = new Thickness(12, 0, 12, 0), IsHitTestVisible = false };
@@ -689,7 +714,9 @@ namespace Sonora
             var head = new Grid { Width = 220, Height = 220, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 8, 0, 20) };
             head.Children.Add(new Border { CornerRadius = new CornerRadius(20), Background = grad, Effect = U.Shadow(50, 20, .8) });
             bool iconCover = (ext && id.EndsWith(":likes")) || id == Mixes.Liked || id.StartsWith("__mix_") || id == "__hour_genre__" || id == Mixes.Recent || id == Mixes.Uploaded || id == Mixes.Downloaded;
-            if (iconCover)
+            var plb = PlCoverBrush(pl, 440);
+            if (plb != null) { var pc = new Border { Width = 220, Height = 220, Background = plb }; U.Fixed(pc, 220, 220, 20); head.Children.Add(pc); }
+            else if (iconCover)
             {
                 var c = new Border { CornerRadius = new CornerRadius(20), Background = grad, Child = U.Center(U.Ico(id == Mixes.Liked || ext && id.EndsWith(":likes") ? "heartFill" : mix.Icon, 100, Th.White)) };
                 head.Children.Add(c);

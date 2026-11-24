@@ -52,7 +52,8 @@ namespace Sonora
                 }
                 Loading = false; IsPlaying = false; opened = false;
                 StateChanged?.Invoke();
-                Shell.Toast("Не удалось воспроизвести трек");
+                Diag.LastError = "media failed: " + (e.ErrorException?.Message ?? "?");
+                Shell.Toast("Не удалось воспроизвести трек" + (e.ErrorException != null ? ": " + Diag.Short(e.ErrorException) : ""));
             };
             mp.MediaOpened += (s, e) =>
             {
@@ -155,7 +156,8 @@ namespace Sonora
                 Log.W("load audio: " + ex);
                 Loading = false; IsPlaying = false;
                 StateChanged?.Invoke();
-                Shell.Toast(ex is global::Sonora.ExtException ? ex.Message : "Не удалось загрузить трек — проверь интернет");
+                Diag.LastError = (t.Artist + " — " + t.Title) + ": " + Diag.Short(ex);
+                Shell.Toast(Diag.Explain(ex, t));
             }
         }
 

@@ -261,6 +261,7 @@ namespace Sonora
         public string Name { get; set; }
         public string Color { get; set; }
         public List<string> TrackIds { get; set; } = new List<string>();
+        public string Cover { get; set; }
     }
 
     public sealed class LocalFile
@@ -448,7 +449,7 @@ namespace Sonora
                 ["fav"] = D.Fav,
                 ["favArtists"] = D.FavArtists,
                 ["recent"] = D.Recent,
-                ["playlists"] = D.Playlists.Select(p => new Dictionary<string, object> { ["id"] = p.Id, ["name"] = p.Name, ["color"] = p.Color, ["trackIds"] = p.TrackIds }).ToList(),
+                ["playlists"] = D.Playlists.Select(p => new Dictionary<string, object> { ["id"] = p.Id, ["name"] = p.Name, ["color"] = p.Color, ["trackIds"] = p.TrackIds, ["cover"] = p.Cover ?? "" }).ToList(),
             };
         }
         static List<string> Strs(object o) { return (o as object[] ?? (o as System.Collections.ArrayList)?.ToArray() ?? new object[0]).Select(x => Convert.ToString(x)).Where(x => !string.IsNullOrEmpty(x)).ToList(); }
@@ -466,7 +467,8 @@ namespace Sonora
                     Id = J.Str(x, "id") ?? ("pl_" + Now),
                     Name = J.Str(x, "name") ?? "Плейлист",
                     Color = J.Str(x, "color") ?? PlColors[0],
-                    TrackIds = x.ContainsKey("trackIds") ? Strs(x["trackIds"]) : new List<string>()
+                    TrackIds = x.ContainsKey("trackIds") ? Strs(x["trackIds"]) : new List<string>(),
+                    Cover = string.IsNullOrEmpty(J.Str(x, "cover")) ? null : J.Str(x, "cover")
                 }).ToList();
             }
             D.UpdatedAt = updatedAt;

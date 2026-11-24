@@ -261,7 +261,9 @@ namespace Sonora
             {
                 var pp = p;
                 bool has = p.TrackIds.Contains(t.Id);
-                var cov = new Border { Width = 36, Height = 36, CornerRadius = new CornerRadius(9), Background = Th.G(p.Color ?? "#8b5cf6", Th.Shade(p.Color ?? "#8b5cf6", -30)), Child = U.Center(U.Ico(has ? "check" : "music", 16, Th.White)) };
+                var pcb = PlCoverBrush(p, 72);
+                var cov = new Border { Width = 36, Height = 36, CornerRadius = new CornerRadius(9), Background = pcb ?? Th.G(p.Color ?? "#8b5cf6", Th.Shade(p.Color ?? "#8b5cf6", -30)), Child = pcb != null && !has ? null : U.Center(U.Ico(has ? "check" : "music", 16, Th.White)) };
+                if (pcb != null && has) cov.Child = new Border { CornerRadius = new CornerRadius(9), Background = Th.B("#000000", .45), Child = U.Center(U.Ico("check", 16, Th.White)) };
                 body.Children.Add(Provider(cov, p.Name + (has ? " · уже есть" : ""), () =>
                 {
                     if (Library.AddToPlaylist(pp.Id, t.Id)) Toast("Добавлено в «" + pp.Name + "»");
@@ -292,17 +294,49 @@ namespace Sonora
                 }
             };
             draw();
+            // фото обложки
+            string cover = edit?.Cover;
+            var prev = new Border { Width = 84, Height = 84, CornerRadius = new CornerRadius(14), Margin = new Thickness(0, 0, 14, 0), Effect = U.Shadow(18, 6, .5) };
+            var coverActs = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+            Action paint = null;
+            paint = () =>
+            {
+                Brush b = null;
+                if (!string.IsNullOrEmpty(cover)) { var img = Img.FromData("plnew:" + cover.Length + ":" + cover.GetHashCode(), cover, 168); if (img != null) b = new ImageBrush(img) { Stretch = Stretch.UniformToFill }; }
+                prev.Background = b ?? Th.G(color, Th.Shade(color, -30));
+                prev.Child = b != null ? null : U.Center(U.Ico("music", 30, Th.White));
+                coverActs.Children.Clear();
+                coverActs.Children.Add(SheetBtn(string.IsNullOrEmpty(cover) ? "Выбрать фото" : "Заменить фото", () =>
+                {
+                    var f = PickImage();
+                    if (f == null) return;
+                    try { cover = ImageData(f, 400); paint(); }
+                    catch (Exception ex) { Log.W("playlist cover: " + ex.Message); Toast("Не удалось открыть картинку"); }
+                }, "ghost"));
+                if (!string.IsNullOrEmpty(cover)) coverActs.Children.Add(U.M(SheetBtn("Убрать фото", () => { cover = null; paint(); }, "ghost"), 0, 8, 0, 0));
+            };
+            paint();
+            var oldDraw = draw;
+            draw = () => { oldDraw(); paint(); };
+            var coverRow = new DockPanel { Margin = new Thickness(0, 0, 0, 16), LastChildFill = true };
+            DockPanel.SetDock(prev, Dock.Left);
+            coverRow.Children.Add(prev);
+            coverRow.Children.Add(coverActs);
+            var lblCov = U.Tx("ФОТО", 11, Th.Dim);
+            lblCov.Margin = new Thickness(2, 0, 0, 8);
             Action save = () =>
             {
                 if (edit != null)
                 {
                     edit.Name = string.IsNullOrWhiteSpace(inp.Text) ? edit.Name : inp.Text.Trim();
                     edit.Color = color;
+                    edit.Cover = cover;
                     Library.Save();
                     CloseSheet();
                     return;
                 }
                 var p = Library.NewPlaylist(inp.Text, color);
+                if (!string.IsNullOrEmpty(cover)) { p.Cover = cover; Library.Save(); }
                 if (addAfter != null) Library.AddToPlaylist(p.Id, addAfter.Id);
                 CloseSheet();
                 Toast("Плейлист «" + p.Name + "» создан");
@@ -310,7 +344,7 @@ namespace Sonora
             inp.Enter += save;
             var lbl = U.Tx("ЦВЕТ", 11, Th.Dim);
             lbl.Margin = new Thickness(2, 4, 0, 8);
-            OpenSheet(edit == null ? "Новый плейлист" : "Настройки плейлиста", "Имя и цвет обложки.", U.Col(inp, lbl, dots, Acts(SheetBtn("Отмена", CloseSheet, "ghost"), SheetBtn(edit == null ? "Создать" : "Сохранить", save))));
+            OpenSheet(edit == null ? "Новый плейлист" : "Настройки плейлиста", "Имя, цвет и фото обложки.", U.Col(inp, lbl, dots, lblCov, coverRow, Acts(SheetBtn("Отмена", CloseSheet, "ghost"), SheetBtn(edit == null ? "Создать" : "Сохранить", save))));
             if (!ShotMode) Dispatcher.BeginInvoke(new Action(() => inp.Focus2()), DispatcherPriority.Input);
         }
         void ConfirmDeletePlaylist(Playlist p)

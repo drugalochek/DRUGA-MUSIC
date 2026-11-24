@@ -46,6 +46,15 @@ namespace Sonora
             sp.Children.Add(SetBtn("trash", "Очистить кэш аудио", mb.ToString("0.0") + " МБ", () => { Catalog.ClearCache(); Toast("Кэш очищен"); Render(); }));
             sp.Children.Add(SetBtn("refresh", "Обновить каталог", U.Tn(Catalog.Remote.Count), async () => { await Catalog.LoadAsync(); Toast("Каталог обновлён"); }));
 
+            sp.Children.Add(SetTitle("Диагностика"));
+            sp.Children.Add(SetBtn("globe", "Проверить соединение", "серверы и сервисы", () => DiagSheet()));
+            sp.Children.Add(SetBtn("share", "Скопировать отчёт об ошибках", "для поддержки", () =>
+            {
+                try { Clipboard.SetText(Diag.Report()); Toast("Отчёт скопирован — вставь его в сообщение (Ctrl+V)"); }
+                catch { Toast("Не удалось скопировать — открой папку с журналом"); }
+            }));
+            sp.Children.Add(SetBtn("lyrics", "Открыть журнал", "sonora.log", Diag.OpenLogFolder));
+
             sp.Children.Add(SetTitle("Экран"));
             sp.Children.Add(SetBtn("expand", "Полноэкранный режим", "F11", () => (Window.GetWindow(this) as MainWindow)?.ToggleFullscreen()));
 
@@ -55,6 +64,34 @@ namespace Sonora
             sp.Children.Add(SetTitle("О приложении"));
             sp.Children.Add(SetBtn("star", "SONORA для Windows", "версия " + Program.Version, () => Toast("Пробел — пауза, ←/→ — перемотка, Ctrl+←/→ — треки")));
             return sp;
+        }
+
+        async void DiagSheet()
+        {
+            var body = new StackPanel();
+            body.Children.Add(U.Wrap("Проверяем, до каких серверов доходит этот компьютер…", 13, Th.Dim));
+            OpenSheet("Проверка соединения", "Если что-то недоступно, треки могут не включаться.", body);
+            List<Diag.Check> res;
+            try { res = await Diag.Run(); }
+            catch (Exception ex) { body.Children.Clear(); body.Children.Add(U.Wrap("Ошибка проверки: " + ex.Message, 13, Th.Txt)); return; }
+            body.Children.Clear();
+            foreach (var c in res)
+            {
+                var ic = U.Circle(28, c.Ok ? Th.B("#10b981") : Th.B("#ef4444"), U.Center(U.Ico(c.Ok ? "check" : "close", 14, Th.White)));
+                var t = U.Tx(c.Name, 14, Th.Txt);
+                var info = U.Col(t, U.M(U.Tx(c.Host + " · " + c.Result + " · " + c.Ms + " мс", 11.5, Th.Dim), 0, 2, 0, 0));
+                info.Margin = new Thickness(12, 0, 0, 0);
+                info.VerticalAlignment = VerticalAlignment.Center;
+                body.Children.Add(new Border { Padding = new Thickness(4, 8, 4, 8), Child = U.Row(ic, info) });
+            }
+            var bad = res.Where(x => !x.Ok).ToList();
+            string hint;
+            if (bad.Count == 0) hint = "Всё доступно. Если трек всё равно не играет — скопируй отчёт и пришли разработчику.";
+            else if (bad.Count == res.Count) hint = "Ничего не доступно — похоже, нет интернета, или SONORA блокирует брандмауэр/антивирус.";
+            else if (bad.Any(x => x.Host.Contains("firebaseio") || x.Host.Contains("googleapis"))) hint = "Серверы SONORA (Google Firebase) недоступны из твоей сети — так бывает у некоторых провайдеров. Помогает VPN или другая сеть.";
+            else hint = "Часть сервисов недоступна — треки из них могут не включаться. Попробуй VPN или другую сеть.";
+            body.Children.Add(U.M(U.Wrap(hint, 13, Th.Txt), 0, 10, 0, 14));
+            body.Children.Add(Acts(SheetBtn("Скопировать отчёт", () => { try { Clipboard.SetText(Diag.Report()); Toast("Отчёт скопирован"); } catch { } }, "ghost"), SheetBtn("Готово", CloseSheet)));
         }
 
         FrameworkElement LangCard(string code, string name, string sub)
