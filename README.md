@@ -60,3 +60,8 @@ dotnet build Sonora/Sonora.csproj -c Release
 2. Замени текст правил содержимым файла [`database.rules.json`](database.rules.json) и нажми **Publish**.
 
 Правила сохраняют доступ к синхронизации (`users/<uid>`), как и раньше.
+
+## SONORA Plus (оплата через ЮMoney)
+
+99 ₽ за 30 дней, картой или кошельком ЮMoney: «Настройки → Подписка → SONORA Plus». Plus включается автоматически после оплаты.
+Сервер, который принимает уведомления ЮMoney, лежит в [`server/`](server/) — инструкция по запуску на Cloudflare Workers в [`server/README.md`](server/README.md).

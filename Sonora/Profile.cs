@@ -75,7 +75,7 @@ namespace Sonora
             // шапка в цвете профиля
             var ring = new Border { Width = 132, Height = 132, CornerRadius = new CornerRadius(66), Background = ProfileRing(), Padding = new Thickness(3), Effect = U.Shadow(40, 12, .55, Th.C(col)) };
             ring.Child = new Border { CornerRadius = new CornerRadius(63), Background = Th.Bg, Padding = new Thickness(4), Child = Avatar(118) };
-            var kicker = U.Tx(s != null ? "ПРОФИЛЬ" : "ГОСТЬ", 11.5, Th.B("#FFFFFF", .75));
+            var kicker = U.Tx(s != null ? (Plus.Active ? "ПРОФИЛЬ · PLUS" : "ПРОФИЛЬ") : "ГОСТЬ", 11.5, Th.B("#FFFFFF", .75));
             kicker.FontWeight = FontWeights.Bold;
             var name = new TextBlock { Text = s != null ? (s.Name ?? s.Email ?? "Профиль") : L.T("Гость"), FontFamily = Th.Font, FontSize = 34, Foreground = Th.White, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(0, 4, 0, 6) };
             var info = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(26, 0, 0, 0) };
@@ -253,7 +253,7 @@ namespace Sonora
             {
                 visHost.Children.Clear();
                 visHost.Children.Add(Choice("lock", "Только я", "Трек видишь только ты", !isPublic, () => { isPublic = false; paintVis(); }));
-                visHost.Children.Add(Choice("globe", "Публичный", L.T("Виден всем в каталоге SONORA · без подписки до ") + Publish.FreeLimit + L.T(" треков"), isPublic, () => { isPublic = true; paintVis(); }));
+                visHost.Children.Add(Choice("globe", "Публичный", (Plus.Active ? L.T("Виден всем в каталоге SONORA · с Plus до ") : L.T("Виден всем в каталоге SONORA · без подписки до ")) + Publish.FreeLimit + L.T(" треков"), isPublic, () => { isPublic = true; paintVis(); }));
             };
             paintVis();
             var expl = Toggle("warn", "18+ / Explicit", "В треке есть мат — пометим и скроем у тех, кто не хочет такое слышать", explicitOn, v => explicitOn = v);
@@ -292,7 +292,7 @@ namespace Sonora
             body.Children.Add(SetTitle("Доступ"));
             body.Children.Add(visHost);
             body.Children.Add(U.M(expl, 0, 8, 0, 0));
-            body.Children.Add(Note("Без подписки: до " + Publish.FreeLimit + " публичных треков, файл до " + Publish.MaxMb + " МБ и до 10 минут. Перед публикацией трек проходит проверку SONORA."));
+            body.Children.Add(Note((Plus.Active ? "SONORA Plus: до " : "Без подписки: до ") + Publish.FreeLimit + " публичных треков, файл до " + Publish.MaxMb + " МБ и до " + (int)(Publish.MaxSec / 60) + " минут. Перед публикацией трек проходит проверку SONORA."));
             body.Children.Add(Acts(SheetBtn("Отмена", CloseSheet, "ghost"), SheetBtn("Сохранить", async () => await save())));
             OpenSheet("Настройки трека", null, body);
         }
@@ -314,9 +314,11 @@ namespace Sonora
     // ---------- Публикация своих треков в общий каталог ----------
     public static class Publish
     {
-        public const int FreeLimit = 2;
-        public const int MaxMb = 12;
-        public const double MaxSec = 600;
+        // без подписки: 2 трека, 12 МБ, 10 минут; с SONORA Plus: 100 треков, 40 МБ, 30 минут
+        public static int FreeLimit { get { return Plus.Active ? 100 : 2; } }
+        public static int MaxMb { get { return Plus.Active ? 40 : 12; } }
+        public static double MaxSec { get { return Plus.Active ? 1800 : 600; } }
+        static string NoSub { get { return Plus.Active ? L.T(" — это предел даже с Plus") : L.T(" — без подписки такой не опубликовать, оформи SONORA Plus"); } }
         static string Mime(string ext)
         {
             switch ((ext ?? "").ToLowerInvariant())
@@ -331,11 +333,11 @@ namespace Sonora
         public static string CanPublish(LocalFile l)
         {
             if (Auth.Current == null) return L.T("Публиковать треки можно только с аккаунтом");
-            if (Library.D.Local.Count(x => x.Public) >= FreeLimit) return L.T("Без подписки можно опубликовать до ") + FreeLimit + L.T(" треков — сделай один из них приватным");
+            if (Library.D.Local.Count(x => x.Public) >= FreeLimit) return (Plus.Active ? L.T("С Plus можно опубликовать до ") : L.T("Без подписки можно опубликовать до ")) + FreeLimit + L.T(" треков — сделай один из них приватным") + (Plus.Active ? "" : L.T(" или оформи SONORA Plus"));
             if (!File.Exists(l.Path)) return L.T("Файл трека не найден на компьютере");
             var mb = new FileInfo(l.Path).Length / 1024.0 / 1024.0;
-            if (mb > MaxMb) return L.T("Файл больше ") + MaxMb + L.T(" МБ — без подписки такой не опубликовать");
-            if (l.Duration > MaxSec) return L.T("Трек длиннее 10 минут — без подписки такой не опубликовать");
+            if (mb > MaxMb) return L.T("Файл больше ") + MaxMb + L.T(" МБ") + NoSub;
+            if (l.Duration > MaxSec) return L.T("Трек длиннее ") + (int)(MaxSec / 60) + L.T(" минут") + NoSub;
             return null;
         }
         // Каталог пользователей SONORA: база SONORA, раздел catalog (читать могут все, писать — только автор)

@@ -140,7 +140,8 @@ namespace Sonora
             Library.Changed += QueueRender;
             Ext.Changed += QueueRender;
             Catalog.Changed += QueueRender;
-            Auth.Changed += () => { UpdateProfileBtn(); QueueRender(); };
+            Auth.Changed += () => { UpdateProfileBtn(); QueueRender(); _ = Plus.Refresh(); };
+            Plus.Changed += QueueRender;
             Player.I.TrackChanged += () => { UpdateMini(); QueueRender(); };
             Player.I.StateChanged += UpdateMini;
             Palette.Ready += id => { if (Player.I.Current != null && Player.I.Current.Id == id) { barColorId = null; UpdateMini(); } };

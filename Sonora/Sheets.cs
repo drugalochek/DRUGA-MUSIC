@@ -206,7 +206,7 @@ namespace Sonora
                 info.Margin = new Thickness(12, 0, 0, 0);
                 list.Children.Add(new Border { Padding = new Thickness(8, 12, 8, 12), BorderBrush = Th.Border, BorderThickness = new Thickness(0, 0, 0, 1), Child = U.Cols("a *", ic, info) });
             };
-            item("#60A5FA", "#1D4ED8", "star", L.T("Обновление ") + Program.Version, L.T("В плейлистах и списках сервисов появилась кнопка ♥ «Лайкнуть всё»; обложки из сервисов видны в большом плеере; публикация своих треков через сервер SONORA."));
+            item("#60A5FA", "#1D4ED8", "star", L.T("Обновление ") + Program.Version, L.T("SONORA Plus: 99 ₽ за 30 дней через ЮMoney — картой или кошельком. Включается сам после оплаты: до 100 публичных треков, файлы до 40 МБ и значок PLUS. Настройки → Подписка."));
             item("#60A5FA", "#1D4ED8", "music", "Добро пожаловать", "SONORA — нативный музыкальный плеер для Windows. Лайкай треки, собирай плейлисты, слушай миксы.");
             foreach (var t in Catalog.Remote.OrderByDescending(x => x.AddedAt).Take(5))
                 item("#93C5FD", "#2563EB", "music", "Новый трек", t.Artist + " — " + t.Title + (t.AddedAt > 0 ? " · " + new DateTime(1970, 1, 1).AddMilliseconds(t.AddedAt).ToLocalTime().ToString("d MMM yyyy") : ""));

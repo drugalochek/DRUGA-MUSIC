@@ -182,6 +182,7 @@ namespace Sonora
             if (Auth.Current != null)
             {
                 try { await Auth.LoadProfile(); } catch (Exception ex) { Log.W("profile: " + ex.Message); }
+                try { await Plus.Refresh(); } catch (Exception ex) { Log.W("plus start: " + ex.Message); }
                 try { await Cloud.SyncNow(); } catch (Exception ex) { Log.W("sync: " + ex.Message); }
             }
         }

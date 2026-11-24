@@ -9,7 +9,10 @@
     "catalog": {
       "tracks": {
         ".read": true,
-        ".indexOn": ["addedAt", "ownerId"],
+        ".indexOn": [
+          "addedAt",
+          "ownerId"
+        ],
         "$id": {
           ".write": "auth != null && (data.exists() ? data.child('ownerId').val() === auth.uid : newData.child('ownerId').val() === auth.uid)",
           ".validate": "newData.hasChildren(['title', 'artist', 'ownerId']) && newData.child('ownerId').val() === auth.uid"
@@ -21,6 +24,16 @@
           ".write": "auth != null && root.child('catalog/tracks/' + $id + '/ownerId').val() === auth.uid"
         }
       }
+    },
+    "plus": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": false
+      }
+    },
+    "payments": {
+      ".read": false,
+      ".write": false
     }
   }
 }
