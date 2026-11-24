@@ -201,10 +201,11 @@ export default {
     const url = new URL(request.url);
 
     if (url.pathname === "/health") {
-      return Response.json({ ok: true, ymSecret: !!secretOf(env), firebase: env.FB_SA ? "service-account" : env.FB_SECRET ? "secret" : false, price: PRICE, days: DAYS, version: 3 });
+      return Response.json({ ok: true, ymSecret: !!secretOf(env), firebase: env.FB_SA ? "service-account" : env.FB_SECRET ? "secret" : false, price: PRICE, days: DAYS, version: 4 });
     }
     if (url.pathname === "/diag") return diag(env, url);
-    if (url.pathname !== "/yoomoney") return bad("SONORA Plus", 404);
+    // уведомления принимаем и на /yoomoney, и на корневой адрес (если в ЮMoney адрес указан без /yoomoney)
+    if (url.pathname !== "/yoomoney" && url.pathname !== "/") return bad("SONORA Plus", 404);
     // ЮMoney при сохранении адреса может проверять его обычным запросом — отвечаем 200
     if (request.method !== "POST") return ok("SONORA Plus: endpoint ok");
 
