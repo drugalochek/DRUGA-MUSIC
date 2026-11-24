@@ -9,7 +9,7 @@
     <RootNamespace>Sonora</RootNamespace>
     <StartupObject>Sonora.Program</StartupObject>
     <ApplicationIcon>Assets\sonora.ico</ApplicationIcon>
-    <Version>1.9.3</Version>
+    <Version>1.9.4</Version>
     <Product>SONORA</Product>
     <Company>SONORA</Company>
     <Description>SONORA — музыкальный плеер для Windows</Description>

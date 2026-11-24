@@ -233,9 +233,18 @@ namespace Sonora
                     var was = Plus.Until;
                     await Plus.Refresh();
                     Toast(Plus.Active ? (Plus.Until > was ? "SONORA Plus активен до " : "Plus активен до ") + Plus.UntilText
-                                      : "Оплата пока не пришла. Обычно это до минуты — попробуй чуть позже");
+                                      : "Оплата пока не пришла. Обычно это до минуты. Если прошло больше 10 минут — напиши в поддержку свой ID (кнопка ниже)");
                     if (Plus.Active) CloseSheet();
                 }, "ghost")));
+            if (!preview && Auth.Current != null)
+            {
+                var uidNow = Auth.Current.Uid;
+                var idTx = U.Tx(L.T("ID аккаунта: ") + uidNow + L.T(" · нажми, чтобы скопировать"), 11.5, Th.Dim);
+                idTx.Margin = new Thickness(0, 10, 0, 0);
+                idTx.Cursor = System.Windows.Input.Cursors.Hand;
+                idTx.MouseLeftButtonUp += (s, e) => { try { Clipboard.SetText(uidNow); Toast(L.T("ID скопирован: ") + uidNow); } catch { } };
+                body.Children.Add(idTx);
+            }
             OpenSheet(active ? "SONORA Plus активен" : "SONORA Plus", null, body, () => { plusSheetOpen = false; StopPlusTimer(); });
             plusSheetOpen = true;
             // пока открыт экран оплаты, ждём платёж (например, по QR с телефона)
