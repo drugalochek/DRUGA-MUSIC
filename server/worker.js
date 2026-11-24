@@ -108,19 +108,23 @@ export default {
       return Response.json({ ok: true, ymSecret: !!env.YM_SECRET, firebase: env.FB_SA ? "service-account" : env.FB_SECRET ? "secret" : false, price: PRICE, days: DAYS });
     }
     if (url.pathname !== "/yoomoney") return bad("SONORA Plus", 404);
-    if (request.method !== "POST") return bad("POST only", 405);
-    if (!env.YM_SECRET || (!env.FB_SA && !env.FB_SECRET)) return bad("secrets are not configured", 500);
+    // ЮMoney при сохранении адреса может проверять его обычным запросом — отвечаем 200
+    if (request.method !== "POST") return ok("SONORA Plus: endpoint ok");
 
-    const form = await request.formData();
-    const p = {};
-    for (const [k, v] of form.entries()) p[k] = String(v);
+    let p = {};
+    try {
+      const form = await request.formData();
+      for (const [k, v] of form.entries()) p[k] = String(v);
+    } catch (e) { p = {}; }
+
+    // кнопка «Тест» в настройках ЮMoney — всегда 200 и ничего не пишем (подпись тут не важна)
+    if (p.test_notification === "true") return ok("test ok");
+    if (!env.YM_SECRET || (!env.FB_SA && !env.FB_SECRET)) return bad("secrets are not configured", 500);
 
     // подпись: подходит любая из двух — новая (sign) или классическая (sha1_hash)
     const valid = (await checkSign(p, env.YM_SECRET)) || (await checkSha1(p, env.YM_SECRET));
     if (!valid) return bad("bad signature", 403);
 
-    // кнопка «Протестировать» в настройках ЮMoney — отвечаем 200 и ничего не пишем
-    if (p.test_notification === "true") return ok("test ok");
     if (p.currency && p.currency !== "643") return ok("ignored: currency");
     if (p.unaccepted === "true" || p.codepro === "true") return ok("ignored: on hold");
 

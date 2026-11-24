@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 
 namespace Sonora
@@ -96,7 +97,8 @@ namespace Sonora
             return res;
         }
 
-        public static long Slot { get { return Library.Now / HalfHour; } }
+        // Номер получасового слота по МЕСТНОМУ времени (как и обратный отсчёт): :00–:29 и :30–:59.
+        public static long Slot { get { return DateTime.Now.Ticks / (TimeSpan.TicksPerMinute * 30); } }
         public static string HourCountdown()
         {
             var now = DateTime.Now;
@@ -104,16 +106,71 @@ namespace Sonora
             var left = next - now;
             return ((int)left.TotalMinutes).ToString("00") + ":" + left.Seconds.ToString("00");
         }
+
+        // «Жанр получаса» выбирается ОДИН раз на слот и запоминается (hour.json).
+        // Раньше жанр пересчитывался при каждой отрисовке из текущего списка жанров, а этот список меняется,
+        // когда в фоне определяются жанры треков или ставится лайк, — поэтому жанр прыгал при входе/выходе и сам по себе.
+        static long hSlot = -1;
+        static string hGenre, hPrev;
+        static List<string> hIds = new List<string>();
+        static bool hLoaded;
+        static string HourFile { get { return Path.Combine(Paths.Data, "hour.json"); } }
+        static void LoadHour()
+        {
+            if (hLoaded) return;
+            hLoaded = true;
+            try
+            {
+                if (!File.Exists(HourFile)) return;
+                var d = J.D(J.Parse(File.ReadAllText(HourFile)));
+                if (d == null) return;
+                hSlot = (long)J.Num(d, "slot");
+                hGenre = J.Str(d, "genre");
+                hPrev = J.Str(d, "prev");
+                if (d.TryGetValue("ids", out var ids) && ids is System.Collections.IEnumerable e)
+                    hIds = e.Cast<object>().Select(x => x == null ? null : x.ToString()).Where(x => !string.IsNullOrEmpty(x)).ToList();
+            }
+            catch (Exception ex) { Log.W("hour load: " + ex.Message); }
+        }
+        static void SaveHour()
+        {
+            if (Program.ShotsDir != null) return;
+            try
+            {
+                Directory.CreateDirectory(Paths.Data);
+                File.WriteAllText(HourFile, J.Ser(new Dictionary<string, object> { ["slot"] = hSlot, ["genre"] = hGenre, ["prev"] = hPrev, ["ids"] = hIds }));
+            }
+            catch (Exception ex) { Log.W("hour save: " + ex.Message); }
+        }
         public static Mix GenreOfHour()
         {
-            var pool = FavPool();
-            if (pool.Count == 0) return null;
-            var genres = pool.SelectMany(t => Genres(t.Genre)).Distinct().OrderBy(x => x, StringComparer.Ordinal).ToList();
-            if (genres.Count == 0) return null;
-            var pick = genres[(int)(Slot % genres.Count)];
-            var list = Universe().Where(t => Genres(t.Genre).Contains(pick)).ToList();
-            if (list.Count == 0) return null;
-            return new Mix { Id = "__hour_genre__", Name = GenreName(pick), Tag = "Сейчас", Sub = U.Tn(list.Count), Tracks = Shuffle(list, "hour_" + Slot), Icon = "clock", From = "#f59e0b", To = "#8b5cf6" };
+            LoadHour();
+            var slot = Slot;
+            var universe = Universe();
+            if (hSlot != slot || string.IsNullOrEmpty(hGenre))
+            {
+                var pool = FavPool();
+                var genres = pool.SelectMany(t => Genres(t.Genre)).Distinct().OrderBy(x => x, StringComparer.Ordinal).ToList();
+                if (genres.Count == 0) return null;
+                var last = hSlot == slot ? hPrev : hGenre;          // жанр прошлого получаса — подряд не повторяем
+                var pick = genres[new Random(Seed("hourpick_" + slot)).Next(genres.Count)];
+                if (genres.Count > 1 && pick == last) pick = genres[(genres.IndexOf(pick) + 1) % genres.Count];
+                var list = universe.Where(t => Genres(t.Genre).Contains(pick)).ToList();
+                if (list.Count == 0) return null;
+                hPrev = last; hSlot = slot; hGenre = pick;
+                hIds = Shuffle(list, "hour_" + slot).Select(t => t.Id).ToList();
+                SaveHour();
+            }
+            else
+            {
+                // жанр тот же; треки этого жанра, найденные позже, просто дописываем в конец (порядок не меняется)
+                var have = new HashSet<string>(hIds);
+                var extra = universe.Where(t => !have.Contains(t.Id) && Genres(t.Genre).Contains(hGenre)).Select(t => t.Id).ToList();
+                if (extra.Count > 0) { hIds.AddRange(extra); SaveHour(); }
+            }
+            var tracks = hIds.Select(Catalog.Get).Where(t => t != null).ToList();
+            if (tracks.Count == 0) return null;
+            return new Mix { Id = "__hour_genre__", Name = GenreName(hGenre), Tag = "Сейчас", Sub = U.Tn(tracks.Count), Tracks = tracks, Icon = "clock", From = "#f59e0b", To = "#8b5cf6" };
         }
 
         // «100% для вас»: исполнители из лайков, любимых исполнителей и истории — из каталога И из сервисов.
