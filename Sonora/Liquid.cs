@@ -18,14 +18,59 @@ namespace Sonora
         static readonly Dictionary<string, Color[]> cache = new Dictionary<string, Color[]>();
         public static readonly Color[] Fallback = { Color.FromRgb(59, 130, 246), Color.FromRgb(56, 189, 248), Color.FromRgb(30, 58, 138) };
 
+        // палитра готова (обложка из интернета догрузилась) — плеер перекрашивается
+        public static event Action<string> Ready;
+        static readonly HashSet<string> pending = new HashSet<string>();
+
         public static Color[] Of(Track t)
         {
             if (t == null || string.IsNullOrEmpty(t.Cover)) return Fallback;
-            if (cache.TryGetValue(t.Id, out var c0)) return c0;
+            var key = t.Id + ":" + t.Cover.Length;
+            if (cache.TryGetValue(key, out var c0)) return c0;
+            if (t.Cover.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+            {
+                // BitmapImage с адресом грузится асинхронно — пиксели ещё пустые. Качаем сами и считаем потом.
+                if (pending.Add(key)) Fetch(t.Id, key, t.Cover);
+                return Fallback;
+            }
+            Color[] res = Fallback;
+            try { res = Compute(Img.FromData(t.Id, t.Cover, 64)) ?? Fallback; }
+            catch (Exception ex) { Log.W("palette: " + ex.Message); }
+            cache[key] = res;
+            return res;
+        }
+        public static bool Has(Track t)
+        {
+            return t == null || string.IsNullOrEmpty(t.Cover) || cache.ContainsKey(t.Id + ":" + t.Cover.Length);
+        }
+        static async void Fetch(string id, string key, string url)
+        {
             Color[] res = Fallback;
             try
             {
-                var src = Img.FromData(t.Id, t.Cover, 64);
+                var bytes = await Net.Http.GetByteArrayAsync(url);
+                var bi = new BitmapImage();
+                bi.BeginInit();
+                bi.CacheOption = BitmapCacheOption.OnLoad;
+                bi.CreateOptions = BitmapCreateOptions.IgnoreColorProfile;
+                bi.StreamSource = new System.IO.MemoryStream(bytes);
+                bi.DecodePixelWidth = 64;
+                bi.EndInit();
+                bi.Freeze();
+                res = Compute(bi) ?? Fallback;
+            }
+            catch (Exception ex) { Log.W("palette http: " + ex.Message); }
+            cache[key] = res;
+            pending.Remove(key);
+            try { Application.Current?.Dispatcher.BeginInvoke(new Action(() => Ready?.Invoke(id))); } catch { }
+        }
+
+        static Color[] Compute(BitmapSource src)
+        {
+            if (src == null || src.PixelWidth < 2) return null;
+            Color[] res = null;
+            {
+                {
                 if (src != null)
                 {
                     var scaled = new TransformedBitmap(src, new ScaleTransform(36.0 / src.PixelWidth, 36.0 / src.PixelHeight));
@@ -42,7 +87,7 @@ namespace Sonora
                         ar += r; ag += g; ab += b; an++;
                         double hh, s, l; Hsl(r, g, b, out hh, out s, out l);
                         if (l < .08 || l > .94) continue;
-                        double wt = s * s * (1 - Math.Abs(l - .5) * 1.2) + .02;
+                        double wt = (.12 + s) * (1 - Math.Abs(l - .5) * 1.1) + .01;
                         int bin = (int)(hh / 360 * Bins) % Bins;
                         wsum[bin] += wt; rs[bin] += r * wt; gs[bin] += g * wt; bs[bin] += b * wt;
                     }
@@ -55,18 +100,17 @@ namespace Sonora
                         var c2 = second != order[0] && wsum[second] > 0 ? col(second) : Shift(c1, 28);
                         int third = order.Skip(1).FirstOrDefault(i => i != second && wsum[i] > wsum[order[0]] * .08 && Math.Min(Math.Abs(i - order[0]), Bins - Math.Abs(i - order[0])) >= 2);
                         var c3 = third != order[0] && third != second && wsum[third] > 0 ? col(third) : Shift(c1, -24);
-                        res = new[] { Vivid(c1), Vivid(c2), Vivid(c3) };
+                        res = new[] { Natural(c1), Natural(c2), Natural(c3) };
                     }
                     else if (an > 0)
                     {
-                        // почти чёрно-белая обложка — мягкий серо-синий
-                        var g0 = Color.FromRgb((byte)(ar / an), (byte)(ag / an), (byte)(ab / an));
-                        res = new[] { Mix(g0, Color.FromRgb(96, 120, 160), .6), Mix(g0, Color.FromRgb(140, 150, 175), .5), Color.FromRgb(24, 28, 38) };
+                        // почти чёрно-белая обложка — её же нейтральный серый, без подмешивания синего
+                        var g0 = Natural(Color.FromRgb((byte)(ar / an), (byte)(ag / an), (byte)(ab / an)));
+                        res = new[] { g0, Mix(g0, Colors.White, .18), Mix(g0, Colors.Black, .35) };
                     }
                 }
             }
-            catch (Exception ex) { Log.W("palette: " + ex.Message); }
-            cache[t.Id] = res;
+            }
             return res;
         }
 
@@ -102,6 +146,24 @@ namespace Sonora
                 r = f(p, q, h + 1.0 / 3); g = f(p, q, h); b = f(p, q, h - 1.0 / 3);
             }
             return Color.FromRgb((byte)Math.Round(r * 255), (byte)Math.Round(g * 255), (byte)Math.Round(b * 255));
+        }
+        // цвет обложки без «кислотности»: насыщенность почти как на обложке, яркость средняя
+        public static Color Natural(Color c)
+        {
+            double h, s, l; Hsl(c.R, c.G, c.B, out h, out s, out l);
+            return FromHsl(h, Math.Min(.9, s * 1.08), Math.Max(.32, Math.Min(.64, l)));
+        }
+        // заливка плеера: тот же оттенок обложки, заданная яркость (как у Spotify)
+        public static Color Surface(Color c, double l)
+        {
+            double h, s, ll; Hsl(c.R, c.G, c.B, out h, out s, out ll);
+            return FromHsl(h, Math.Min(.78, s * 1.05), l);
+        }
+        // светлый вариант для полосок и активных кнопок
+        public static Color Light(Color c)
+        {
+            double h, s, l; Hsl(c.R, c.G, c.B, out h, out s, out l);
+            return FromHsl(h, Math.Min(.9, Math.Max(.45, s)), .72);
         }
         // делаем цвет «светящимся»: насыщенным и средней яркости
         public static Color Vivid(Color c)
@@ -196,8 +258,8 @@ namespace Sonora
             pulse.Fill = pulseBrush;
             // мягкое затемнение для читаемости текста
             var sh = big
-                ? new LinearGradientBrush(new GradientStopCollection { new GradientStop(Color.FromArgb(40, 0, 0, 0), 0), new GradientStop(Color.FromArgb(70, 0, 0, 0), .45), new GradientStop(Color.FromArgb(170, 0, 0, 0), 1) }, new Point(.5, 0), new Point(.5, 1))
-                : new LinearGradientBrush(new GradientStopCollection { new GradientStop(Color.FromArgb(30, 0, 0, 0), 0), new GradientStop(Color.FromArgb(80, 0, 0, 0), 1) }, new Point(0, .5), new Point(1, .5));
+                ? new LinearGradientBrush(new GradientStopCollection { new GradientStop(Color.FromArgb(0, 0, 0, 0), 0), new GradientStop(Color.FromArgb(30, 0, 0, 0), .45), new GradientStop(Color.FromArgb(150, 0, 0, 0), 1) }, new Point(.5, 0), new Point(.5, 1))
+                : new LinearGradientBrush(new GradientStopCollection { new GradientStop(Color.FromArgb(10, 0, 0, 0), 0), new GradientStop(Color.FromArgb(55, 0, 0, 0), 1) }, new Point(0, .5), new Point(1, .5));
             sh.Freeze();
             shadeRect.Fill = sh;
             Children.Add(baseRect);
@@ -225,12 +287,12 @@ namespace Sonora
         {
             pal = p ?? Palette.Fallback;
             // фон — приглушённые цвета палитры, поверх — более яркий «перелив»
-            Anim(b0, Palette.Deep(pal[0], big ? .42 : .5), animate);
-            Anim(b1, Palette.Deep(pal[2], big ? .30 : .36), animate);
-            Anim(b2, Palette.Deep(pal[1], big ? .36 : .44), animate);
-            Anim(f0, Palette.A(pal[1], big ? .42 : .5), animate);
+            Anim(b0, Palette.Surface(pal[0], big ? .40 : .34), animate);
+            Anim(b1, Palette.Surface(pal[2], big ? .28 : .26), animate);
+            Anim(b2, Palette.Surface(pal[1], big ? .33 : .30), animate);
+            Anim(f0, Palette.A(Palette.Surface(pal[1], .46), big ? .45 : .5), animate);
             Anim(f1, Palette.A(pal[0], 0), animate);
-            Anim(f2, Palette.A(pal[0], big ? .38 : .46), animate);
+            Anim(f2, Palette.A(Palette.Surface(pal[0], .48), big ? .40 : .46), animate);
             Anim(p0, Palette.A(Palette.Mix(pal[0], Colors.White, .2), big ? .32 : .4), animate);
             Anim(p1, Palette.A(pal[0], 0), animate);
         }

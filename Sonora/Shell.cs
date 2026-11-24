@@ -143,6 +143,7 @@ namespace Sonora
             Auth.Changed += () => { UpdateProfileBtn(); QueueRender(); };
             Player.I.TrackChanged += () => { UpdateMini(); QueueRender(); };
             Player.I.StateChanged += UpdateMini;
+            Palette.Ready += id => { if (Player.I.Current != null && Player.I.Current.Id == id) { barColorId = null; UpdateMini(); } };
             Player.I.Tick += UpdateMiniProgress;
 
             SizeChanged += (s, e) =>
@@ -374,6 +375,7 @@ namespace Sonora
         Border barFill, barThumb, volFill, volThumb;
         Liquid barLiquid;
         string barColorId;
+        static Brush barAccent = Th.Accent2;
         TextBlock barTitle, barArtist, barCur, barDur;
         bool barDrag, volDrag;
         double lastVol = .8;
@@ -452,7 +454,7 @@ namespace Sonora
             right.ClipToBounds = true;
             g.Margin = new Thickness(16, 8, 22, 8);
             barLiquid = new Liquid(false);
-            var shade = new Border { Background = Th.G(Th.C("#000000", .18), Th.C("#000000", .38), true), IsHitTestVisible = false };
+            var shade = new Border { Background = Th.G(Th.C("#000000", .04), Th.C("#000000", .2), true), IsHitTestVisible = false };
             var stack = new Grid();
             stack.Children.Add(barLiquid);
             stack.Children.Add(shade);
@@ -469,9 +471,9 @@ namespace Sonora
         static void SetSmall(Border b, string icon, bool on, bool enabled = true, string badge = null)
         {
             var g = new Grid();
-            g.Children.Add(U.Center(U.Ico(icon, 22, on ? Th.Accent2 : enabled ? Th.B("#FFFFFF", .88) : Th.B("#FFFFFF", .25))));
-            if (badge != null) { var t = U.Tx(badge, 8, Th.Accent2); t.HorizontalAlignment = HorizontalAlignment.Center; t.VerticalAlignment = VerticalAlignment.Center; t.Margin = new Thickness(0, 0, 0, 1); g.Children.Add(t); }
-            if (on) g.Children.Add(new Ellipse { Width = 4, Height = 4, Fill = Th.Accent2, VerticalAlignment = VerticalAlignment.Bottom, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 0, 0, 1) });
+            g.Children.Add(U.Center(U.Ico(icon, 22, on ? barAccent : enabled ? Th.B("#FFFFFF", .88) : Th.B("#FFFFFF", .25))));
+            if (badge != null) { var t = U.Tx(badge, 8, barAccent); t.HorizontalAlignment = HorizontalAlignment.Center; t.VerticalAlignment = VerticalAlignment.Center; t.Margin = new Thickness(0, 0, 0, 1); g.Children.Add(t); }
+            if (on) g.Children.Add(new Ellipse { Width = 4, Height = 4, Fill = barAccent, VerticalAlignment = VerticalAlignment.Bottom, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 0, 0, 1) });
             b.Child = g;
         }
         static Grid Bar(out Border fill, out Border thumb)
@@ -481,7 +483,7 @@ namespace Sonora
             var f = new Border { Height = 4, CornerRadius = new CornerRadius(2), Background = Th.Txt, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center, Width = 0 };
             var th = new Border { Width = 12, Height = 12, CornerRadius = new CornerRadius(6), Background = Th.White, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center, Visibility = Visibility.Hidden, IsHitTestVisible = false };
             g.Children.Add(line); g.Children.Add(f); g.Children.Add(th);
-            g.MouseEnter += (s, e) => { f.Background = Th.Accent2; th.Visibility = Visibility.Visible; };
+            g.MouseEnter += (s, e) => { f.Background = barAccent ?? Th.Accent2; th.Visibility = Visibility.Visible; };
             g.MouseLeave += (s, e) => { if (Mouse.Captured == g) return; f.Background = Th.Txt; th.Visibility = Visibility.Hidden; };
             g.LostMouseCapture += (s, e) => { if (!g.IsMouseOver) { f.Background = Th.Txt; th.Visibility = Visibility.Hidden; } };
             fill = f; thumb = th;
@@ -527,8 +529,9 @@ namespace Sonora
             // панель плеера и подсветка — в цветах обложки, «живая вода»
             if (barColorId != t.Id)
             {
-                barColorId = t.Id;
                 var pal = Palette.Of(t);
+                barColorId = Palette.Has(t) ? t.Id : null;
+                barAccent = Th.B(Palette.Light(pal[0]));
                 var dc = pal[0];
                 barLiquid.SetColors(pal, IsLoaded && !ShotMode);
                 trackGlow.Fill = GlowBrush(dc, .22);

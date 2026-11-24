@@ -197,7 +197,7 @@ namespace Sonora
         {
             // цвет обложки
             var p = Palette.Of(t);
-            return Th.G(Palette.Darken(p[0], .55), Palette.Darken(p[2], .35), false);
+            return Th.G(Palette.Surface(p[0], .36), Palette.Surface(p[2], .14), false);
         }
     }
 

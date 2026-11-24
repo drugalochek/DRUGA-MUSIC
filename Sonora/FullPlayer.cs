@@ -41,7 +41,7 @@ namespace Sonora
             Children.Add(bg);
             liquid = new Liquid(true);
             Children.Add(liquid);
-            Children.Add(new Rectangle { Fill = Th.G(Th.C("#000000", .22), Th.C("#000000", .55), false), IsHitTestVisible = false });
+            Children.Add(new Rectangle { Fill = Th.G(Th.C("#000000", .04), Th.C("#000000", .42), false), IsHitTestVisible = false });
             TextElement.SetForeground(this, Th.White);
 
             var col = new Grid { MaxWidth = 520, Margin = new Thickness(20, 10, 20, 16) };
@@ -243,7 +243,7 @@ namespace Sonora
             if (t == null) return;
             if (colorId != t.Id)
             {
-                colorId = t.Id;
+                colorId = Palette.Has(t) ? t.Id : null;
                 bg.Background = Img.PlayerGradient(t);
                 liquid.SetColors(Palette.Of(t), IsOpen && !(Shell.I != null && Shell.I.ShotMode));
             }
