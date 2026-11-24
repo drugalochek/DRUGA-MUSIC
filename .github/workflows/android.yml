@@ -1,0 +1,33 @@
+name: Build SONORA Android
+
+on:
+  push:
+    branches: [ main ]
+    paths: [ 'android/**', '.github/workflows/android.yml' ]
+  workflow_dispatch:
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Build release APK
+        working-directory: android
+        env:
+          SONORA_VERSION_CODE: ${{ github.run_number }}
+          SONORA_KEYSTORE_B64: ${{ secrets.SONORA_KEYSTORE_B64 }}
+          SONORA_KS_PASS: ${{ secrets.SONORA_KS_PASS }}
+          SONORA_KEY_ALIAS: ${{ secrets.SONORA_KEY_ALIAS }}
+          SONORA_KEY_PASS: ${{ secrets.SONORA_KEY_PASS }}
+        run: gradle assembleRelease --no-daemon --stacktrace
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SONORA-android
+          path: android/app/build/outputs/apk/release/*.apk

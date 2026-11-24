@@ -1,0 +1,4 @@
+-keep class com.sonora.app.PlaybackService { *; }
+-dontwarn org.checkerframework.**
+-dontwarn com.google.errorprone.**
+-dontwarn javax.annotation.**
