@@ -1,3 +1,5 @@
+import java.util.Base64
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -21,7 +23,7 @@ android {
     if (!ksB64.isNullOrBlank()) {
         val ksFile = layout.buildDirectory.file("sonora-release.jks").get().asFile
         ksFile.parentFile.mkdirs()
-        ksFile.writeBytes(java.util.Base64.getDecoder().decode(ksB64.trim()))
+        ksFile.writeBytes(Base64.getDecoder().decode(ksB64.trim()))
         signingConfigs {
             create("release") {
                 storeFile = ksFile
