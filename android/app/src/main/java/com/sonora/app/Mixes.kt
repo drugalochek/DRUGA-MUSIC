@@ -30,7 +30,7 @@ object Mixes {
 
     fun init(ctx: Context) { prefs = ctx.getSharedPreferences("mixes", Context.MODE_PRIVATE) }
 
-    fun favTracks(): List<Track> = Lib.fav.mapNotNull { Catalog.get(it) }
+    fun favTracks(): List<Track> = Lib.fav.mapNotNull { trackOf(it) }
     fun favPool(): List<Track> {
         val seen = HashSet<String>(); val res = mutableListOf<Track>()
         for (t in favTracks()) if (seen.add(t.id)) res.add(t)
@@ -95,7 +95,7 @@ object Mixes {
             val extra = Catalog.tracks.filter { it.id !in have && hGenre in genres(it.genre) }.map { it.id }
             if (extra.isNotEmpty()) { hIds.addAll(extra); save(hSlot, hGenre, hPrev, hIds) }
         }
-        val tracks = hIds.mapNotNull { Catalog.get(it) }
+        val tracks = hIds.mapNotNull { trackOf(it) }
         if (tracks.isEmpty()) return null
         return Mix(HOUR, genreName(hGenre), "Сейчас", tn(tracks.size), tracks, "clock", "#f59e0b", "#8b5cf6")
     }
@@ -109,7 +109,7 @@ object Mixes {
         fun add(a: String, w: Double) { if (a.isBlank()) return; val k = a.lowercase(); score[k] = (score[k] ?: 0.0) + w; display.putIfAbsent(k, a) }
         for (t in favTracks()) for (a in artistsOf(t)) add(a, 2.0)
         for (a in Lib.favArtists) add(a, 3.0)
-        for (t in Lib.recent.mapNotNull { Catalog.get(it) }.take(60)) for (a in artistsOf(t)) add(a, .5)
+        for (t in Lib.recent.mapNotNull { trackOf(it) }.take(60)) for (a in artistsOf(t)) add(a, .5)
         if (score.isEmpty()) return emptyList()
         val by = HashMap<String, MutableList<Track>>()
         for (t in Catalog.tracks) for (a in artistsOf(t)) { val k = a.lowercase(); if (k in score) by.getOrPut(k) { mutableListOf() }.add(t) }
@@ -139,7 +139,7 @@ object Mixes {
     fun get(id: String): Mix? {
         when {
             id == LIKED -> return Mix(id, "Любимые треки", "Избранное", "", favTracks(), "heart", "#FF6BAE", "#D81B72")
-            id == RECENT -> return Mix(id, "Недавно прослушанные", "История", "", Lib.recent.mapNotNull { Catalog.get(it) }, "clock", "#8b5cf6", "#06b6d4")
+            id == RECENT -> return Mix(id, "Недавно прослушанные", "История", "", Lib.recent.mapNotNull { trackOf(it) }, "clock", "#8b5cf6", "#06b6d4")
             id == HOUR -> return genreOfHour()
             id == "__mine__" -> return Mix(id, "Мои треки", "Мои", "", mine(), "upload", "#06b6d4", "#10b981")
             id.startsWith("__mix_") -> return forYou().firstOrNull { it.id == id }
@@ -161,7 +161,7 @@ object Mixes {
         val c = Th.hex(pl.color)
         val to = Th.shade(c, -30)
         val hex = String.format("#%06X", 0xFFFFFF and android.graphics.Color.rgb((to.red * 255).toInt(), (to.green * 255).toInt(), (to.blue * 255).toInt()))
-        return Mix(pl.id, pl.name, "Плейлист", "", pl.trackIds.mapNotNull { Catalog.get(it) }, "music", pl.color, hex, pl)
+        return Mix(pl.id, pl.name, "Плейлист", "", pl.trackIds.mapNotNull { trackOf(it) }, "music", pl.color, hex, pl)
     }
 }
 

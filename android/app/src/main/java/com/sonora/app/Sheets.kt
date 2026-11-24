@@ -131,7 +131,8 @@ fun openWelcome() {
             Tx("Слушай музыку, собирай плейлисты и лайкай треки — всё синхронизируется с компьютером.", 13f, Th.Dim,
                 Modifier.padding(top = 8.dp, bottom = 20.dp), lines = 3, align = TextAlign.Center, lineHeight = 19.sp)
         }
-        ProviderBtn("Войти или создать аккаунт", "login", primary = true) { Sheets.replace("Вход в SONORA") { AuthForm() } }
+        GoogleButton("Продолжить с Google")
+        ProviderBtn("Войти или создать аккаунт по почте", "mail", primary = true) { Sheets.replace("Вход в SONORA") { AuthForm() } }
         ProviderBtn("Продолжить как гость", "user") { Sheets.close() }
         Tx("Без аккаунта можно только слушать. Данные гостя хранятся на этом телефоне.", 11.5f, Th.Dim, Modifier.padding(top = 10.dp).fillMaxWidth(), lines = 3, align = TextAlign.Center)
     }
@@ -164,6 +165,8 @@ fun AuthForm() {
         }
     }
     Column {
+        GoogleButton(if (reg) "Регистрация через Google" else "Войти через Google") { err = it }
+        OrDivider()
         Row(Modifier.padding(start = 0.dp, bottom = 14.dp)) {
             listOf(false to "Войти", true to "Регистрация").forEach { (v, label) ->
                 val on = reg == v
@@ -184,7 +187,7 @@ fun AuthForm() {
             if (email.isBlank()) { err = "Введи почту — пришлём ссылку для сброса пароля"; return@tap }
             scope.launch { try { Auth.reset(email); toast("Письмо для сброса пароля отправлено") } catch (e: Exception) { err = e.message } }
         })
-        Tx("Аккаунт тот же, что в SONORA для ПК. Вход через Google пока только на компьютере — там можно задать пароль.", 11.5f, Th.Dim,
+        Tx("Аккаунт тот же, что в SONORA для ПК. Через Google аккаунт создаётся сам — на компьютере входи тоже через Google.", 11.5f, Th.Dim,
             Modifier.padding(top = 14.dp).fillMaxWidth(), lines = 3, align = TextAlign.Center)
     }
 }
@@ -268,7 +271,7 @@ fun openAddToPlaylist(t: Track) {
         LRowCompact(Modifier, { Box(Modifier.size(46.dp).clip(RoundedCornerShape(10.dp)).dashed(Th.BorderHi, 10.dp), contentAlignment = Alignment.Center) { SIcon("plus", 20.dp, Th.Accent) } },
             "Новый плейлист", "Создать и добавить трек") { Sheets.replace("Новый плейлист") { PlaylistForm(null, t) } }
         Lib.playlists.toList().forEach { p ->
-            val tracks = p.trackIds.mapNotNull { Catalog.get(it) }
+            val tracks = p.trackIds.mapNotNull { trackOf(it) }
             val has = p.trackIds.contains(t.id)
             LRowCompact(Modifier, { Mosaic(tracks, 46.dp, 10.dp, Th.grad(p.color, p.color), "music", 18.dp) }, p.name, if (has) "Уже здесь" else tn(tracks.size)) {
                 if (Lib.addTo(p, t.id)) toast("Добавлено в «${p.name}»") else toast("Уже есть в «${p.name}»")

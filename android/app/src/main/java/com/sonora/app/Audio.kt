@@ -68,7 +68,10 @@ object Audio {
         // sonora://track?db=…&id=… → скачиваем аудио из базы в кэш и отдаём плееру локальный файл
         val resolving = ResolvingDataSource.Factory(upstream) { spec ->
             val u = spec.uri
-            if (u.scheme == "sonora") {
+            if (u.scheme == "sonora" && u.authority == "ext") {
+                val url = try { Ext.streamUrl(u.getQueryParameter("id") ?: "") } catch (e: Exception) { throw java.io.IOException(e.message ?: "трек сервиса недоступен") }
+                spec.withUri(Uri.parse(url))
+            } else if (u.scheme == "sonora") {
                 val f = Catalog.audioFile(ctx, u.getQueryParameter("db") ?: Catalog.SONIC, u.getQueryParameter("id") ?: "")
                 spec.withUri(Uri.fromFile(f))
             } else spec
@@ -98,7 +101,7 @@ object Audio {
     }
 
     private fun item(t: Track): MediaItem {
-        val uri = Uri.Builder().scheme("sonora").authority("track").appendQueryParameter("db", t.db).appendQueryParameter("id", t.id).build()
+        val uri = Uri.Builder().scheme("sonora").authority(if (t.db == "ext") "ext" else "track").appendQueryParameter("db", t.db).appendQueryParameter("id", t.id).build()
         val meta = MediaMetadata.Builder().setTitle(t.title).setArtist(t.artist).setAlbumTitle(t.album.ifEmpty { null })
         Covers.bytes(t)?.let { meta.setArtworkData(it, MediaMetadata.PICTURE_TYPE_FRONT_COVER) }
         return MediaItem.Builder().setMediaId(t.id).setUri(uri).setMediaMetadata(meta.build()).build()

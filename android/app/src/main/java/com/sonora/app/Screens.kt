@@ -171,7 +171,7 @@ fun ArtistCard(a: ArtistInfo) {
 
 @Composable
 fun PlaylistCard(p: Playlist, size: Dp = 132.dp) {
-    val tracks = p.trackIds.mapNotNull { Catalog.get(it) }
+    val tracks = p.trackIds.mapNotNull { trackOf(it) }
     Column(Modifier.width(size).tap(.97f) { Nav.go(Screen.Mix(p.id)) }) {
         Box(Modifier.size(size).shadow(10.dp, RoundedCornerShape(14.dp))) {
             Mosaic(tracks, size, 14.dp, Th.grad(p.color, p.color).let { Brush.linearGradient(listOf(Th.hex(p.color), Th.shade(Th.hex(p.color), -30))) }, "music", 40.dp)
@@ -318,6 +318,17 @@ fun SearchPage() {
     val artists = remember(qq, Catalog.tracks) { if (qq.isEmpty()) emptyList() else Mixes.artists(Catalog.tracks).filter { it.name.contains(qq, true) }.take(20) }
     @Suppress("UNUSED_VARIABLE") val r = Lib.rev
     val pls = if (qq.isEmpty()) emptyList() else Lib.playlists.filter { it.name.contains(qq, true) }
+    @Suppress("UNUSED_VARIABLE") val er = Ext.rev
+    var ext by remember { mutableStateOf<Pair<List<Track>, List<Track>>?>(null) }
+    var extBusy by remember { mutableStateOf(false) }
+    LaunchedEffect(qq, er) {
+        ext = if (qq.length < 2) null else Ext.cachedSearch(qq)
+        if (qq.length < 2 || ext != null) { extBusy = false; return@LaunchedEffect }
+        extBusy = true
+        delay(450)
+        ext = try { Ext.searchAll(qq) } catch (_: Exception) { null }
+        extBusy = false
+    }
     Page("search") {
         item { PTitle("Поиск") }
         item { Box(Modifier.padding(horizontal = 16.dp)) { Input(q, { q = it; Search.q = it }, "Треки, исполнители, плейлисты...", icon = "search") } }
@@ -344,7 +355,8 @@ fun SearchPage() {
             }
             return@Page
         }
-        if (artists.isEmpty() && tracks.isEmpty() && pls.isEmpty()) { item { Empty("search", "Ничего не найдено", "Попробуй другое название или имя исполнителя.") }; return@Page }
+        val extEmpty = ext == null || (ext!!.first.isEmpty() && ext!!.second.isEmpty())
+        if (artists.isEmpty() && tracks.isEmpty() && pls.isEmpty() && extEmpty && !extBusy) { item { Empty("search", "Ничего не найдено", "Попробуй другое название или имя исполнителя.") }; return@Page }
         if (artists.isNotEmpty()) {
             item { SHead("Исполнители", artists.size.toString()) }
             item { HRow { items(artists.size) { ArtistCard(artists[it]) } } }
@@ -354,6 +366,7 @@ fun SearchPage() {
             item { SHead("Плейлисты", pls.size.toString()) }
             item { HRow { items(pls.size) { PlaylistCard(pls[it]) } } }
         }
+        extSearchItems(qq, ext, extBusy)
     }
 }
 object Search { var q = "" }
@@ -368,8 +381,9 @@ fun FavPage() {
         item { PTitle("Избранное") }
         if (Auth.current == null) item { GuestBanner() }
         item { LRow({ LCover(Th.Pink, "heartFill") }, "Любимые треки", tn(Lib.fav.size)) { Nav.go(Screen.Mix(Mixes.LIKED)) } }
+        item { LRow({ LCover(Th.Hot, "globe") }, "Музыкальные сервисы", listOfNotNull(if (Ext.yaOn) "Яндекс" else null, if (Ext.spOn) "Spotify" else null, if (Ext.dzOn) "Deezer" else null).joinToString(" · ").ifEmpty { "Яндекс Музыка, Spotify, Deezer" }) { Nav.go(Screen.Services) } }
         item { LRow({ LCover(Th.Brand, "user", true) }, "Любимые исполнители", "${Lib.favArtists.size} исп.") { Nav.go(Screen.FavArtists) } }
-        item { LRow({ LCover(Th.grad("#8b5cf6", "#06b6d4"), "clock") }, "Недавно прослушанные", tn(Lib.recent.count { Catalog.get(it) != null })) { Nav.go(Screen.Mix(Mixes.RECENT)) } }
+        item { LRow({ LCover(Th.grad("#8b5cf6", "#06b6d4"), "clock") }, "Недавно прослушанные", tn(Lib.recent.count { trackOf(it) != null })) { Nav.go(Screen.Mix(Mixes.RECENT)) } }
         if (mine.isNotEmpty()) item { LRow({ LCover(Th.grad("#06b6d4", "#10b981"), "upload") }, "Мои треки", tn(mine.size)) { Nav.go(Screen.Mix("__mine__")) } }
         item { SHead("Любимые треки", if (favs.isNotEmpty()) tn(favs.size) else "", if (favs.size > 5) "Все" else null) { Nav.go(Screen.Mix(Mixes.LIKED)) } }
         if (favs.isEmpty()) item { Note("Нажми ♥ у трека — он появится здесь.") } else trackItems(favs, "Любимые треки", max = 5)
@@ -447,7 +461,7 @@ fun MixPage(id: String) {
         if (list.isEmpty()) item { Empty(m.icon, "Здесь пока пусто", if (pl != null) "Добавляй треки через «⋮» → «Добавить в плейлист»." else "Треки появятся, когда ты начнёшь слушать и лайкать.") }
         val missing = if (pl != null) pl.trackIds.size - list.size else if (id == Mixes.LIKED) Lib.fav.size - list.size else 0
         trackItems(list, m.name, pl)
-        if (missing > 0) item { Note("Ещё ${tn(missing)} из Яндекс Музыки, Spotify, Deezer или с компьютера — они пока играют только в версии для ПК.") }
+        if (missing > 0) item { Note("Ещё ${tn(missing)} из Яндекс Музыки, Spotify или Deezer — подключи сервис во вкладке «Сервисы», и они появятся здесь.") }
     }
 }
 
@@ -537,7 +551,7 @@ fun ProfilePage() {
                 Tx(if (s != null) (if (Plus.active) "ПРОФИЛЬ · PLUS" else "ПРОФИЛЬ") else "ГОСТЬ", 11.5f, Color.White.copy(alpha = .75f), Modifier.padding(top = 16.dp), weight = FontWeight.Bold, spacing = 1.sp)
                 Tx(s?.name?.ifBlank { null } ?: s?.email ?: "Гость", 28f, Color.White, Modifier.padding(top = 4.dp, bottom = 6.dp), lines = 2, align = TextAlign.Center, logo = true)
                 if (s != null && s.bio.isNotBlank()) Tx(s.bio, 14f, Color.White.copy(alpha = .9f), Modifier.padding(bottom = 6.dp), lines = 3, align = TextAlign.Center, weight = FontWeight.Normal, lineHeight = 20.sp)
-                Tx(if (s != null) s.email + " · " + tn(Lib.fav.size).replace("трек", "трек") + " в любимых" else "Войди, чтобы сохранять лайки, плейлисты и свою музыку в облаке",
+                Tx(if (s != null) s.email + (if (s.provider == "google") " · Google" else "") + " · " + tn(Lib.fav.size).replace("трек", "трек") + " в любимых" else "Войди, чтобы сохранять лайки, плейлисты и свою музыку в облаке",
                     12.5f, Color.White.copy(alpha = .7f), lines = 2, align = TextAlign.Center, weight = FontWeight.Normal)
                 Spacer(Modifier.height(14.dp))
                 WhiteBtn(if (s != null) "Редактировать профиль" else "Войти или создать аккаунт", if (s != null) "edit" else "login") { if (s == null) openWelcome() else openEditProfile() }
@@ -571,6 +585,7 @@ fun ProfilePage() {
             item { SetBtn("refresh", "Синхронизировать сейчас", Lib.syncStatus.ifEmpty { "Лайки и плейлисты общие с компьютером" }) { scope.launch { Cloud.syncNow(); toast(Lib.syncStatus) } } }
             item { SetBtn("logout", "Выйти из аккаунта", danger = true) { confirm("Выйти из аккаунта?", "Лайки и плейлисты останутся в облаке — войди снова, и они вернутся.", "Выйти") { Auth.signOut(); toast("Ты вышел из аккаунта") } } }
         }
+        item { SetBtn("globe", "Музыкальные сервисы", "Яндекс Музыка, Spotify, Deezer") { Nav.go(Screen.Services) } }
         item { SetBtn("gear", "Настройки", "Живой фон, плеер, кэш") { openSettings() } }
         item { SetTitle("О приложении") }
         item { SetBtn("star", "SONORA для Android", "версия " + BuildConfig.VERSION_NAME) { toast("Свайп по плееру — следующий трек, долгое нажатие на трек — меню") } }

@@ -2,3 +2,8 @@
 -dontwarn org.checkerframework.**
 -dontwarn com.google.errorprone.**
 -dontwarn javax.annotation.**
+-keep class com.sonora.app.KeepAliveService { *; }
+-if class androidx.credentials.CredentialManager
+-keep class androidx.credentials.playservices.** { *; }
+-keep class com.google.android.libraries.identity.googleid.** { *; }
+-dontwarn com.google.android.libraries.identity.googleid.**

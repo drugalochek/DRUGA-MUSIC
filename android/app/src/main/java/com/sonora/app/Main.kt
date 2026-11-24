@@ -100,8 +100,10 @@ class SonoraApp : Application() {
         Mixes.init(this)
         Notifs.init(this)
         Prefs.init(this)
+        Ext.init(this)
         appScope.launch {
             Catalog.load()
+            try { Ext.resolveMissing() } catch (_: Exception) { }
             try { Cloud.syncNow() } catch (_: Exception) { }
             try { Plus.refresh() } catch (_: Exception) { }
         }
@@ -140,7 +142,7 @@ object FullState { var lyrics by mutableStateOf(false) }
 fun Root() {
     BackHandler(enabled = Sheets.stack.isNotEmpty() || Nav.fullPlayer || Nav.stack.size > 1 || Nav.tab != Screen.Home) { Nav.back() }
     LaunchedEffect(Auth.current?.uid) {
-        if (Auth.current != null) { try { Cloud.syncNow() } catch (_: Exception) { }; try { Plus.refresh() } catch (_: Exception) { }; Auth.loadProfile() }
+        if (Auth.current != null) { try { Cloud.syncNow(); Ext.resolveMissing() } catch (_: Exception) { }; try { Plus.refresh() } catch (_: Exception) { }; Auth.loadProfile() }
     }
     LaunchedEffect(Nav.stack.size) { Pages.forget(Nav.stack.size) }
     val t = Audio.current
@@ -180,6 +182,8 @@ fun ScreenFor(s: Screen) {
         Screen.FavArtists -> FavArtistsPage()
         is Screen.Mix -> MixPage(s.id)
         is Screen.Artist -> ArtistPage(s.name)
+        Screen.Services -> ServicesPage()
+        is Screen.ExtList -> ExtListPage(s.id, s.title)
     }
 }
 

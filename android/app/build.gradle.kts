@@ -15,7 +15,7 @@ android {
         minSdk = 26
         targetSdk = 34
         versionCode = (System.getenv("SONORA_VERSION_CODE") ?: "1").toInt()
-        versionName = "0.2.0"
+        versionName = "0.3.0"
     }
 
     // подпись: если в окружении есть ключ (секреты GitHub), Gradle подписывает сам; иначе APK подписывается после сборки
@@ -64,4 +64,8 @@ dependencies {
     implementation("androidx.media3:media3-exoplayer:1.4.1")
     implementation("androidx.media3:media3-session:1.4.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
+    // вход через Google: системное окно выбора аккаунта (Credential Manager)
+    implementation("androidx.credentials:credentials:1.3.0")
+    implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
+    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
 }

@@ -81,11 +81,15 @@ data class Track(
     val lyrics: String, val cover: String?, val ownerName: String, val ownerId: String?,
     val year: Int, val duration: Double, val plays: Long, val addedAt: Long,
     val verified: Boolean, val explicit: Boolean, val db: String,
+    val src: String? = null, val ref: String? = null, val isrc: String? = null,   // трек из сервиса: ya / sp / dz
 ) {
     // «A feat. B», «A & B», «A, B» — трек засчитывается каждому исполнителю
     val hasLyrics: Boolean get() = lyrics.isNotBlank()
     val artists: List<String> get() = artist.split(Regex("\\s*(,|&| feat\\.? | ft\\.? )\\s*", RegexOption.IGNORE_CASE)).map { it.trim() }.filter { it.isNotEmpty() }.ifEmpty { listOf(artist) }
 }
+
+// трек по id: каталог SONORA или подключённые сервисы (ya:/sp:/dz:)
+fun trackOf(id: String): Track? = Catalog.get(id) ?: Ext.get(id)
 
 class Playlist(val id: String, var name: String, var color: String, val trackIds: MutableList<String>, var cover: String?)
 
@@ -97,7 +101,7 @@ object Auth {
     const val DB = "https://sonora-ab012-default-rtdb.firebaseio.com"
 
     class Session(val uid: String, val email: String, var name: String, var idToken: String, var refreshToken: String, var expiresAt: Long,
-                  var photo: String = "", var bio: String = "", var color: String = "")
+                  var photo: String = "", var bio: String = "", var color: String = "", var provider: String = "password")
 
     var current by mutableStateOf<Session?>(null)
         private set
@@ -110,7 +114,7 @@ object Auth {
         try {
             val j = JSONObject(raw)
             current = Session(j.getString("uid"), j.optString("email"), j.optString("name"), j.optString("idToken"), j.optString("refreshToken"), j.optLong("expiresAt"),
-                j.optString("photo"), j.optString("bio"), j.optString("color"))
+                j.optString("photo"), j.optString("bio"), j.optString("color"), j.optString("provider").ifEmpty { "password" })
         } catch (_: Exception) { }
     }
 
@@ -119,7 +123,7 @@ object Auth {
         if (s == null) { prefs.edit().remove("session").apply(); return }
         prefs.edit().putString("session", JSONObject().put("uid", s.uid).put("email", s.email).put("name", s.name)
             .put("idToken", s.idToken).put("refreshToken", s.refreshToken).put("expiresAt", s.expiresAt)
-            .put("photo", s.photo).put("bio", s.bio).put("color", s.color).toString()).apply()
+            .put("photo", s.photo).put("bio", s.bio).put("color", s.color).put("provider", s.provider).toString()).apply()
     }
 
     private fun itk(m: String) = "https://identitytoolkit.googleapis.com/v1/accounts:$m?key=$API_KEY"
@@ -211,6 +215,44 @@ object Auth {
         }
         current = s; persist()
         Lib.onLogin()
+    }
+
+    // Вход и регистрация через Google: токен Google (id_token или access_token) меняем на аккаунт SONORA.
+    // Если аккаунта с этой почтой ещё нет — Firebase создаёт его сам, имя и фото берём из Google.
+    suspend fun signInGoogle(idToken: String?, accessToken: String?): Boolean {
+        val post = when {
+            !idToken.isNullOrBlank() -> "id_token=" + enc(idToken)
+            !accessToken.isNullOrBlank() -> "access_token=" + enc(accessToken)
+            else -> throw AuthException("Google не вернул данные для входа. Попробуй ещё раз.")
+        }
+        var isNew = false
+        val s = withContext(Dispatchers.IO) {
+            val d = call("signInWithIdp", JSONObject().put("postBody", "$post&providerId=google.com").put("requestUri", "http://localhost")
+                .put("returnIdpCredential", true).put("returnSecureToken", true))
+            if (d.optString("errorMessage").isNotEmpty()) throw AuthException(human(d.optString("errorMessage")))
+            isNew = d.bool("isNewUser")
+            val s = fromResp(d)
+            s.provider = "google"
+            val gName = d.str("displayName") ?: d.str("fullName") ?: ""
+            val gPhoto = d.str("photoUrl") ?: ""
+            loadProfileName(s)
+            // новый аккаунт или профиль без имени — заполняем из Google, чтобы на ПК было то же самое
+            val hasName = s.name.isNotBlank() && s.name != s.email.substringBefore('@')
+            if (isNew || !hasName) {
+                if (gName.isNotBlank()) s.name = gName
+                if (s.photo.isBlank() && gPhoto.isNotBlank()) s.photo = gPhoto
+                try {
+                    val body = JSONObject().put("name", s.name).put("email", s.email).put("updatedAt", now()).put("client", "SONORA Android")
+                    if (s.photo.isNotBlank()) body.put("photo", s.photo)
+                    Net.send("PATCH", "$DB/users/${enc(s.uid)}/profile.json?auth=${enc(s.idToken)}", body.toString())
+                } catch (_: Exception) { }
+            }
+            if (s.name.isBlank()) s.name = gName.ifBlank { s.email.substringBefore('@') }
+            s
+        }
+        current = s; persist(); rev++
+        Lib.onLogin()
+        return isNew
     }
 
     suspend fun reset(email: String) {
@@ -504,6 +546,7 @@ object Lib {
     }
 
     fun touch() = changed()
+    fun bump() { rev++ }      // данные треков догрузились (например, из сервисов) — перерисовать списки
     fun isFav(id: String) = fav.contains(id)
     fun toggleFav(id: String) { if (!fav.remove(id)) fav.add(0, id); changed() }
     fun setFavAll(ids: List<String>, on: Boolean): Int {

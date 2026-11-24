@@ -139,6 +139,8 @@ sealed class Screen {
     data object FavArtists : Screen()
     data class Mix(val id: String) : Screen()
     data class Artist(val name: String) : Screen()
+    data object Services : Screen()
+    data class ExtList(val id: String, val title: String) : Screen()
 }
 
 object Nav {
