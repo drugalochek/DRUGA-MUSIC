@@ -92,6 +92,7 @@ namespace Sonora
             var sb = new StringBuilder();
             sb.AppendLine("SONORA " + Program.Version + " · " + Environment.OSVersion + (Environment.Is64BitOperatingSystem ? " x64" : " x86") + " · .NET " + Environment.Version);
             sb.AppendLine("Время: " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + " · Вход: " + (Auth.Current != null ? "да" : "гость") + " · Каталог: " + Catalog.Remote.Count + " треков");
+            sb.AppendLine("Аудио: " + Engine.Name + (Engine.Why != null ? " · " + Engine.Why : ""));
             if (!string.IsNullOrEmpty(LastError)) sb.AppendLine("Последняя ошибка: " + LastError);
             if (Last.Count > 0)
             {

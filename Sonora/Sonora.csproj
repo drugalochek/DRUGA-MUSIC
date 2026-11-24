@@ -9,7 +9,7 @@
     <RootNamespace>Sonora</RootNamespace>
     <StartupObject>Sonora.Program</StartupObject>
     <ApplicationIcon>Assets\sonora.ico</ApplicationIcon>
-    <Version>1.7.0</Version>
+    <Version>1.7.1</Version>
     <Product>SONORA</Product>
     <Company>SONORA</Company>
     <Description>SONORA — музыкальный плеер для Windows</Description>
@@ -25,6 +25,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
     <PackageReference Include="NAudio.Wasapi" Version="2.2.1" />
+    <PackageReference Include="NAudio.WinMM" Version="2.2.1" />
     <PackageReference Include="Microsoft.Windows.SDK.Contracts" Version="10.0.19041.1" />
   </ItemGroup>
   <ItemGroup>
@@ -41,7 +42,7 @@
   <!-- NAudio вшивается в SONORA.exe как ресурс (загружается через AssemblyResolve) -->
   <Target Name="EmbedNAudio" AfterTargets="ResolveAssemblyReferences">
     <ItemGroup>
-      <EmbeddedResource Include="@(ReferenceCopyLocalPaths)" Condition="'%(ReferenceCopyLocalPaths.Extension)' == '.dll' And $([System.String]::Copy('%(ReferenceCopyLocalPaths.Filename)').StartsWith('NAudio'))">
+      <EmbeddedResource Include="@(ReferenceCopyLocalPaths)" Condition="'%(ReferenceCopyLocalPaths.Extension)' == '.dll' And ($([System.String]::Copy('%(ReferenceCopyLocalPaths.Filename)').StartsWith('NAudio')) Or '%(ReferenceCopyLocalPaths.Filename)' == 'Microsoft.Win32.Registry' Or $([System.String]::Copy('%(ReferenceCopyLocalPaths.Filename)').StartsWith('System.Security.')))">
         <LogicalName>%(ReferenceCopyLocalPaths.Filename)%(ReferenceCopyLocalPaths.Extension)</LogicalName>
       </EmbeddedResource>
     </ItemGroup>

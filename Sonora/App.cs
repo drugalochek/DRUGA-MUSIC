@@ -209,6 +209,7 @@ namespace Sonora
             try
             {
                 await Snap("00-splash");
+                try { await Engine.SelfTest(Program.ShotsDir); } catch (Exception ex) { Log.W("selftest: " + ex); }
                 await Catalog.LoadAsync();
                 splash.Finish();
                 var all = Catalog.All;

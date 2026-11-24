@@ -11,7 +11,7 @@ namespace Sonora
         static Player instance;
         public static Player I { get { return instance ?? (instance = new Player()); } }
 
-        readonly MediaPlayer mp = new MediaPlayer();
+        readonly Engine mp = new Engine();
         readonly DispatcherTimer timer;
         readonly Random rnd = new Random();
         public List<Track> Queue = new List<Track>();

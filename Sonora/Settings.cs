@@ -54,6 +54,13 @@ namespace Sonora
                 catch { Toast("Не удалось скопировать — открой папку с журналом"); }
             }));
             sp.Children.Add(SetBtn("lyrics", "Открыть журнал", "sonora.log", Diag.OpenLogFolder));
+            sp.Children.Add(SetBtn("volume", "Аудиодвижок", Engine.Name, () =>
+            {
+                bool on = !Engine.Fallback;
+                Engine.SetFallback(on, true, on ? "выбран в настройках" : null);
+                Toast(on ? "Включён резервный аудиодвижок — запусти трек заново" : "Включён встроенный плеер Windows — запусти трек заново");
+                Render();
+            }));
 
             sp.Children.Add(SetTitle("Экран"));
             sp.Children.Add(SetBtn("expand", "Полноэкранный режим", "F11", () => (Window.GetWindow(this) as MainWindow)?.ToggleFullscreen()));
