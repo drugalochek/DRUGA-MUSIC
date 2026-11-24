@@ -413,10 +413,7 @@ namespace Sonora
         {
             if (p == null || string.IsNullOrEmpty(p.Cover)) return null;
             var img = Img.FromData("pl:" + p.Id + ":" + p.Cover.Length + ":" + p.Cover.GetHashCode(), p.Cover, px);
-            if (img == null) return null;
-            var b = new ImageBrush(img) { Stretch = Stretch.UniformToFill };
-            if (b.CanFreeze) b.Freeze();
-            return b;
+            return Img.MakeBrush(img);
         }
 
         static Border CardStripe(string text, double h = 30)

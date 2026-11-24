@@ -120,25 +120,121 @@ namespace Sonora
             BitmapSource result = null;
             try
             {
-                var bi = new BitmapImage();
-                bi.BeginInit();
-                bi.CacheOption = BitmapCacheOption.OnLoad;
-                bi.CreateOptions = BitmapCreateOptions.IgnoreColorProfile;
-                if (data.StartsWith("http", StringComparison.OrdinalIgnoreCase)) bi.UriSource = new Uri(data);
+                if (data.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Обложка из интернета. Встроенная загрузка картинок WPF на части систем молча не работает
+                    // (облегчённые сборки Windows, прокси) — поэтому качаем сами через HttpClient и кэшируем на диске.
+                    var bytes = CachedBytes(data);
+                    if (bytes != null) result = Decode(bytes, px);
+                    else
+                    {
+                        // пока качается — пустая картинка нужного размера; когда байты придут, она сама заполнится
+                        var wb = new WriteableBitmap(px, px, 96, 96, PixelFormats.Bgra32, null);
+                        result = wb;
+                        Want(data, px, wb);
+                    }
+                }
                 else
                 {
                     int c = data.IndexOf(',');
                     var b64 = data.StartsWith("data:") && c > 0 ? data.Substring(c + 1) : data;
-                    bi.StreamSource = new MemoryStream(Convert.FromBase64String(b64));
+                    result = Decode(Convert.FromBase64String(b64), px);
                 }
-                bi.DecodePixelWidth = px;
-                bi.EndInit();
-                if (bi.CanFreeze) bi.Freeze();
-                result = bi;
             }
             catch (Exception ex) { Log.W("img " + key + ": " + ex.Message); }
             cache[k] = result;
             return result;
+        }
+
+        // ---- http-обложки ----
+        public static event Action<string> UrlReady;
+        static readonly Dictionary<string, byte[]> mem = new Dictionary<string, byte[]>();
+        static readonly Dictionary<string, List<Tuple<int, WriteableBitmap>>> waiting = new Dictionary<string, List<Tuple<int, WriteableBitmap>>>();
+        static string DiskPath(string url) { return System.IO.Path.Combine(Paths.Sub("covers"), Library.Hash(url) + ".img"); }
+        public static bool IsReady(string url) { return string.IsNullOrEmpty(url) || !url.StartsWith("http", StringComparison.OrdinalIgnoreCase) || CachedBytes(url) != null; }
+        static byte[] CachedBytes(string url)
+        {
+            if (mem.TryGetValue(url, out var b)) return b;
+            try
+            {
+                var p = DiskPath(url);
+                if (File.Exists(p) && new FileInfo(p).Length > 0) { b = File.ReadAllBytes(p); mem[url] = b; return b; }
+            }
+            catch { }
+            return null;
+        }
+        static BitmapSource Decode(byte[] bytes, int px)
+        {
+            var bi = new BitmapImage();
+            bi.BeginInit();
+            bi.CacheOption = BitmapCacheOption.OnLoad;
+            bi.CreateOptions = BitmapCreateOptions.IgnoreColorProfile;
+            bi.StreamSource = new MemoryStream(bytes);
+            bi.DecodePixelWidth = px;
+            bi.EndInit();
+            if (bi.CanFreeze) bi.Freeze();
+            return bi;
+        }
+        static void Want(string url, int px, WriteableBitmap wb)
+        {
+            bool start = !waiting.ContainsKey(url);
+            if (start) waiting[url] = new List<Tuple<int, WriteableBitmap>>();
+            waiting[url].Add(Tuple.Create(px, wb));
+            if (start) Download(url);
+        }
+        static async void Download(string url)
+        {
+            byte[] bytes = null;
+            for (int attempt = 0; attempt < 2 && bytes == null; attempt++)
+            {
+                try
+                {
+                    var b = await Net.Http.GetByteArrayAsync(url);   // продолжение — в UI-потоке
+                    if (b != null && b.Length > 0) bytes = b;
+                }
+                catch (Exception ex) { if (attempt == 1) Log.W("cover http " + url + ": " + ex.Message); }
+            }
+            List<Tuple<int, WriteableBitmap>> list;
+            if (!waiting.TryGetValue(url, out list)) list = new List<Tuple<int, WriteableBitmap>>();
+            waiting.Remove(url);
+            if (bytes == null) return;   // в следующий раз попробуем снова
+            mem[url] = bytes;
+            try { File.WriteAllBytes(DiskPath(url), bytes); } catch { }
+            foreach (var w in list)
+            {
+                try { Fill(w.Item2, bytes, w.Item1); }
+                catch (Exception ex) { Log.W("cover fill: " + ex.Message); }
+            }
+            // следующие запросы получат обычную (замороженную) картинку
+            foreach (var key in cache.Keys.ToList())
+                if (cache[key] is WriteableBitmap wbm && list.Any(x => x.Item2 == wbm)) cache.Remove(key);
+            try { UrlReady?.Invoke(url); } catch (Exception ex) { Log.W("cover ready: " + ex.Message); }
+        }
+        // Обложка вписывается в квадрат px×px по центру (как UniformToFill)
+        static void Fill(WriteableBitmap wb, byte[] bytes, int px)
+        {
+            var bi = new BitmapImage();
+            bi.BeginInit();
+            bi.CacheOption = BitmapCacheOption.OnLoad;
+            bi.CreateOptions = BitmapCreateOptions.IgnoreColorProfile;
+            bi.StreamSource = new MemoryStream(bytes);
+            bi.EndInit();
+            double sc = Math.Max(px / (double)bi.PixelWidth, px / (double)bi.PixelHeight);
+            BitmapSource src = new TransformedBitmap(bi, new ScaleTransform(sc, sc));
+            int w = src.PixelWidth, h = src.PixelHeight;
+            int cw = Math.Min(px, w), ch = Math.Min(px, h);
+            src = new CroppedBitmap(src, new Int32Rect(Math.Max(0, (w - cw) / 2), Math.Max(0, (h - ch) / 2), cw, ch));
+            var conv = new FormatConvertedBitmap(src, PixelFormats.Bgra32, null, 0);
+            var pixels = new byte[cw * ch * 4];
+            conv.CopyPixels(pixels, cw * 4, 0);
+            wb.WritePixels(new Int32Rect((px - cw) / 2, (px - ch) / 2, cw, ch), pixels, cw * 4, 0);
+        }
+        public static Brush MakeBrush(ImageSource img)
+        {
+            if (img == null) return null;
+            var b = new ImageBrush(img) { Stretch = Stretch.UniformToFill };
+            if (img.IsFrozen && b.CanFreeze) b.Freeze();   // незамороженную (догружается) не трогаем
+            return b;
         }
         public static BitmapSource Res(string name)
         {
@@ -162,6 +258,7 @@ namespace Sonora
             var fallback = Color.FromRgb(59, 130, 246);
             if (t == null || string.IsNullOrEmpty(t.Cover)) return fallback;
             if (colors.TryGetValue(t.Id, out var c0)) return c0;
+            if (!IsReady(t.Cover)) return Palette.Has(t) ? Palette.Of(t)[0] : fallback;
             var res = fallback;
             try
             {
@@ -318,10 +415,7 @@ namespace Sonora
         public static Brush CoverBrush(Track t, int px)
         {
             var img = t == null ? null : Img.FromData(t.Id + ":" + (t.Cover ?? "").Length, t.Cover, px);
-            if (img == null) return null;
-            var b = new ImageBrush(img) { Stretch = Stretch.UniformToFill };
-            if (b.CanFreeze) b.Freeze();
-            return b;
+            return Img.MakeBrush(img);
         }
         public static Border Cover(Track t, double size, double radius, double iconSize, Brush placeholder = null, string icon = "music")
         {

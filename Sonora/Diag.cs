@@ -29,6 +29,7 @@ namespace Sonora
         {
             Tuple.Create("Каталог и треки SONORA", Catalog.Db + "/audio/__ping__.json"),
             Tuple.Create("Аккаунты SONORA", Auth.Db + "/__ping__.json"),
+            Tuple.Create("Публикация треков SONORA", Catalog.UserDb + "/tracks.json?shallow=true"),
             Tuple.Create("Вход (Google)", "https://identitytoolkit.googleapis.com/"),
             Tuple.Create("Deezer", "https://api.deezer.com/search?q=queen&limit=1"),
             Tuple.Create("iTunes", "https://itunes.apple.com/search?term=queen&limit=1&media=music"),

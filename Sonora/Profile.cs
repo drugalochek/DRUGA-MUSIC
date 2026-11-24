@@ -338,8 +338,10 @@ namespace Sonora
             if (l.Duration > MaxSec) return L.T("Трек длиннее 10 минут — без подписки такой не опубликовать");
             return null;
         }
-        // общий каталог SONORA/Sonic Wave (там же, откуда загружаются треки)
-        static string Url(string path, string tok) { return Catalog.Db + "/" + path + ".json"; }
+        // Каталог пользователей SONORA: база SONORA, раздел catalog (читать могут все, писать — только автор)
+        static string Url(string path, string tok) { return Catalog.UserDb + "/" + path + ".json?auth=" + Uri.EscapeDataString(tok); }
+        const int Chunk = 4 * 1024 * 1024;   // база не принимает строки больше 10 МБ — аудио кладём частями по 4 МБ
+        public static string LastError;
         static Dictionary<string, object> Meta(LocalFile l)
         {
             var s = Auth.Current;
@@ -347,33 +349,71 @@ namespace Sonora
             {
                 ["title"] = l.Title ?? "", ["artist"] = l.Artist ?? "", ["album"] = l.Album ?? "", ["genre"] = l.Genre ?? "",
                 ["lyrics"] = l.Lyrics ?? "", ["cover"] = l.Cover ?? "", ["year"] = l.Year, ["duration"] = Math.Round(l.Duration),
-                ["explicit"] = l.Explicit, ["ownerId"] = "sonora:" + s.Uid, ["likes"] = 0, ["listenSec"] = 0, ["ownerName"] = s.Name ?? "", ["addedAt"] = l.PublishedAt > 0 ? l.PublishedAt : Library.Now, ["plays"] = 0, ["client"] = "SONORA Windows"
+                ["explicit"] = l.Explicit, ["ownerId"] = s.Uid, ["ownerName"] = s.Name ?? "",
+                ["addedAt"] = l.PublishedAt > 0 ? l.PublishedAt : Library.Now, ["client"] = "SONORA Windows " + Program.Version
             };
+        }
+        static string Why(Net.Resp r, string step)
+        {
+            var body = (r.Body ?? "").Replace("\n", " ").Trim();
+            if (body.Length > 160) body = body.Substring(0, 160);
+            Log.W("publish " + step + ": HTTP " + r.Code + " " + body);
+            if (r.Code == 401 || r.Code == 403)
+                return body.IndexOf("expired", StringComparison.OrdinalIgnoreCase) >= 0 || body.IndexOf("token", StringComparison.OrdinalIgnoreCase) >= 0 && body.IndexOf("Permission", StringComparison.OrdinalIgnoreCase) < 0
+                    ? "Сессия устарела — выйди и войди в аккаунт заново"
+                    : "Сервер SONORA пока не принимает треки: у базы не включены правила для публикации";
+            if (r.Code == 400 || r.Code == 413) return "Сервер не принял файл (" + r.Code + ") — попробуй MP3 поменьше";
+            return "Сервер ответил ошибкой " + r.Code + " — попробуй позже";
         }
         public static async Task Up(LocalFile l)
         {
             Shell.Toast("Публикуем трек…");
+            string id = null, tok = null;
+            bool metaWritten = false;
             try
             {
-                var tok = await Auth.Token();
-                var id = string.IsNullOrEmpty(l.PubId) ? "sn_" + Library.Hash(Auth.Current.Uid + l.Id + Library.Now) : l.PubId;
+                tok = await Auth.Token();
+                if (string.IsNullOrEmpty(tok)) throw new Exception("Сессия устарела — выйди и войди в аккаунт заново");
+                id = string.IsNullOrEmpty(l.PubId) ? "sn_" + Library.Hash(Auth.Current.Uid + l.Id + Library.Now) : l.PubId;
                 var bytes = await Task.Run(() => File.ReadAllBytes(l.Path));
-                var audio = J.Ser(new Dictionary<string, object> { ["data"] = Convert.ToBase64String(bytes), ["mime"] = Mime(Path.GetExtension(l.Path)) });
-                var r = await Net.Send("PUT", Url("audio/" + id, tok), audio);
-                if (!r.Ok) throw new Exception("audio " + r.Code + " " + r.Body);
+                var b64 = Convert.ToBase64String(bytes);
                 l.PublishedAt = Library.Now;
-                r = await Net.Send("PUT", Url("tracks/" + id, tok), J.Ser(Meta(l)));
-                if (!r.Ok) throw new Exception("track " + r.Code + " " + r.Body);
+                // 1) карточка трека (по ней сервер проверяет, что аудио пишет автор)
+                var r = await Net.Send("PUT", Url("tracks/" + id, tok), J.Ser(Meta(l)));
+                if (!r.Ok) throw new Exception(Why(r, "track"));
+                metaWritten = true;
+                // 2) аудио частями
+                int parts = (b64.Length + Chunk - 1) / Chunk;
+                var head = new Dictionary<string, object> { ["mime"] = Mime(Path.GetExtension(l.Path)), ["parts"] = parts, ["size"] = bytes.Length };
+                r = await Net.Send("PUT", Url("audio/" + id, tok), J.Ser(head));
+                if (!r.Ok) throw new Exception(Why(r, "audio"));
+                for (int i = 0; i < parts; i++)
+                {
+                    var piece = b64.Substring(i * Chunk, Math.Min(Chunk, b64.Length - i * Chunk));
+                    if (parts > 1) Shell.Toast("Публикуем трек… " + (i * 100 / parts) + "%");
+                    r = await Net.Send("PUT", Url("audio/" + id + "/c" + i, tok), J.Ser(piece));
+                    if (!r.Ok) throw new Exception(Why(r, "audio part " + i));
+                }
                 l.PubId = id; l.Public = true;
                 Library.Save(false);
+                LastError = null;
                 Shell.Toast("Трек опубликован — его видят все в SONORA");
                 try { await Catalog.LoadAsync(); } catch { }
             }
             catch (Exception ex)
             {
-                Log.W("publish: " + ex.Message);
+                Log.W("publish: " + ex);
+                LastError = ex.Message;
+                if (metaWritten && tok != null && id != null)
+                {
+                    try { await Net.Send("DELETE", Url("audio/" + id, tok)); } catch { }
+                    try { await Net.Send("DELETE", Url("tracks/" + id, tok)); } catch { }
+                }
                 l.Public = false; Library.Save(false);
-                Shell.Toast(ex.Message.Contains("401") || ex.Message.Contains("403") ? "Сервер не разрешил публикацию — попробуй войти заново" : "Не удалось опубликовать трек — проверь интернет");
+                var msg = ex is System.Net.Http.HttpRequestException || ex is TaskCanceledException
+                    ? "Нет связи с сервером SONORA — проверь интернет или VPN"
+                    : ex.Message;
+                Shell.Toast("Не удалось опубликовать: " + msg);
             }
         }
         public static async Task Down(LocalFile l)
@@ -383,8 +423,8 @@ namespace Sonora
                 if (!string.IsNullOrEmpty(l.PubId) && Auth.Current != null)
                 {
                     var tok = await Auth.Token();
+                    await Net.Send("DELETE", Url("audio/" + l.PubId, tok));   // сначала аудио: правило сверяет автора по карточке
                     await Net.Send("DELETE", Url("tracks/" + l.PubId, tok));
-                    await Net.Send("DELETE", Url("audio/" + l.PubId, tok));
                 }
                 l.Public = false; l.PubId = null;
                 Library.Save(false);
@@ -400,7 +440,9 @@ namespace Sonora
                 if (string.IsNullOrEmpty(l.PubId) || Auth.Current == null) return;
                 var tok = await Auth.Token();
                 var r = await Net.Send("PATCH", Url("tracks/" + l.PubId, tok), J.Ser(Meta(l)));
+                if (!r.Ok) Why(r, "meta");
                 Shell.Toast(r.Ok ? "Сохранено и обновлено в каталоге" : "Сохранено, но каталог не обновился");
+                if (r.Ok) { try { await Catalog.LoadAsync(); } catch { } }
             }
             catch (Exception ex) { Log.W("publish meta: " + ex.Message); Shell.Toast("Сохранено, но каталог не обновился"); }
         }

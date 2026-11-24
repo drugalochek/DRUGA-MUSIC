@@ -26,10 +26,7 @@ namespace Sonora
         {
             if (string.IsNullOrEmpty(url)) return null;
             var img = Img.FromData("url:" + url, url, px);
-            if (img == null) return null;
-            var b = new ImageBrush(img) { Stretch = Stretch.UniformToFill };
-            if (b.CanFreeze) b.Freeze();
-            return b;
+            return Img.MakeBrush(img);
         }
         static Border Pill(string text, Action a, bool primary)
         {

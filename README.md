@@ -50,3 +50,13 @@ dotnet build Sonora/Sonora.csproj -c Release
 ## Вход через Google
 
 «Войти через Google» открывает в браузере страницу SONORA на `localhost` → кнопка «Войти через Google» → выбрать аккаунт → вернуться в приложение.
+
+## Публикация своих треков (один раз включить на сервере)
+
+Опубликованные треки хранятся в базе SONORA (`sonora-ab012`) в разделе `catalog`: читать могут все, писать и удалять — только автор трека.
+Чтобы публикация заработала, правила базы нужно обновить один раз:
+
+1. Открой [Firebase Console](https://console.firebase.google.com/project/sonora-ab012/database/sonora-ab012-default-rtdb/rules) → Realtime Database → **Rules**.
+2. Замени текст правил содержимым файла [`database.rules.json`](database.rules.json) и нажми **Publish**.
+
+Правила сохраняют доступ к синхронизации (`users/<uid>`), как и раньше.

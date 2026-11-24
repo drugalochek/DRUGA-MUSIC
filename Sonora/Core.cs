@@ -117,6 +117,8 @@ namespace Sonora
         public long Plays, AddedAt;
         public bool Verified, Explicit;
         public string Source, Ref, Isrc, Match;   // внешние сервисы: ya / sp / dz
+        public string Db;                         // null — каталог Sonic Wave, иначе база SONORA (треки пользователей)
+        public string OwnerId;
         public bool IsLocal { get { return LocalPath != null; } }
         public bool HasLyrics { get { return !string.IsNullOrWhiteSpace(Lyrics); } }
     }
@@ -144,21 +146,26 @@ namespace Sonora
         public static void Invalidate() { all = null; }
         public static Track Get(string id) { return All.FirstOrDefault(t => t.Id == id) ?? global::Sonora.Ext.Get(id); }
 
-        public static async Task LoadAsync()
+        // Треки, которые пользователи SONORA публикуют сами (база SONORA, раздел catalog)
+        public static string UserDb { get { return Auth.Db + "/catalog"; } }
+
+        static async Task<string> GetCached(string url, string cacheName)
         {
-            string body = null;
-            var cacheFile = Path.Combine(Paths.Sub("cache"), "tracks.json");
+            var cacheFile = Path.Combine(Paths.Sub("cache"), cacheName);
             try
             {
-                body = await Net.Get(Db + "/tracks.json");
+                var body = await Net.Get(url);
                 try { File.WriteAllText(cacheFile, body); } catch { }
+                return body;
             }
             catch (Exception ex)
             {
-                Log.W("catalog: " + ex.Message);
-                if (File.Exists(cacheFile)) body = File.ReadAllText(cacheFile);
+                Log.W("catalog " + cacheName + ": " + ex.Message);
+                return File.Exists(cacheFile) ? File.ReadAllText(cacheFile) : null;
             }
-            var list = new List<Track>();
+        }
+        static void Parse(string body, string db, List<Track> list)
+        {
             try
             {
                 if (J.Parse(body) is Dictionary<string, object> d)
@@ -177,17 +184,31 @@ namespace Sonora
                             Lyrics = J.Str(t, "lyrics") ?? "",
                             Cover = J.Str(t, "cover"),
                             Owner = J.Str(t, "ownerName") ?? "",
+                            OwnerId = J.Str(t, "ownerId"),
                             Year = (int)J.Num(t, "year"),
                             Duration = J.Num(t, "duration"),
                             Plays = (long)J.Num(t, "plays"),
                             AddedAt = (long)J.Num(t, "addedAt"),
                             Verified = J.Bool(t, "verified"),
                             Explicit = J.Bool(t, "explicit"),
+                            Db = db,
                         });
                     }
                 }
             }
             catch (Exception ex) { Log.W("catalog parse: " + ex.Message); }
+        }
+
+        public static async Task LoadAsync()
+        {
+            var sonic = GetCached(Db + "/tracks.json", "tracks.json");
+            var users = GetCached(UserDb + "/tracks.json", "tracks-sonora.json");
+            var list = new List<Track>();
+            Parse(await sonic, null, list);
+            var own = new List<Track>();
+            Parse(await users, UserDb, own);
+            var ids = new HashSet<string>(list.Select(x => x.Id));
+            list.AddRange(own.Where(x => !ids.Contains(x.Id)));
             Remote = list.OrderByDescending(x => x.AddedAt).ToList();
             Loaded = true;
             Invalidate();
@@ -231,9 +252,22 @@ namespace Sonora
             var dir = Paths.Sub("audio");
             var existing = Directory.GetFiles(dir, Safe(t.Id) + ".*").FirstOrDefault(f => !f.EndsWith(".tmp"));
             if (existing != null) return existing;
-            var body = await Net.Get(Db + "/audio/" + Uri.EscapeDataString(t.Id) + ".json").ConfigureAwait(false);
+            var body = await Net.Get((t.Db ?? Db) + "/audio/" + Uri.EscapeDataString(t.Id) + ".json").ConfigureAwait(false);
             var d = J.D(J.Parse(body));
             var data = J.Str(d, "data");
+            int parts = (int)J.Num(d, "parts");
+            if (string.IsNullOrEmpty(data) && parts > 0)
+            {
+                // большие треки хранятся частями (в базе строка не может быть больше 10 МБ)
+                var sb = new StringBuilder();
+                for (int i = 0; i < parts; i++)
+                {
+                    var piece = J.Str(d, "c" + i);
+                    if (string.IsNullOrEmpty(piece)) throw new Exception("Трек загружен не полностью");
+                    sb.Append(piece);
+                }
+                data = sb.ToString();
+            }
             if (string.IsNullOrEmpty(data)) throw new Exception("У трека нет аудио");
             int comma = data.IndexOf(',');
             if (data.StartsWith("data:") && comma > 0) data = data.Substring(comma + 1);

@@ -39,6 +39,7 @@ namespace Sonora
             RenderTransform = move;
             ClipToBounds = true;
             Children.Add(bg);
+            Img.UrlReady += url => { var ct = Player.I.Current; if (ct != null && IsOpen && (ct.Cover == url || Player.I.Queue.Any(q => q.Cover == url))) Update(); };
             liquid = new Liquid(true);
             Children.Add(liquid);
             Children.Add(new Rectangle { Fill = Th.G(Th.C("#000000", .04), Th.C("#000000", .42), false), IsHitTestVisible = false });
@@ -251,7 +252,8 @@ namespace Sonora
             headTitle.Text = string.IsNullOrEmpty(t.Album) ? (t.Artist ?? "—") : t.Album;
             title.Text = t.Title;
             artist.Text = string.IsNullOrEmpty(t.Album) ? t.Artist : t.Artist + " — " + t.Album;
-            var br = U.CoverBrush(t, 600);
+            var br = U.CoverBrush(t, 600);             // заодно запускает загрузку http-обложки
+            if (!Img.IsReady(t.Cover)) br = null;      // пока качается — заглушка с нотой
             cover.Background = br ?? (Brush)Th.B("#000000", .3);
             cover.Child = br == null ? U.Center(U.Ico("music", 72, Th.B("#FFFFFF", .5), null, 1.6)) : null;
 
