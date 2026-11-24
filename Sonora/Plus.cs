@@ -29,6 +29,36 @@ namespace Sonora
         {
             get { return new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddMilliseconds(Until).ToLocalTime().ToString("d MMMM yyyy"); }
         }
+        public static string UntilFull
+        {
+            get { return new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddMilliseconds(Until).ToLocalTime().ToString("d MMMM yyyy, HH:mm"); }
+        }
+        // ---------- таймер до окончания ----------
+        public static TimeSpan Left { get { var ms = Until - Library.Now; return ms > 0 ? TimeSpan.FromMilliseconds(ms) : TimeSpan.Zero; } }
+        public static bool Ending { get { return Active && Left.TotalDays < 3; } }
+        static string Dn(int n) { int a = n % 100, b = n % 10; return a >= 11 && a <= 14 ? "дней" : b == 1 ? "день" : b >= 2 && b <= 4 ? "дня" : "дней"; }
+        // коротко: «29 дн», «5 ч», «12 мин»
+        public static string LeftShort
+        {
+            get
+            {
+                var l = Left;
+                if (l.TotalDays >= 1) return (int)l.TotalDays + L.T(" дн");
+                if (l.TotalHours >= 1) return (int)l.TotalHours + L.T(" ч");
+                return Math.Max(1, (int)Math.Ceiling(l.TotalMinutes)) + L.T(" мин");
+            }
+        }
+        // подробно: «29 дней 23:12:05»
+        public static string LeftLong
+        {
+            get
+            {
+                var l = Left;
+                int d = (int)l.TotalDays;
+                return (d > 0 ? d + " " + L.T(Dn(d)) + "  " : "") + l.Hours.ToString("00") + ":" + l.Minutes.ToString("00") + ":" + l.Seconds.ToString("00");
+            }
+        }
+        public static double LeftFrac { get { return Math.Max(0, Math.Min(1, Left.TotalDays / Days)); } }
 
         public static async Task Refresh()
         {
@@ -93,9 +123,47 @@ namespace Sonora
         bool plusSheetOpen;
         public void PlusPaid() { if (plusSheetOpen) { CloseSheet(); PlusSheet(); } }
 
-        // Золотая плашка «PLUS» — фирменный цвет подписки
-        public static readonly Brush PlusGold = Th.G("#FDE68A", "#F59E0B");
-        public static readonly Brush PlusInk = Th.B("#1C1305");
+        // Фирменный цвет подписки — спокойный сине-фиолетовый градиент
+        public static readonly Brush PlusGold = Th.G("#3B82F6", "#8B5CF6");
+        public static readonly Brush PlusSoft = Th.G(Th.C("#3B82F6", .16), Th.C("#8B5CF6", .16));
+        public static readonly Brush PlusEdge = Th.G(Th.C("#60A5FA", .45), Th.C("#A78BFA", .45));
+        public static readonly Brush PlusInk = Th.B("#FFFFFF");
+        public static readonly Brush PlusIcon = Th.B("#A5B4FC");
+        public void GenresUpdated() { if (Page == "home" || Page == "explore") QueueRender(); }
+
+        // живой таймер на экране Plus
+        System.Windows.Threading.DispatcherTimer plusTimer;
+        void StopPlusTimer() { if (plusTimer != null) { plusTimer.Stop(); plusTimer = null; } }
+        FrameworkElement PlusCountdown()
+        {
+            var cap = U.Tx(L.T("До окончания Plus"), 12.5, Th.Dim);
+            var big = U.Tx(Plus.LeftLong, 26, Th.Txt);
+            big.FontWeight = FontWeights.SemiBold;
+            big.Margin = new Thickness(0, 4, 0, 2);
+            var until = U.Tx(L.T("Действует до ") + Plus.UntilFull, 12.5, Th.Dim);
+            var track = new Border { Height = 6, CornerRadius = new CornerRadius(3), Background = Th.B("#FFFFFF", .08), Margin = new Thickness(0, 12, 0, 0) };
+            var fill = new Border { Height = 6, CornerRadius = new CornerRadius(3), Background = PlusGold, HorizontalAlignment = HorizontalAlignment.Left };
+            var bar = new Grid();
+            bar.Children.Add(track);
+            bar.Children.Add(fill);
+            bar.SizeChanged += (s, e) => fill.Width = Math.Max(6, bar.ActualWidth * Plus.LeftFrac);
+            var box = new Border
+            {
+                CornerRadius = new CornerRadius(16), Background = Th.Glass(.05), BorderBrush = Th.GlassEdge, BorderThickness = new Thickness(1),
+                Padding = new Thickness(16, 14, 16, 14), Margin = new Thickness(0, 0, 0, 12), Child = U.Col(cap, big, until, bar),
+            };
+            StopPlusTimer();
+            plusTimer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+            plusTimer.Tick += (s, e) =>
+            {
+                if (!plusSheetOpen) { StopPlusTimer(); return; }
+                big.Text = Plus.LeftLong;
+                fill.Width = Math.Max(6, bar.ActualWidth * Plus.LeftFrac);
+                if (!Plus.Active) { StopPlusTimer(); CloseSheet(); UpdatePlusPill(); QueueRender(); }
+            };
+            plusTimer.Start();
+            return box;
+        }
 
         public void PlusSheet() { PlusSheet(false); }
         public void PlusSheet(bool preview)
@@ -107,7 +175,7 @@ namespace Sonora
             var crown = U.Ico("crown", 30, PlusInk, null, 2.2);
             crown.VerticalAlignment = VerticalAlignment.Center;
             var bt = new TextBlock { Text = "SONORA PLUS", FontFamily = Th.Font, FontSize = 24, Foreground = PlusInk };
-            var bs = U.Tx(active ? "Активен до " + Plus.UntilText : Plus.Price + " ₽ за " + Plus.Days + " дней · без автосписаний", 13, Th.B("#1C1305", .8));
+            var bs = U.Tx(active ? L.T("Активен до ") + Plus.UntilText + L.T(" · осталось ") + Plus.LeftShort : Plus.Price + " ₽ за " + Plus.Days + " дней · без автосписаний", 13, Th.B("#FFFFFF", .82));
             bs.Margin = new Thickness(0, 3, 0, 0);
             var bcol = U.Col(bt, bs);
             bcol.Margin = new Thickness(14, 0, 0, 0);
@@ -115,15 +183,16 @@ namespace Sonora
             body.Children.Add(new Border
             {
                 Padding = new Thickness(18, 14, 18, 14), CornerRadius = new CornerRadius(18), Margin = new Thickness(0, 0, 0, 12),
-                Background = PlusGold, Effect = U.Shadow(30, 8, .45, Th.C("#F59E0B")), Child = U.Cols("a *", crown, bcol),
+                Background = PlusGold, Effect = U.Shadow(26, 6, .28, Th.C("#6D5BF6")), Child = U.Cols("a *", crown, bcol),
             });
+            if (active) body.Children.Add(PlusCountdown());
 
             Action<string, string> perk = (icon, text) =>
             {
                 var t = U.Wrap(text, 13.5, Th.Txt);
                 t.Margin = new Thickness(12, 0, 0, 0);
                 t.VerticalAlignment = VerticalAlignment.Center;
-                body.Children.Add(new Border { Padding = new Thickness(4, 5, 4, 5), Child = U.Cols("a *", U.Ico(icon, 19, Th.B("#FBBF24")), t) });
+                body.Children.Add(new Border { Padding = new Thickness(4, 5, 4, 5), Child = U.Cols("a *", U.Ico(icon, 19, PlusIcon), t) });
             };
             perk("globe", "До 100 публичных треков вместо 2");
             perk("upload", "Файлы до 40 МБ и до 30 минут");
@@ -146,7 +215,7 @@ namespace Sonora
             {
                 var qt = U.Tx(active ? "Продлить с телефона" : "Оплата с телефона", 15, Th.Txt);
                 qt.FontWeight = FontWeights.SemiBold;
-                var qd = U.Wrap("Наведи камеру на QR-код — откроется оплата " + Plus.Price + " ₽ картой в ЮMoney. Plus включится здесь сам, примерно через минуту.", 12.5, Th.Dim);
+                var qd = U.Wrap((active ? "Продление прибавит " + Plus.Days + " дней к текущему сроку. " : "") + "Наведи камеру на QR-код — откроется оплата " + Plus.Price + " ₽ картой в ЮMoney. Plus включится здесь сам, примерно через минуту.", 12.5, Th.Dim);
                 qd.Margin = new Thickness(0, 6, 0, 0);
                 var qcol = U.Col(qt, qd);
                 qcol.Margin = new Thickness(16, 0, 0, 0);
@@ -169,7 +238,7 @@ namespace Sonora
                                       : "Оплата пока не пришла. Обычно это до минуты — попробуй чуть позже");
                     if (Plus.Active) CloseSheet();
                 }, "ghost")));
-            OpenSheet(active ? "SONORA Plus активен" : "SONORA Plus", null, body, () => plusSheetOpen = false);
+            OpenSheet(active ? "SONORA Plus активен" : "SONORA Plus", null, body, () => { plusSheetOpen = false; StopPlusTimer(); });
             plusSheetOpen = true;
             // пока открыт экран оплаты, ждём платёж (например, по QR с телефона)
             if (!preview && !active) Plus.Poll();

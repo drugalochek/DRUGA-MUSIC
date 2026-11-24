@@ -36,12 +36,34 @@ namespace Sonora
         public static List<string> Genres(string g)
         {
             if (string.IsNullOrWhiteSpace(g)) return new List<string>();
-            return g.Split(new[] { ',', '/', ';', '|', '&' }, StringSplitOptions.RemoveEmptyEntries).Select(x => x.Trim().ToLowerInvariant()).Where(x => x.Length > 0).Distinct().ToList();
+            return g.Split(new[] { ',', '/', ';', '|', '&' }, StringSplitOptions.RemoveEmptyEntries).Select(GenreDetect.Canon).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+        }
+        // Все известные треки: каталог SONORA + треки подключённых сервисов
+        public static List<Track> Universe()
+        {
+            var seen = new HashSet<string>();
+            var res = new List<Track>();
+            foreach (var t in Catalog.All) if (seen.Add(t.Id)) res.Add(t);
+            foreach (var t in Ext.Known()) if (seen.Add(t.Id)) res.Add(t);
+            return res;
+        }
+        // «A, B feat. C» → A, B, C
+        static readonly System.Text.RegularExpressions.Regex ArtSplit = new System.Text.RegularExpressions.Regex(@"\s*(?:,|;|&|\bfeat\.?|\bft\.?|\bfeaturing\b)\s*", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        public static IEnumerable<string> ArtistsOf(Track t)
+        {
+            if (t == null || string.IsNullOrWhiteSpace(t.Artist) || t.Artist == "—") return Enumerable.Empty<string>();
+            return ArtSplit.Split(t.Artist).Select(a => a.Trim()).Where(a => a.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase);
+        }
+        public static List<Track> PctTracks(string name)
+        {
+            return Universe().Where(t => ArtistsOf(t).Any(a => string.Equals(a, name, StringComparison.OrdinalIgnoreCase))).ToList();
         }
         public static string GenreName(string g)
         {
             if (string.IsNullOrEmpty(g)) return g;
-            return string.Join("-", g.Split('-').Select(p => p.Length == 0 ? p : char.ToUpper(p[0], CultureInfo.CurrentCulture) + p.Substring(1)));
+            if (g == "rnb") return "R&B";
+            if (g == "k-pop") return "K-Pop";
+            return char.ToUpper(g[0], CultureInfo.CurrentCulture) + g.Substring(1);
         }
         static int Seed(string s) { unchecked { int h = 23; foreach (var c in s) h = h * 31 + c; return h; } }
         public static List<Track> Shuffle(IEnumerable<Track> src, string seed)
@@ -67,7 +89,7 @@ namespace Sonora
             var forYou = pool.ToList();
             var myGenres = new HashSet<string>(pool.SelectMany(t => Genres(t.Genre)));
             if (myGenres.Count > 0)
-                foreach (var t in Catalog.All)
+                foreach (var t in Universe())
                     if (!seen.Contains(t.Id) && Genres(t.Genre).Any(myGenres.Contains)) { seen.Add(t.Id); forYou.Add(t); }
             forYou = Shuffle(forYou, "foryou_" + DayKey).Take(80).ToList();
             if (forYou.Count > 0) res.Add(new Mix { Id = "__mix_foryou__", Name = "Для тебя", Tag = "Персонально", Sub = "Из любимых", Tracks = forYou, Icon = "music", From = "#ec4899", To = "#8b5cf6" });
@@ -89,19 +111,33 @@ namespace Sonora
             var genres = pool.SelectMany(t => Genres(t.Genre)).Distinct().OrderBy(x => x, StringComparer.Ordinal).ToList();
             if (genres.Count == 0) return null;
             var pick = genres[(int)(Slot % genres.Count)];
-            var list = Catalog.All.Where(t => Genres(t.Genre).Contains(pick)).ToList();
+            var list = Universe().Where(t => Genres(t.Genre).Contains(pick)).ToList();
             if (list.Count == 0) return null;
             return new Mix { Id = "__hour_genre__", Name = GenreName(pick), Tag = "Сейчас", Sub = U.Tn(list.Count), Tracks = Shuffle(list, "hour_" + Slot), Icon = "clock", From = "#f59e0b", To = "#8b5cf6" };
         }
 
+        // «100% для вас»: исполнители из лайков, любимых исполнителей и истории — из каталога И из сервисов.
+        // Раньше брались только 5 исполнителей и только те, что есть в маленьком каталоге SONORA, поэтому оставался один.
         public static List<KeyValuePair<string, List<Track>>> Pct()
         {
-            var counts = new Dictionary<string, int>();
-            foreach (var t in FavTracks()) if (!string.IsNullOrEmpty(t.Artist)) counts[t.Artist] = (counts.ContainsKey(t.Artist) ? counts[t.Artist] : 0) + 1;
-            if (counts.Count == 0) foreach (var a in Library.D.FavArtists) counts[a] = 1;
-            return counts.OrderByDescending(x => x.Value).Take(5)
-                .Select(x => new KeyValuePair<string, List<Track>>(x.Key, Catalog.All.Where(t => t.Artist == x.Key).ToList()))
-                .Where(x => x.Value.Count > 0).ToList();
+            var score = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+            var display = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            Action<string, double> add = (a, w) => { if (string.IsNullOrWhiteSpace(a)) return; score[a] = (score.TryGetValue(a, out var v) ? v : 0) + w; if (!display.ContainsKey(a)) display[a] = a; };
+            foreach (var t in FavTracks()) foreach (var a in ArtistsOf(t)) add(a, 2);
+            foreach (var a in Library.D.FavArtists) add(a, 3);
+            foreach (var t in Library.D.Recent.Select(Catalog.Get).Where(x => x != null).Take(60)) foreach (var a in ArtistsOf(t)) add(a, .5);
+            if (score.Count == 0) return new List<KeyValuePair<string, List<Track>>>();
+            var byArtist = new Dictionary<string, List<Track>>(StringComparer.OrdinalIgnoreCase);
+            foreach (var t in Universe())
+                foreach (var a in ArtistsOf(t))
+                {
+                    if (!score.ContainsKey(a)) continue;
+                    if (!byArtist.TryGetValue(a, out var l)) byArtist[a] = l = new List<Track>();
+                    l.Add(t);
+                }
+            return score.Where(x => byArtist.ContainsKey(x.Key))
+                .OrderByDescending(x => x.Value).ThenByDescending(x => byArtist[x.Key].Count).Take(12)
+                .Select(x => new KeyValuePair<string, List<Track>>(display[x.Key], byArtist[x.Key])).ToList();
         }
 
         public static List<ArtistInfo> Artists(IEnumerable<Track> src)
@@ -133,7 +169,7 @@ namespace Sonora
             if (id.StartsWith("__pct_"))
             {
                 var name = id.Substring(6);
-                var list = Catalog.All.Where(t => t.Artist == name).ToList();
+                var list = PctTracks(name);
                 return new Mix { Id = id, Name = "100% " + name, Tag = "100%", Tracks = list, Icon = "star", From = "#f59e0b", To = "#ef4444" };
             }
             var pl = Library.D.Playlists.FirstOrDefault(p => p.Id == id);

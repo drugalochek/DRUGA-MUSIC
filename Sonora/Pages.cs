@@ -433,19 +433,22 @@ namespace Sonora
         // Баннер SONORA Plus на главной (виден, пока подписки нет)
         FrameworkElement PlusBanner()
         {
-            var crown = U.Circle(46, Th.B("#1C1305", .12), U.Center(U.Ico("crown", 24, PlusInk, null, 2.3)));
+            bool ending = Plus.Ending;
+            var crown = U.Circle(42, PlusGold, U.Center(U.Ico("crown", 20, Th.White, null, 2.3)));
             crown.VerticalAlignment = VerticalAlignment.Center;
-            var t = new TextBlock { Text = "SONORA PLUS", FontFamily = Th.Font, FontSize = 20, Foreground = PlusInk };
-            var d = U.Wrap(L.T("До 100 публичных треков, файлы до 40 МБ и значок PLUS — ") + Plus.Price + L.T(" ₽ за ") + Plus.Days + L.T(" дней. Картой, кошельком или по QR-коду."), 13, Th.B("#1C1305", .78));
+            var t = new TextBlock { Text = "SONORA PLUS", FontFamily = Th.Font, FontSize = 17, Foreground = Th.Txt };
+            var d = U.Wrap(ending
+                ? L.T("Подписка заканчивается через ") + Plus.LeftShort + L.T(" — продли, и дни прибавятся к текущему сроку.")
+                : L.T("До 100 публичных треков, файлы до 40 МБ и значок PLUS — ") + Plus.Price + L.T(" ₽ за ") + Plus.Days + L.T(" дней."), 12.5, Th.Dim);
             d.Margin = new Thickness(0, 3, 0, 0);
             var col = U.Col(t, d);
             col.VerticalAlignment = VerticalAlignment.Center;
             col.Margin = new Thickness(14, 0, 12, 0);
-            var btn = new Border { CornerRadius = new CornerRadius(12), Padding = new Thickness(16, 9, 16, 9), Background = Th.B("#1C1305"), VerticalAlignment = VerticalAlignment.Center, Child = U.Tx(L.T("Подключить"), 13.5, Th.B("#FDE68A")) };
+            var btn = new Border { CornerRadius = new CornerRadius(12), Padding = new Thickness(16, 8, 16, 8), Background = PlusGold, VerticalAlignment = VerticalAlignment.Center, Child = U.Tx(ending ? L.T("Продлить") : L.T("Подключить"), 13, Th.White) };
             var card = new Border
             {
-                CornerRadius = new CornerRadius(18), Background = PlusGold, Padding = new Thickness(16, 14, 16, 14), Margin = new Thickness(0, 8, 0, 14),
-                Effect = U.Shadow(28, 6, .35, Th.C("#F59E0B")), Child = U.Cols("a * a", crown, col, btn),
+                CornerRadius = new CornerRadius(16), Background = PlusSoft, BorderBrush = PlusEdge, BorderThickness = new Thickness(1),
+                Padding = new Thickness(14, 12, 14, 12), Margin = new Thickness(0, 8, 0, 14), Child = U.Cols("a * a", crown, col, btn),
             };
             return U.Click(card, () => PlusSheet(), .99);
         }
@@ -466,7 +469,7 @@ namespace Sonora
                 sp.Children.Add(new Border { Padding = new Thickness(14, 12, 12, 12), CornerRadius = new CornerRadius(12), Background = Th.Glass(.045), BorderBrush = Th.GlassEdge, BorderThickness = new Thickness(1), Margin = new Thickness(0, 8, 0, 12), Child = g });
             }
 
-            if (!Plus.Active) sp.Children.Add(PlusBanner());
+            if (!Plus.Active || Plus.Ending) sp.Children.Add(PlusBanner());
 
             if (!Catalog.Loaded)
             {

@@ -27,6 +27,7 @@ namespace Sonora
         public string Isrc { get; set; }
         public string Match { get; set; }
         public double Duration { get; set; }
+        public string Genre { get; set; }
     }
 
     public sealed class ExtState
@@ -93,7 +94,9 @@ namespace Sonora
             foreach (var r in S.Tracks)
             {
                 if (r == null || string.IsNullOrEmpty(r.Id)) continue;
-                known[r.Id] = new Track { Id = r.Id, Title = r.Title, Artist = r.Artist, Album = r.Album ?? "", Cover = r.Cover, Source = r.Src, Ref = r.Ref, Isrc = r.Isrc, Match = r.Match, Duration = r.Duration, Genre = "", Lyrics = "" };
+                var kt = new Track { Id = r.Id, Title = r.Title, Artist = r.Artist, Album = r.Album ?? "", Cover = r.Cover, Source = r.Src, Ref = r.Ref, Isrc = r.Isrc, Match = r.Match, Duration = r.Duration, Genre = r.Genre ?? "", Lyrics = "" };
+                known[r.Id] = kt;
+                GenreDetect.Fill(kt);
             }
             Library.Changed += () => Save();
         }
@@ -108,7 +111,7 @@ namespace Sonora
                     YaToken = Protect(S.YaToken), YaUid = S.YaUid, YaName = S.YaName, YaPlus = S.YaPlus,
                     SpClientId = S.SpClientId, SpAccess = Protect(S.SpAccess), SpRefresh = Protect(S.SpRefresh), SpExpires = S.SpExpires, SpName = S.SpName, SpProduct = S.SpProduct,
                     DzUser = S.DzUser, DzName = S.DzName,
-                    Tracks = KnownList().Where(t => used.Contains(t.Id)).Select(t => new ExtTrackRec { Id = t.Id, Title = t.Title, Artist = t.Artist, Album = t.Album, Cover = t.Cover, Src = t.Source, Ref = t.Ref, Isrc = t.Isrc, Match = t.Match, Duration = t.Duration }).ToList()
+                    Tracks = KnownList().Where(t => used.Contains(t.Id)).Select(t => new ExtTrackRec { Id = t.Id, Title = t.Title, Artist = t.Artist, Album = t.Album, Cover = t.Cover, Src = t.Source, Ref = t.Ref, Isrc = t.Isrc, Match = t.Match, Duration = t.Duration, Genre = t.Genre }).ToList()
                 };
                 Directory.CreateDirectory(Paths.Data);
                 File.WriteAllText(FileP, J.Ser(copy));
@@ -116,6 +119,9 @@ namespace Sonora
             catch (Exception ex) { Log.W("services save: " + ex.Message); }
         }
         static List<Track> KnownList() { lock (known) return known.Values.ToList(); }
+        public static List<Track> Known() { return KnownList(); }
+        // жанры определились в фоне — сохраняем и обновляем главную/обзор
+        public static void NotifyGenres() { Save(); Shell.UI(() => Shell.I?.GenresUpdated()); }
         static string Protect(string s)
         {
             if (string.IsNullOrEmpty(s)) return s;
@@ -138,7 +144,10 @@ namespace Sonora
         static Track Remember(Track t)
         {
             if (t == null) return null;
-            lock (known) return RememberCore(t);
+            Track r;
+            lock (known) r = RememberCore(t);
+            GenreDetect.Fill(r);
+            return r;
         }
         static Track RememberCore(Track t)
         {
@@ -147,6 +156,7 @@ namespace Sonora
                 old.Title = t.Title; old.Artist = t.Artist; old.Album = t.Album; old.Cover = t.Cover ?? old.Cover;
                 if (t.Duration > 0) old.Duration = t.Duration;
                 if (!string.IsNullOrEmpty(t.Isrc)) old.Isrc = t.Isrc;
+                if (string.IsNullOrEmpty(old.Genre) && !string.IsNullOrEmpty(t.Genre)) old.Genre = t.Genre;
                 return old;
             }
             known[t.Id] = t;

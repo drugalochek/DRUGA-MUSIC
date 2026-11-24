@@ -168,6 +168,12 @@ namespace Sonora
             {
                 if (hourSub != null && Page == "home") hourSub.Text = L.T("Каждые 30 минут новый жанр · ") + Mixes.HourCountdown();
                 if (Mixes.Slot != slot) { slot = Mixes.Slot; if (Page == "home") QueueRender(); }
+                // таймер Plus: раз в минуту обновляем «PLUS · N дн», а при окончании подписки — весь экран
+                if (DateTime.Now.Second == 0 || plusWas != Plus.Active)
+                {
+                    if (plusWas != Plus.Active) { plusWas = Plus.Active; UpdateSide(); QueueRender(); }
+                    UpdatePlusPill();
+                }
             };
             clock.Start();
 
@@ -350,7 +356,7 @@ namespace Sonora
             notifBadge = new Border { Width = 9, Height = 9, CornerRadius = new CornerRadius(5), Background = Th.Heart, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 7, 7, 0), IsHitTestVisible = false };
             var gear = IBtn("gear", () => Go("settings"));
             gear.ToolTip = L.T("Настройки");
-            plusPill = new Border { Height = 34, CornerRadius = new CornerRadius(17), Padding = new Thickness(12, 0, 15, 0), Margin = new Thickness(0, 0, 10, 0), Background = PlusGold, Effect = U.Shadow(18, 0, .55, Th.C("#F59E0B")) };
+            plusPill = new Border { Height = 34, CornerRadius = new CornerRadius(17), Padding = new Thickness(12, 0, 14, 0), Margin = new Thickness(0, 0, 10, 0), Background = PlusSoft, BorderBrush = PlusEdge, BorderThickness = new Thickness(1) };
             U.Click(plusPill, () => PlusSheet(), .95);
             UpdatePlusPill();
             var g = U.Cols("a * a a", backBtn, null, plusPill, gear);
@@ -363,19 +369,20 @@ namespace Sonora
             return U.Click(b, a, .92);
         }
         Border plusPill;
+        bool plusWas;
         void UpdatePlusPill()
         {
             if (plusPill == null) return;
-            var ic = U.Ico("crown", 16, PlusInk, null, 2.4);
+            var ic = U.Ico("crown", 15, PlusIcon, null, 2.3);
             ic.VerticalAlignment = VerticalAlignment.Center;
-            var t = U.Tx(Plus.Active ? "PLUS" : "Подключить PLUS", 13, PlusInk);
+            var t = U.Tx(Plus.Active ? "PLUS · " + Plus.LeftShort : L.T("Подключить PLUS"), 13, Th.Txt);
             t.FontWeight = FontWeights.Bold;
             t.VerticalAlignment = VerticalAlignment.Center;
             t.Margin = new Thickness(7, 0, 0, 0);
             var row = U.Row(ic, t);
             row.VerticalAlignment = VerticalAlignment.Center;
             plusPill.Child = row;
-            plusPill.ToolTip = Plus.Active ? L.T("SONORA Plus активен до ") + Plus.UntilText : L.T("SONORA Plus — ") + Plus.Price + " ₽ / " + Plus.Days + L.T(" дней");
+            plusPill.ToolTip = Plus.Active ? L.T("SONORA Plus активен до ") + Plus.UntilFull + L.T(" · осталось ") + Plus.LeftShort : L.T("SONORA Plus — ") + Plus.Price + " ₽ / " + Plus.Days + L.T(" дней");
         }
         void UpdateProfileBtn()
         {
