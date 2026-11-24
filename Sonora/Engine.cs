@@ -119,7 +119,8 @@ namespace Sonora
                     {
                         triedNa = true;
                         Log.W("wpf media failed (" + e.ErrorException?.Message + ") → NAudio");
-                        if (OpenNa(src, true)) return;
+                        OpenNa(src, true); // при неудаче сам сообщит об ошибке
+                        return;
                     }
                     MediaFailed?.Invoke(this, new FailArgs(e.ErrorException));
                 };
@@ -205,8 +206,8 @@ namespace Sonora
             {
                 Log.W("naudio open: " + ex);
                 CloseNa();
-                var err = ex;
-                ui.BeginInvoke(new Action(() => { if (my == session) MediaFailed?.Invoke(this, new FailArgs(err)); }));
+                var err = ex; int tok = session;
+                ui.BeginInvoke(new Action(() => { if (tok == session) MediaFailed?.Invoke(this, new FailArgs(err)); }));
                 return false;
             }
         }
