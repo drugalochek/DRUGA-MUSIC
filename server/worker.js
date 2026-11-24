@@ -10,7 +10,7 @@
 // Проверка, что воркер жив: https://<имя-воркера>.<поддомен>.workers.dev/health
 
 const DB = "https://sonora-ab012-default-rtdb.firebaseio.com";
-const PRICE = 99;          // ₽ за один период Plus
+const PRICE = 49;          // ₽ за один период Plus
 const DAYS = 30;           // длина периода, дней
 const DAY = 86400000;
 

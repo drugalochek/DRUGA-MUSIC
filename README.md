@@ -63,5 +63,5 @@ dotnet build Sonora/Sonora.csproj -c Release
 
 ## SONORA Plus (оплата через ЮMoney)
 
-99 ₽ за 30 дней, картой или кошельком ЮMoney: «Настройки → Подписка → SONORA Plus». Plus включается автоматически после оплаты.
+49 ₽ за 30 дней, картой, кошельком ЮMoney или по QR-коду: кнопка PLUS вверху экрана или «Профиль → SONORA Plus». Plus включается автоматически после оплаты.
 Сервер, который принимает уведомления ЮMoney, лежит в [`server/`](server/) — инструкция по запуску на Cloudflare Workers в [`server/README.md`](server/README.md).

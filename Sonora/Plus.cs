@@ -16,7 +16,7 @@ namespace Sonora
     public static class Plus
     {
         public const string Wallet = "4100117325240454";
-        public const int Price = 99;
+        public const int Price = 49;
         public const int Days = 30;
 
         public static long Until { get; private set; }
