@@ -24,6 +24,8 @@ namespace Sonora
         public event Action TrackChanged, StateChanged, Tick;
         int gen;
         bool opened, guestHint;
+        string lastSrc;
+        int retried;
 
         public Track Current { get { return Index >= 0 && Index < Queue.Count ? Queue[Index] : null; } }
 
@@ -31,9 +33,23 @@ namespace Sonora
         {
             mp.Volume = Library.D.Volume;
             mp.MediaEnded += (s, e) => Next(true);
-            mp.MediaFailed += (s, e) =>
+            mp.MediaFailed += async (s, e) =>
             {
-                Log.W("media failed: " + e.ErrorException?.Message);
+                Log.W("media failed: " + e.ErrorException?.Message + " · " + (lastSrc ?? "").Split('?')[0]);
+                var ct = Current; int my = gen; var src = lastSrc;
+                // поток из сети не открылся — скачиваем файл сами и пробуем ещё раз
+                if (ct != null && ct.Source != null && src != null && src.StartsWith("http") && retried != my)
+                {
+                    retried = my;
+                    try
+                    {
+                        var f = await global::Sonora.Ext.Download(ct, src, "ya_");
+                        if (my != gen) return;
+                        lastSrc = f; mp.Open(new Uri(f)); opened = true; mp.Play();
+                        return;
+                    }
+                    catch (Exception ex) { Log.W("media retry: " + ex.Message); if (my != gen) return; }
+                }
                 Loading = false; IsPlaying = false; opened = false;
                 StateChanged?.Invoke();
                 Shell.Toast("Не удалось воспроизвести трек");
@@ -124,6 +140,8 @@ namespace Sonora
             {
                 var file = await Catalog.AudioFile(t);
                 if (my != gen) return;
+                if (string.IsNullOrEmpty(file)) throw new global::Sonora.ExtException("Не удалось получить ссылку на трек");
+                lastSrc = file;
                 mp.Open(new Uri(file));
                 opened = true;
                 mp.Play();
@@ -137,7 +155,7 @@ namespace Sonora
                 Log.W("load audio: " + ex);
                 Loading = false; IsPlaying = false;
                 StateChanged?.Invoke();
-                Shell.Toast("Не удалось загрузить трек — проверь интернет");
+                Shell.Toast(ex is global::Sonora.ExtException ? ex.Message : "Не удалось загрузить трек — проверь интернет");
             }
         }
 

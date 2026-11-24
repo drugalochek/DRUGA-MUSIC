@@ -773,38 +773,140 @@ namespace Sonora
             if (YaOn) return "через Яндекс Музыку";
             return "отрывок 30 с";
         }
+        static string Q(Track t) { return ((t.Artist ?? "").Split(',')[0] + " " + t.Title).Trim(); }
+        static bool NetErr(string m) { return m != null && (m.Contains("соединени") || m.Contains("долго")); }
+
+        // Откуда играть: 1) Яндекс целиком; 2) отрывок Deezer; 3) отрывок iTunes.
+        // Отрывки скачиваем сами (тем же клиентом, что грузит списки) и играем из файла —
+        // так звук не зависит от сетевых настроек встроенного плеера Windows.
         public static async Task<string> StreamUrl(Track t)
         {
-            if (t.Source == "ya") return await YaStream(t.Ref).ConfigureAwait(false);
-            if (YaOn)
+            var errs = new List<string>();
+            var full = Cached(t, "ya_");
+            if (full != null) return full;
+            if (t.Source == "ya" || YaOn)
             {
                 try
                 {
-                    string yid = t.Match != null && t.Match.StartsWith("ya:") ? t.Match.Substring(3) : null;
+                    string yid = t.Source == "ya" ? t.Ref : t.Match != null && t.Match.StartsWith("ya:") ? t.Match.Substring(3) : null;
                     if (yid == null)
                     {
-                        var m = Best(await YaSearch((t.Artist ?? "").Split(',')[0] + " " + t.Title).ConfigureAwait(false), t);
+                        var m = Best(await YaSearch(Q(t)).ConfigureAwait(false), t);
                         if (m != null) { yid = m.Ref; t.Match = "ya:" + yid; }
                     }
                     if (yid != null) return await YaStream(yid).ConfigureAwait(false);
+                    errs.Add("Яндекс: не найден");
                 }
-                catch (Exception ex) { Log.W("ya match: " + ex.Message); }
+                catch (Exception ex) { Log.W("play ya " + t.Id + ": " + ex.Message); errs.Add("Яндекс: " + ex.Message); }
             }
-            if (t.Source == "dz") return await DzStream(t).ConfigureAwait(false);
-            // Spotify → Deezer: сначала точное совпадение по ISRC, потом поиск
-            string did = t.Match != null && t.Match.StartsWith("dz:") ? t.Match.Substring(3) : null;
-            if (did == null && !string.IsNullOrEmpty(t.Isrc))
+            var pv = Cached(t, "pv_");
+            if (pv != null) return pv;
+            var steps = new List<Tuple<string, Func<Task<string>>>>
             {
-                try { did = J.Str(J.D(await Dz("/track/isrc:" + t.Isrc).ConfigureAwait(false)), "id"); } catch { }
-            }
-            if (did == null)
+                Tuple.Create("Deezer", (Func<Task<string>>)(() => DzPreview(t))),
+                Tuple.Create("iTunes", (Func<Task<string>>)(() => ItPreview(t))),
+            };
+            bool allNet = true;
+            foreach (var st in steps)
             {
-                var m = Best(await DzSearch((t.Artist ?? "").Split(',')[0] + " " + t.Title).ConfigureAwait(false), t);
-                if (m != null) did = m.Ref;
+                string url = null;
+                try
+                {
+                    url = await st.Item2().ConfigureAwait(false);
+                    if (string.IsNullOrEmpty(url)) { errs.Add(st.Item1 + ": не найден"); allNet = false; continue; }
+                    return await Download(t, url, "pv_").ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    if (!NetErr(ex.Message)) allNet = false;
+                    Log.W("play " + st.Item1 + " " + t.Id + ": " + ex.Message + (url != null ? " · " + url.Split('?')[0] : ""));
+                    errs.Add(st.Item1 + ": " + ex.Message);
+                }
             }
-            if (did == null) throw new ExtException("Не нашли этот трек для воспроизведения — подключи Яндекс Музыку");
-            t.Match = "dz:" + did;
-            return await DzStream(new Track { Ref = did }).ConfigureAwait(false);
+            Log.W("play failed " + t.Id + " (" + Q(t) + "): " + string.Join(" | ", errs));
+            if (allNet) throw new ExtException("Музыкальные сервисы недоступны — проверь интернет или VPN");
+            throw new ExtException(YaOn ? "Этот трек не нашёлся ни в одном сервисе" : "Не нашли, откуда включить этот трек — подключи Яндекс Музыку");
+        }
+
+        static async Task<string> DzPreview(Track t)
+        {
+            string did = t.Match != null && t.Match.StartsWith("dz:") ? t.Match.Substring(3) : t.Source == "dz" ? t.Ref : null;
+            if (did != null)
+            {
+                try { var u = J.Str(J.D(await Dz("/track/" + did).ConfigureAwait(false)), "preview"); if (!string.IsNullOrEmpty(u)) return u; }
+                catch (Exception ex) { Log.W("dz track " + did + ": " + ex.Message); if (NetErr(ex.Message)) throw; }
+            }
+            if (!string.IsNullOrEmpty(t.Isrc))
+            {
+                try
+                {
+                    var d = J.D(await Dz("/track/isrc:" + t.Isrc).ConfigureAwait(false));
+                    var u = J.Str(d, "preview");
+                    if (!string.IsNullOrEmpty(u)) { t.Match = "dz:" + J.Str(d, "id"); return u; }
+                }
+                catch (Exception ex) { if (NetErr(ex.Message)) throw; }
+            }
+            // поиск: в выдаче сразу есть ссылка на отрывок
+            var r = await Dz("/search?" + Net.Form("q", Q(t), "limit", "15")).ConfigureAwait(false);
+            var prev = new Dictionary<string, string>();
+            var list = new List<Track>();
+            foreach (var x in Arr(P(r, "data")))
+            {
+                var u = J.Str(x, "preview"); var id = J.Str(x, "id");
+                if (string.IsNullOrEmpty(u) || string.IsNullOrEmpty(id)) continue;
+                prev["dz:" + id] = u;
+                list.Add(new Track { Id = "dz:" + id, Ref = id, Title = J.Str(x, "title") ?? "", Artist = J.Str(J.D(P(x, "artist")), "name") ?? "", Duration = J.Num(x, "duration") });
+            }
+            var m = Best(list, t);
+            if (m == null) return null;
+            t.Match = "dz:" + m.Ref;
+            return prev[m.Id];
+        }
+
+        static async Task<string> ItPreview(Track t)
+        {
+            var r = await Req("GET", "https://itunes.apple.com/search?" + Net.Form("term", Q(t), "entity", "song", "limit", "15"), null).ConfigureAwait(false);
+            if (!r.Ok) throw new ExtException("ответ " + r.Code);
+            var prev = new Dictionary<string, string>();
+            var list = new List<Track>();
+            foreach (var x in Arr(P(J.Parse(r.Body), "results")))
+            {
+                var u = J.Str(x, "previewUrl"); var id = J.Str(x, "trackId");
+                if (string.IsNullOrEmpty(u) || string.IsNullOrEmpty(id)) continue;
+                prev[id] = u;
+                list.Add(new Track { Id = id, Ref = id, Title = J.Str(x, "trackName") ?? "", Artist = J.Str(x, "artistName") ?? "", Duration = J.Num(x, "trackTimeMillis") / 1000 });
+            }
+            var m = Best(list, t);
+            return m == null ? null : prev[m.Id];
+        }
+
+        static string Cached(Track t, string prefix)
+        {
+            try { return Directory.GetFiles(Paths.Sub("audio"), prefix + Catalog.Safe(t.Id) + ".*").FirstOrDefault(f => !f.EndsWith(".tmp") && new FileInfo(f).Length > 16000); }
+            catch { return null; }
+        }
+        // скачать звук по ссылке в кэш и вернуть путь к файлу
+        public static async Task<string> Download(Track t, string url, string prefix)
+        {
+            byte[] bytes;
+            try
+            {
+                using (var r = await Net.Http.GetAsync(url).ConfigureAwait(false))
+                {
+                    if (!r.IsSuccessStatusCode) throw new ExtException("сервер не отдал звук (" + (int)r.StatusCode + ")");
+                    bytes = await r.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
+                }
+            }
+            catch (HttpRequestException ex) { throw new ExtException("нет соединения с сервером звука (" + (ex.InnerException?.Message ?? ex.Message) + ")"); }
+            catch (TaskCanceledException) { throw new ExtException("сервер звука слишком долго не отвечает"); }
+            if (bytes.Length < 16000) throw new ExtException("сервер отдал пустой файл");
+            var path = url.Split('?')[0].ToLowerInvariant();
+            var ext = path.EndsWith(".m4a") || path.EndsWith(".aac") || path.EndsWith(".mp4") ? ".m4a" : ".mp3";
+            var file = Path.Combine(Paths.Sub("audio"), prefix + Catalog.Safe(t.Id) + ext);
+            File.WriteAllBytes(file + ".tmp", bytes);
+            if (File.Exists(file)) File.Delete(file);
+            File.Move(file + ".tmp", file);
+            return file;
         }
     }
 }
