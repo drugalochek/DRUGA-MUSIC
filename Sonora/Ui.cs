@@ -317,7 +317,7 @@ namespace Sonora
 
         public static Brush CoverBrush(Track t, int px)
         {
-            var img = t == null ? null : Img.FromData(t.Id, t.Cover, px);
+            var img = t == null ? null : Img.FromData(t.Id + ":" + (t.Cover ?? "").Length, t.Cover, px);
             if (img == null) return null;
             var b = new ImageBrush(img) { Stretch = Stretch.UniformToFill };
             if (b.CanFreeze) b.Freeze();

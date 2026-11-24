@@ -206,11 +206,12 @@ namespace Sonora
                 info.Margin = new Thickness(12, 0, 0, 0);
                 list.Children.Add(new Border { Padding = new Thickness(8, 12, 8, 12), BorderBrush = Th.Border, BorderThickness = new Thickness(0, 0, 0, 1), Child = U.Cols("a *", ic, info) });
             };
-            item("#8b5cf6", "#ec4899", "star", "Добро пожаловать", "SONORA — нативный музыкальный плеер для Windows. Лайкай треки, собирай плейлисты, слушай миксы.");
+            item("#60A5FA", "#1D4ED8", "star", L.T("Обновление ") + Program.Version, L.T("Экран загрузки, F11 — полный экран, живой фон в цветах обложки, офлайн-треки внутри SONORA, подробный профиль, настройки своих треков и публикация, ссылки, которые открывают приложение."));
+            item("#60A5FA", "#1D4ED8", "music", "Добро пожаловать", "SONORA — нативный музыкальный плеер для Windows. Лайкай треки, собирай плейлисты, слушай миксы.");
             foreach (var t in Catalog.Remote.OrderByDescending(x => x.AddedAt).Take(5))
-                item("#06b6d4", "#10b981", "music", "Новый трек", t.Artist + " — " + t.Title + (t.AddedAt > 0 ? " · " + new DateTime(1970, 1, 1).AddMilliseconds(t.AddedAt).ToLocalTime().ToString("d MMM yyyy") : ""));
+                item("#93C5FD", "#2563EB", "music", "Новый трек", t.Artist + " — " + t.Title + (t.AddedAt > 0 ? " · " + new DateTime(1970, 1, 1).AddMilliseconds(t.AddedAt).ToLocalTime().ToString("d MMM yyyy") : ""));
             OpenSheet("Уведомления", null, list);
-            if (!ShotMode) { Library.D.UpdatedAt = Math.Max(1, Library.D.UpdatedAt); notifBadge.Visibility = Visibility.Collapsed; }
+            if (!ShotMode) { Library.D.SeenNotif = Program.Version; Library.Save(false); notifBadge.Visibility = Visibility.Collapsed; }
         }
 
         // ---------- Track menu / playlists ----------
@@ -230,11 +231,13 @@ namespace Sonora
             if (Offline.CanDownload(t))
             {
                 if (Offline.Has(t.Id)) body.Children.Add(Provider(U.Ico("check", 20, Th.Accent2), "Удалить из скачанных", () => { Offline.Remove(t.Id); CloseSheet(); }));
-                else body.Children.Add(Provider(U.Ico("download", 20, Th.Txt), Offline.Busy(t.Id) ? "Скачивается…" : "Скачать для офлайна", () => { CloseSheet(); if (Guard.Need("Скачивание треков")) { var _ = Offline.Download(t); } }));
+                else body.Children.Add(Provider(U.Ico("download", 20, Th.Txt), Offline.Busy(t.Id) ? "Скачивается…" : "Скачать в SONORA", () => { CloseSheet(); if (Guard.Need("Скачивание треков")) { var _ = Offline.Download(t); } }));
             }
             body.Children.Add(Provider(U.Ico(Share.Link(t) != null ? "link" : "share", 20, Th.Txt), Share.Link(t) != null ? "Поделиться ссылкой" : "Скопировать название", () => { CloseSheet(); CopyTrack(t); }));
             if (playlistId != null && playlistId != Mixes.Uploaded)
                 body.Children.Add(Provider(U.Ico("trash", 20, Th.Danger), "Убрать из плейлиста", () => { Library.RemoveFromPlaylist(playlistId, t.Id); CloseSheet(); }));
+            if (t.IsLocal && Library.D.Local.Any(l => l.Id == t.Id))
+                body.Children.Add(Provider(U.Ico("gear", 20, Th.Txt), "Настройки трека", () => { CloseSheet(); TrackSettingsSheet(t); }));
             if (t.IsLocal)
                 body.Children.Add(Provider(U.Ico("trash", 20, Th.Danger), "Убрать из загруженных", () => { if (Player.I.Current?.Id == t.Id) Player.I.Stop(); Library.RemoveLocal(t.Id); CloseSheet(); }));
             OpenSheet(null, null, body);

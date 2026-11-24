@@ -14,7 +14,7 @@ namespace Sonora
     public static class Program
     {
         public static string ShotsDir;
-        public const string Version = "1.5.0";
+        public static readonly string Version = typeof(Program).Assembly.GetName().Version.ToString(3);
         public static string[] StartArgs = new string[0];
         static readonly System.Collections.Generic.Dictionary<string, System.Reflection.Assembly> embedded = new System.Collections.Generic.Dictionary<string, System.Reflection.Assembly>();
         // NAudio вшит в SONORA.exe — подгружаем из ресурсов, чтобы хватало одного файла
@@ -64,6 +64,9 @@ namespace Sonora
             AppDomain.CurrentDomain.UnhandledException += (s, e) => Log.W("fatal: " + e.ExceptionObject);
             TaskScheduler.UnobservedTaskException += (s, e) => { Log.W("task: " + e.Exception); e.SetObserved(); };
 
+            try { app.Resources.MergedDictionaries.Add((ResourceDictionary)System.Windows.Markup.XamlReader.Parse(Styles.ScrollBars)); } catch (Exception ex) { Log.W("styles: " + ex.Message); }
+            Offline.CleanupTemp();
+            app.Exit += (s, e) => Offline.CleanupTemp();
             Th.InitFont();
             Library.Load();
             L.Init(ShotsDir != null && Environment.GetEnvironmentVariable("SONORA_LANG") == "en" ? "en" : Library.D.Lang);
@@ -81,7 +84,33 @@ namespace Sonora
     public sealed class MainWindow : Window
     {
         readonly Shell shell;
+        readonly Splash splash;
         readonly bool shots;
+        bool fs; WindowState prevState; WindowStyle prevStyle; ResizeMode prevResize;
+        public bool IsFullscreen { get { return fs; } }
+        // F11 — во весь экран (без рамки и поверх панели задач)
+        public void ToggleFullscreen()
+        {
+            if (shots) return;
+            if (!fs)
+            {
+                prevState = WindowState; prevStyle = WindowStyle; prevResize = ResizeMode;
+                fs = true;
+                WindowStyle = WindowStyle.None;
+                ResizeMode = ResizeMode.NoResize;
+                if (WindowState == WindowState.Maximized) WindowState = WindowState.Normal;
+                WindowState = WindowState.Maximized;
+                Shell.Toast("Полноэкранный режим · F11 — выйти");
+            }
+            else
+            {
+                fs = false;
+                WindowStyle = prevStyle;
+                ResizeMode = prevResize;
+                WindowState = WindowState.Normal;
+                if (prevState == WindowState.Maximized) WindowState = WindowState.Maximized;
+            }
+        }
 
         [DllImport("dwmapi.dll")]
         static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int value, int size);
@@ -100,7 +129,11 @@ namespace Sonora
             if (shots) { WindowStyle = WindowStyle.None; ResizeMode = ResizeMode.NoResize; ShowInTaskbar = false; }
 
             shell = new Shell(shots);
-            Content = shell;
+            splash = new Splash(shots);
+            var root = new System.Windows.Controls.Grid();
+            root.Children.Add(shell);
+            root.Children.Add(splash);
+            Content = root;
             PreviewKeyDown += (s, e) => shell.HandleKey(e);
             SourceInitialized += (s, e) => { DarkTitle(); if (!shots) InitSystem(); };
             Loaded += async (s, e) => await Start();
@@ -130,9 +163,22 @@ namespace Sonora
         async Task Start()
         {
             if (shots) { await Shots(); return; }
+            var started = DateTime.Now;
+            splash.SetStatus("Загружаем каталог…");
+            try { await Catalog.LoadAsync(); } catch (Exception ex) { Log.W("catalog start: " + ex.Message); }
+            splash.SetStatus("Почти готово…");
+            var left = 1500 - (DateTime.Now - started).TotalMilliseconds;
+            if (left > 0) await Task.Delay((int)left);
+            splash.Finish();
             if (Auth.Current == null && !Library.D.GuestChosen) shell.OpenWelcome();
             if (Program.StartArgs.Length > 0) shell.HandleArgs(Program.StartArgs);
-            try { await Catalog.LoadAsync(); } catch (Exception ex) { Log.W("catalog start: " + ex.Message); }
+            if (Library.D.LastVersion != Program.Version)
+            {
+                if (!string.IsNullOrEmpty(Library.D.LastVersion)) Shell.Toast(L.T("SONORA обновлена до версии ") + Program.Version);
+                Library.D.LastVersion = Program.Version;
+                Library.Save(false);
+            }
+            Offline.Migrate();
             if (Auth.Current != null)
             {
                 try { await Auth.LoadProfile(); } catch (Exception ex) { Log.W("profile: " + ex.Message); }
@@ -162,15 +208,16 @@ namespace Sonora
         {
             try
             {
-                await Snap("00-welcome-loading");
+                await Snap("00-splash");
                 await Catalog.LoadAsync();
+                splash.Finish();
                 var all = Catalog.All;
                 foreach (var t in all.Take(8)) if (!Library.IsFav(t.Id)) Library.D.Fav.Add(t.Id);
                 foreach (var a in Mixes.Artists(all).Take(4)) if (!Library.IsFavArtist(a.Name)) Library.D.FavArtists.Add(a.Name);
                 foreach (var t in all.Skip(3).Take(6)) Library.D.Recent.Add(t.Id);
                 if (Library.D.Playlists.Count == 0)
                 {
-                    var p = Library.NewPlaylist("Вечерний вайб", "#8b5cf6");
+                    var p = Library.NewPlaylist("Вечерний вайб", "#3B82F6");
                     foreach (var t in all.Skip(2).Take(5)) Library.AddToPlaylist(p.Id, t.Id);
                 }
                 Library.D.GuestChosen = true;

@@ -109,6 +109,7 @@ namespace Sonora
         public double Duration { get; set; }
         public string File { get; set; }
         public string CoverUrl { get; set; }
+        public string Ext { get; set; }
         public long At { get; set; }
     }
 
@@ -122,12 +123,113 @@ namespace Sonora
         public static bool CanDownload(Track t) { return t != null && !t.IsLocal && t.Source == null && !string.IsNullOrEmpty(t.Id); }
         public static bool Has(string id) { return id != null && Library.D.Offline.Any(o => o.Id == id); }
         public static bool Busy(string id) { lock (busy) return busy.Contains(id); }
+        // Скачанное хранится внутри SONORA в зашифрованном виде (.sdat) — это не файлы для проводника,
+        // а треки для прослушивания без интернета. Для воспроизведения расшифровываем во временную папку.
+        static readonly Dictionary<string, string> playable = new Dictionary<string, string>();
+        static byte[] key;
+        static string TempDir { get { var d = Path.Combine(Path.GetTempPath(), "SONORA-play"); Directory.CreateDirectory(d); return d; } }
+        static byte[] Key()
+        {
+            if (key != null) return key;
+            var kf = Path.Combine(Paths.Data, "offline.key");
+            try
+            {
+                if (File.Exists(kf)) key = System.Security.Cryptography.ProtectedData.Unprotect(File.ReadAllBytes(kf), null, System.Security.Cryptography.DataProtectionScope.CurrentUser);
+            }
+            catch (Exception ex) { Log.W("offline key: " + ex.Message); }
+            if (key == null || key.Length != 32)
+            {
+                key = new byte[32];
+                using (var r = System.Security.Cryptography.RandomNumberGenerator.Create()) r.GetBytes(key);
+                File.WriteAllBytes(kf, System.Security.Cryptography.ProtectedData.Protect(key, null, System.Security.Cryptography.DataProtectionScope.CurrentUser));
+            }
+            return key;
+        }
+        static void Encrypt(string src, string dst)
+        {
+            using (var aes = System.Security.Cryptography.Aes.Create())
+            {
+                aes.Key = Key(); aes.GenerateIV();
+                using (var o = File.Create(dst + ".tmp"))
+                {
+                    o.Write(new byte[] { (byte)'S', (byte)'N', (byte)'D', 1 }, 0, 4);
+                    o.Write(aes.IV, 0, 16);
+                    using (var cs = new System.Security.Cryptography.CryptoStream(o, aes.CreateEncryptor(), System.Security.Cryptography.CryptoStreamMode.Write))
+                    using (var i = File.OpenRead(src)) i.CopyTo(cs);
+                }
+            }
+            if (File.Exists(dst)) File.Delete(dst);
+            File.Move(dst + ".tmp", dst);
+        }
+        static void Decrypt(string src, string dst)
+        {
+            using (var i = File.OpenRead(src))
+            {
+                var head = new byte[4]; i.Read(head, 0, 4);
+                var iv = new byte[16]; i.Read(iv, 0, 16);
+                using (var aes = System.Security.Cryptography.Aes.Create())
+                {
+                    aes.Key = Key(); aes.IV = iv;
+                    using (var cs = new System.Security.Cryptography.CryptoStream(i, aes.CreateDecryptor(), System.Security.Cryptography.CryptoStreamMode.Read))
+                    using (var o = File.Create(dst)) cs.CopyTo(o);
+                }
+            }
+        }
         public static string FileOf(string id)
         {
             var o = Library.D.Offline.FirstOrDefault(x => x.Id == id);
             if (o == null || string.IsNullOrEmpty(o.File)) return null;
             var f = Path.Combine(Dir, o.File);
-            return File.Exists(f) ? f : null;
+            if (!File.Exists(f)) return null;
+            if (!f.EndsWith(".sdat", StringComparison.OrdinalIgnoreCase)) return f;
+            lock (playable)
+            {
+                if (playable.TryGetValue(id, out var p) && File.Exists(p)) return p;
+                try
+                {
+                    var tmp = Path.Combine(TempDir, Guid.NewGuid().ToString("N").Substring(0, 12) + (string.IsNullOrEmpty(o.Ext) ? ".mp3" : o.Ext));
+                    Decrypt(f, tmp);
+                    try { File.SetAttributes(tmp, FileAttributes.Hidden | FileAttributes.Temporary); } catch { }
+                    playable[id] = tmp;
+                    return tmp;
+                }
+                catch (Exception ex) { Log.W("offline decrypt: " + ex.Message); return null; }
+            }
+        }
+        public static void CleanupTemp()
+        {
+            try
+            {
+                var d = Path.Combine(Path.GetTempPath(), "SONORA-play");
+                if (!Directory.Exists(d)) return;
+                foreach (var f in Directory.GetFiles(d)) { try { File.SetAttributes(f, FileAttributes.Normal); File.Delete(f); } catch { } }
+            }
+            catch { }
+            lock (playable) playable.Clear();
+        }
+        // старые (1.5) скачанные файлы переносим во внутреннее хранилище
+        public static void Migrate()
+        {
+            var items = Library.D.Offline.Where(o => !string.IsNullOrEmpty(o.File) && !o.File.EndsWith(".sdat", StringComparison.OrdinalIgnoreCase)).ToList();
+            if (items.Count == 0) return;
+            Task.Run(() =>
+            {
+                foreach (var o in items)
+                {
+                    try
+                    {
+                        var src = Path.Combine(Dir, o.File);
+                        if (!File.Exists(src)) continue;
+                        var name = Catalog.Safe(o.Id) + ".sdat";
+                        Encrypt(src, Path.Combine(Dir, name));
+                        File.Delete(src);
+                        o.Ext = Path.GetExtension(src);
+                        o.File = name;
+                    }
+                    catch (Exception ex) { Log.W("offline migrate: " + ex.Message); }
+                }
+                Application.Current?.Dispatcher.BeginInvoke(new Action(() => Library.Save(false)));
+            });
         }
         public static List<Track> Tracks()
         {
@@ -161,9 +263,10 @@ namespace Sonora
             try
             {
                 var src = await Catalog.AudioFile(t);
-                var name = Catalog.Safe(t.Id) + Path.GetExtension(src);
+                var name = Catalog.Safe(t.Id) + ".sdat";
                 var dst = Path.Combine(Dir, name);
-                await Task.Run(() => File.Copy(src, dst, true));
+                var ext = Path.GetExtension(src);
+                await Task.Run(() => Encrypt(src, dst));
                 string coverUrl = null;
                 if (!string.IsNullOrEmpty(t.Cover))
                 {
@@ -171,10 +274,10 @@ namespace Sonora
                     else File.WriteAllText(Path.Combine(Dir, Catalog.Safe(t.Id) + ".cover"), t.Cover);
                 }
                 Library.D.Offline.RemoveAll(o => o.Id == t.Id);
-                Library.D.Offline.Insert(0, new OfflineItem { Id = t.Id, Title = t.Title, Artist = t.Artist, Album = t.Album, Genre = t.Genre, Lyrics = t.Lyrics, Year = t.Year, Duration = t.Duration, File = name, CoverUrl = coverUrl, At = Library.Now });
+                Library.D.Offline.Insert(0, new OfflineItem { Id = t.Id, Title = t.Title, Artist = t.Artist, Album = t.Album, Genre = t.Genre, Lyrics = t.Lyrics, Year = t.Year, Duration = t.Duration, File = name, Ext = ext, CoverUrl = coverUrl, At = Library.Now });
                 tracks.Remove(t.Id);
                 Library.Save(false);
-                if (!quiet) Shell.Toast("Скачано: " + t.Artist + " — " + t.Title);
+                if (!quiet) Shell.Toast("Сохранено в SONORA: " + t.Artist + " — " + t.Title + " · можно слушать без интернета");
                 return true;
             }
             catch (Exception ex)
@@ -206,6 +309,7 @@ namespace Sonora
             try { File.Delete(Path.Combine(Dir, Catalog.Safe(id) + ".cover")); } catch { }
             Library.D.Offline.Remove(o);
             tracks.Remove(id);
+            lock (playable) playable.Remove(id);
             Library.Save(false);
             Shell.Toast("Удалено из скачанных");
         }

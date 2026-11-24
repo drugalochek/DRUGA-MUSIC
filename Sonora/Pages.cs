@@ -283,17 +283,14 @@ namespace Sonora
             var shadowHolder = new Border { CornerRadius = new CornerRadius(16), Background = Th.Hot, Effect = U.Shadow(32, 14, .7) };
             cov.Children.Add(shadowHolder);
             cov.Children.Add(Mosaic(m.Tracks, size, 16, Th.Hot, m.Icon, 70));
-            var shade = new Border { CornerRadius = new CornerRadius(16), IsHitTestVisible = false, Background = Th.G(Th.C("#000000", .55), Th.C("#000000", 0), false) };
-            shade.Height = size * .5; shade.VerticalAlignment = VerticalAlignment.Top;
-            cov.Children.Add(shade);
-            var over = U.Wrap(m.Name, 22, Th.White, 2, 24);
-            over.FontFamily = Th.Font; over.FontWeight = FontWeights.Bold;
-            over.Margin = new Thickness(14, 12, 14, 0); over.VerticalAlignment = VerticalAlignment.Top; over.IsHitTestVisible = false;
-            cov.Children.Add(over);
+            var stripeHost = new Grid { Width = size, Height = size, IsHitTestVisible = false };
+            stripeHost.Children.Add(CardStripe(m.Name));
+            U.Fixed(stripeHost, size, size, 16);
+            cov.Children.Add(stripeHost);
             var play = U.Circle(46, Th.White, U.Center(U.Ico("play", 18, Th.B("#000000"))));
             play.HorizontalAlignment = HorizontalAlignment.Right;
             play.VerticalAlignment = VerticalAlignment.Bottom;
-            play.Margin = new Thickness(0, 0, 12, 12);
+            play.Margin = new Thickness(0, 0, 10, 40);
             U.Click(play, () => { if (m.Tracks.Count > 0) { Player.I.PlayList(m.Tracks, 0); OpenFull(); } }, .9);
             cov.Children.Add(play);
             var t = U.Wrap(m.Name, 14, Th.Txt, 2, 17.5);
@@ -314,19 +311,16 @@ namespace Sonora
             var br = U.CoverBrush(coverTrack, 400);
             if (br != null) inner.Background = br;
             else { inner.Background = Th.Brand; inner.Children.Add(U.Center(U.Ico("user", 60, Th.White))); }
+            inner.Children.Add(new Border { Height = size * .5, VerticalAlignment = VerticalAlignment.Top, IsHitTestVisible = false, Background = Th.G(Th.C("#000000", .62), Th.C("#000000", 0), false) });
             var pct = U.Tx("100%", 26, Th.White);
+            pct.FontFamily = Th.Font;
             pct.FontWeight = FontWeights.Black;
             pct.Margin = new Thickness(12, 10, 0, 0);
             pct.HorizontalAlignment = HorizontalAlignment.Left;
             pct.VerticalAlignment = VerticalAlignment.Top;
             pct.Effect = U.Shadow(10, 2, .85);
             inner.Children.Add(pct);
-            var bar = new Border { Height = 28, VerticalAlignment = VerticalAlignment.Bottom, Background = Th.GH("#8B5CF6", "#EC4899"), Padding = new Thickness(12, 0, 12, 0) };
-            var bt = U.Tx(name, 12.5, Th.White);
-            bt.HorizontalAlignment = HorizontalAlignment.Center;
-            bt.VerticalAlignment = VerticalAlignment.Center;
-            bar.Child = bt;
-            inner.Children.Add(bar);
+            inner.Children.Add(CardStripe(name));
             U.Fixed(inner, size, size, 16);
             cov.Children.Add(inner);
             var t = U.Tx("100% " + name, 13.5);
@@ -344,6 +338,10 @@ namespace Sonora
             cov.Children.Add(new Border { CornerRadius = new CornerRadius(14), Background = Th.Card, Effect = U.Shadow(24, 10, .6) });
             var bg = Th.G(p.Color ?? "#8b5cf6", Th.Shade(p.Color ?? "#8b5cf6", -30));
             cov.Children.Add(Mosaic(tracks, 140, 14, bg, "music", 40));
+            var ps = new Grid { Width = 140, Height = 140, IsHitTestVisible = false };
+            ps.Children.Add(CardStripe(null));
+            U.Fixed(ps, 140, 140, 14);
+            cov.Children.Add(ps);
             var del = U.IconBtn("close", 28, 14, Th.White, () => ConfirmDeletePlaylist(p), Th.B("#000000", .6));
             del.HorizontalAlignment = HorizontalAlignment.Right;
             del.VerticalAlignment = VerticalAlignment.Top;
@@ -393,12 +391,18 @@ namespace Sonora
             return b;
         }
 
-        FrameworkElement BackBtn()
+        FrameworkElement BackBtn() { return new Border { Height = 0 }; }
+
+        // полоска внизу обложки — фирменный синий градиент; текст (если есть) фирменным шрифтом
+        static Border CardStripe(string text, double h = 30)
         {
-            var sp = U.Row(U.Ico("chevL", 15, Th.Dim), U.M(U.Tx("Назад", 12.5, Th.Dim), 5, 0, 0, 0));
-            var b = new Border { Padding = new Thickness(6, 7, 12, 7), CornerRadius = new CornerRadius(10), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(-6, 0, 0, 8), Child = sp };
-            U.Hover(b, Th.Clear, Th.Card);
-            return U.Click(b, Back, .97);
+            var b = new Border { Height = text == null ? 6 : h, VerticalAlignment = VerticalAlignment.Bottom, Background = Th.GH("#60A5FA", "#1D4ED8"), Padding = new Thickness(12, 0, 12, 0), IsHitTestVisible = false };
+            if (text != null)
+            {
+                var t = new TextBlock { Text = L.T(text).ToUpperInvariant(), FontFamily = Th.Font, FontSize = 12.5, Foreground = Th.White, TextTrimming = TextTrimming.CharacterEllipsis, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 2, 0, 0) };
+                b.Child = t;
+            }
+            return b;
         }
 
         // ---------- Home ----------
@@ -704,7 +708,7 @@ namespace Sonora
             meta.Margin = new Thickness(0, 0, 0, 22);
             sp.Children.Add(meta);
 
-            var play = new Border { Padding = new Thickness(24, 13, 24, 13), CornerRadius = new CornerRadius(26), Background = Th.Hot, Effect = U.Shadow(26, 10, .8, Th.C("#8b5cf6")), Child = U.Row(U.Ico("play", 17, Th.White), U.M(U.Tx("Слушать всё", 14, Th.White), 8, 0, 0, 0)) };
+            var play = new Border { Padding = new Thickness(24, 13, 24, 13), CornerRadius = new CornerRadius(26), Background = Th.Hot, Effect = U.Shadow(26, 10, .6, Th.C("#2563EB")), Child = U.Row(U.Ico("play", 17, Th.White), U.M(U.Tx("Слушать всё", 14, Th.White), 8, 0, 0, 0)) };
             U.Click(play, () => { if (mix.Tracks.Count > 0) { Player.I.PlayList(mix.Tracks, 0); OpenFull(); } }, .96);
             var shuffle = RoundBtn("shuffle", () => { if (mix.Tracks.Count > 0) { Player.I.PlayList(Mixes.Shuffle(mix.Tracks, "s" + Environment.TickCount), 0); OpenFull(); } });
             var items = new List<UIElement> { play, U.M(shuffle, 10, 0, 0, 0) };
@@ -749,62 +753,6 @@ namespace Sonora
             return b;
         }
 
-        // ---------- Profile ----------
-        FrameworkElement ProfilePage()
-        {
-            var sp = new StackPanel();
-            sp.Children.Add(BackBtn());
-            var s = Auth.Current;
-            var avatar = new Border { Width = 98, Height = 98, CornerRadius = new CornerRadius(49), Background = Th.Hot };
-            var avRing = new Border { Width = 112, Height = 112, CornerRadius = new CornerRadius(56), Background = Th.Ring, Padding = new Thickness(3), HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 10, 0, 16), Effect = U.Shadow(44, 16, .6, Th.C("#2563EB")) };
-            avRing.Child = new Border { CornerRadius = new CornerRadius(53), Background = Th.Bg, Padding = new Thickness(4), Child = avatar };
-            if (s != null && !string.IsNullOrWhiteSpace(s.Name ?? s.Email)) avatar.Child = U.Center(U.Tx((s.Name ?? s.Email).Trim().Substring(0, 1).ToUpperInvariant(), 44, Th.White));
-            else avatar.Child = U.Center(U.Ico("user", 44, Th.White));
-            sp.Children.Add(avRing);
-            var name = U.Tx(s != null ? (s.Name ?? s.Email) : "Гость", 22);
-            name.HorizontalAlignment = HorizontalAlignment.Center;
-            name.Margin = new Thickness(0, 0, 0, 6);
-            sp.Children.Add(name);
-            var meta = U.Tx(s != null ? (s.Email ?? "") + (s.Provider == "google" ? " · Google" : "") : "Данные хранятся только на этом компьютере", 12.5, Th.Dim);
-            meta.HorizontalAlignment = HorizontalAlignment.Center;
-            meta.Margin = new Thickness(0, 0, 0, 24);
-            sp.Children.Add(meta);
-
-            var stats = new System.Windows.Controls.Primitives.UniformGrid { Columns = 3 };
-            Action<string, string> stat = (n, l) =>
-            {
-                var a = U.Tx(n, 22); a.HorizontalAlignment = HorizontalAlignment.Center; a.Margin = new Thickness(0, 0, 0, 2);
-                var b = U.Tx(l, 11, Th.Dim); b.HorizontalAlignment = HorizontalAlignment.Center;
-                stats.Children.Add(U.Col(a, b));
-            };
-            stat(Library.D.Fav.Count.ToString(), "в избранном");
-            stat(Library.D.Playlists.Count.ToString(), "плейлистов");
-            stat(Library.D.Recent.Count.ToString(), "прослушано");
-            sp.Children.Add(new Border { Padding = new Thickness(16), CornerRadius = new CornerRadius(16), Background = Th.Card, BorderBrush = Th.Border, BorderThickness = new Thickness(1), Margin = new Thickness(0, 0, 0, 20), Child = stats });
-
-            sp.Children.Add(SetTitle("Аккаунт"));
-            if (s == null)
-            {
-                sp.Children.Add(SetBtn("login", "Войти или создать аккаунт", null, OpenWelcome));
-            }
-            else
-            {
-                sp.Children.Add(SetBtn("edit", "Изменить имя", null, RenameSheet));
-                sp.Children.Add(SetBtn("refresh", "Синхронизировать сейчас", Cloud.Status, async () => { await Cloud.SyncNow(); Toast(Cloud.Status); Render(); }));
-                sp.Children.Add(SetBtn("logout", "Выйти из аккаунта", null, ConfirmLogout, Th.Danger));
-            }
-            sp.Children.Add(SetBtn("gear", "Настройки", L.En ? "English" : "Русский", () => Go("settings")));
-            sp.Children.Add(SetTitle("Данные"));
-            var mb = Catalog.CacheSize() / 1024.0 / 1024.0;
-            sp.Children.Add(SetBtn("upload", "Добавить музыку с компьютера", U.Tn(Library.D.Local.Count), PickFiles));
-            sp.Children.Add(SetBtn("download", "Скачанные", U.Tn(Library.D.Offline.Count), () => Go("playlist", Mixes.Downloaded)));
-            sp.Children.Add(SetBtn("trash", "Очистить кэш аудио", mb.ToString("0.0") + " МБ", () => { Catalog.ClearCache(); Toast("Кэш очищен"); Render(); }));
-            sp.Children.Add(SetBtn("refresh", "Обновить каталог", U.Tn(Catalog.Remote.Count), async () => { await Catalog.LoadAsync(); Toast("Каталог обновлён"); }));
-            sp.Children.Add(SetBtn("music", "Папка данных", null, () => { try { System.Diagnostics.Process.Start("explorer.exe", "\"" + Paths.Data + "\""); } catch { } }));
-            sp.Children.Add(SetTitle("О приложении"));
-            sp.Children.Add(SetBtn("star", "SONORA для Windows", "версия " + typeof(Shell).Assembly.GetName().Version.ToString(3), () => Toast("Пробел — пауза, ←/→ — перемотка, Ctrl+←/→ — треки")));
-            return sp;
-        }
         internal static FrameworkElement SetTitle(string s)
         {
             var t = U.Tx(s.ToUpperInvariant(), 11, Th.Dim);

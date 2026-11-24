@@ -25,7 +25,7 @@ namespace Sonora
             sp.Children.Add(langs);
 
             sp.Children.Add(SetTitle("Оформление"));
-            sp.Children.Add(Toggle("drop", "Живой фон плеера", "Переливы цвета обложки, как вода", Library.D.LiquidBg, v => { Library.D.LiquidBg = v; Library.Save(false); barLiquid.Sync(); Full.SyncLiquid(); }));
+            sp.Children.Add(Toggle("drop", "Живой фон плеера", "Цвета обложки плавно перетекают", Library.D.LiquidBg, v => { Library.D.LiquidBg = v; Library.Save(false); barLiquid.Sync(); Full.SyncLiquid(); }));
             sp.Children.Add(Toggle("wave", "Свечение в такт музыке", Beat.Available ? "Фон пульсирует под ритм трека" : "Недоступно на этом компьютере", Library.D.BeatGlow, v => { Library.D.BeatGlow = v; Library.Save(false); var t = Player.I.Current; if (v && t != null && t.IsLocal) Beat.Analyze(t, t.LocalPath); }));
 
             sp.Children.Add(SetTitle("Windows"));
@@ -39,19 +39,21 @@ namespace Sonora
 
             sp.Children.Add(SetTitle("Данные"));
             var off = Offline.Size() / 1024.0 / 1024.0;
-            sp.Children.Add(SetBtn("download", "Скачанные треки", U.Tn(Library.D.Offline.Count) + " · " + off.ToString("0.0") + " МБ", () => Go("playlist", Mixes.Downloaded)));
+            sp.Children.Add(SetBtn("download", "Скачанные в SONORA", U.Tn(Library.D.Offline.Count) + " · " + off.ToString("0.0") + " МБ", () => Go("playlist", Mixes.Downloaded)));
             if (Library.D.Offline.Count > 0)
                 sp.Children.Add(SetBtn("trash", "Удалить все скачанные", null, () => Confirm("Удалить все скачанные треки?", "Они перестанут играть без интернета. Лайки и плейлисты останутся.", "Удалить", () => { Offline.Clear(); Toast("Скачанные треки удалены"); Render(); }, "danger"), Th.Danger));
             var mb = Catalog.CacheSize() / 1024.0 / 1024.0;
             sp.Children.Add(SetBtn("trash", "Очистить кэш аудио", mb.ToString("0.0") + " МБ", () => { Catalog.ClearCache(); Toast("Кэш очищен"); Render(); }));
             sp.Children.Add(SetBtn("refresh", "Обновить каталог", U.Tn(Catalog.Remote.Count), async () => { await Catalog.LoadAsync(); Toast("Каталог обновлён"); }));
-            sp.Children.Add(SetBtn("music", "Папка данных", null, () => { try { System.Diagnostics.Process.Start("explorer.exe", "\"" + Paths.Data + "\""); } catch { } }));
+
+            sp.Children.Add(SetTitle("Экран"));
+            sp.Children.Add(SetBtn("expand", "Полноэкранный режим", "F11", () => (Window.GetWindow(this) as MainWindow)?.ToggleFullscreen()));
 
             sp.Children.Add(SetTitle("Подписка"));
             sp.Children.Add(SetBtn("star", "SONORA Plus", "скоро", () => Toast("Подписка появится в одном из следующих обновлений")));
 
             sp.Children.Add(SetTitle("О приложении"));
-            sp.Children.Add(SetBtn("star", "SONORA для Windows", "версия " + typeof(Shell).Assembly.GetName().Version.ToString(3), () => Toast("Пробел — пауза, ←/→ — перемотка, Ctrl+←/→ — треки")));
+            sp.Children.Add(SetBtn("star", "SONORA для Windows", "версия " + Program.Version, () => Toast("Пробел — пауза, ←/→ — перемотка, Ctrl+←/→ — треки")));
             return sp;
         }
 

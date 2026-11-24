@@ -115,7 +115,7 @@ namespace Sonora
         public int Year;
         public double Duration;
         public long Plays, AddedAt;
-        public bool Verified;
+        public bool Verified, Explicit;
         public string Source, Ref, Isrc, Match;   // внешние сервисы: ya / sp / dz
         public bool IsLocal { get { return LocalPath != null; } }
         public bool HasLyrics { get { return !string.IsNullOrWhiteSpace(Lyrics); } }
@@ -182,6 +182,7 @@ namespace Sonora
                             Plays = (long)J.Num(t, "plays"),
                             AddedAt = (long)J.Num(t, "addedAt"),
                             Verified = J.Bool(t, "verified"),
+                            Explicit = J.Bool(t, "explicit"),
                         });
                     }
                 }
@@ -271,6 +272,15 @@ namespace Sonora
         public double Duration { get; set; }
         public long AddedAt { get; set; }
         public string Sig { get; set; }
+        public string Album { get; set; }
+        public string Genre { get; set; }
+        public int Year { get; set; }
+        public string Cover { get; set; }
+        public string Lyrics { get; set; }
+        public bool Explicit { get; set; }
+        public bool Public { get; set; }
+        public string PubId { get; set; }
+        public long PublishedAt { get; set; }
     }
 
     public sealed class LibData
@@ -287,6 +297,8 @@ namespace Sonora
         public bool BeatGlow { get; set; } = true;
         public double Volume { get; set; } = 0.8;
         public long UpdatedAt { get; set; }
+        public string SeenNotif { get; set; }
+        public string LastVersion { get; set; }
     }
 
     public static class Library
@@ -332,8 +344,9 @@ namespace Sonora
 
         public static List<Track> LocalTracks()
         {
-            return D.Local.Select(l => new Track { Id = l.Id, Title = l.Title, Artist = l.Artist, Album = "", Genre = "", Lyrics = "", Duration = l.Duration, LocalPath = l.Path, AddedAt = l.AddedAt }).ToList();
+            return D.Local.Select(l => new Track { Id = l.Id, Title = l.Title, Artist = l.Artist, Album = l.Album ?? "", Genre = l.Genre ?? "", Lyrics = l.Lyrics ?? "", Year = l.Year, Cover = l.Cover, Explicit = l.Explicit, Duration = l.Duration, LocalPath = l.Path, AddedAt = l.AddedAt }).ToList();
         }
+        public static void Touch() { Changed?.Invoke(); }
         public static bool IsFav(string id) { return D.Fav.Contains(id); }
         public static void ToggleFav(string id) { if (!Guard.Need("Лайки")) return; if (!D.Fav.Remove(id)) D.Fav.Insert(0, id); Save(); }
         public static bool IsFavArtist(string a) { return D.FavArtists.Contains(a); }
@@ -468,6 +481,8 @@ namespace Sonora
         public string Email { get; set; }
         public string Name { get; set; }
         public string Photo { get; set; }
+        public string Bio { get; set; }
+        public string Color { get; set; }
         public string Provider { get; set; }
         public string IdToken { get; set; }
         public string RefreshToken { get; set; }
@@ -633,6 +648,11 @@ namespace Sonora
                 {
                     var n = J.Str(d, "name");
                     if (!string.IsNullOrWhiteSpace(n)) Current.Name = n;
+                    var ph = J.Str(d, "photo"); if (!string.IsNullOrWhiteSpace(ph)) Current.Photo = ph;
+                    Current.Bio = J.Str(d, "bio") ?? Current.Bio;
+                    Current.Color = J.Str(d, "color") ?? Current.Color;
+                    Persist();
+                    Changed?.Invoke();
                 }
                 else await SaveProfile();
             }
@@ -643,7 +663,7 @@ namespace Sonora
             try
             {
                 var tok = await Token();
-                var body = J.Ser(new Dictionary<string, object> { ["name"] = Current.Name ?? "", ["email"] = Current.Email ?? "", ["photo"] = Current.Photo ?? "", ["updatedAt"] = Library.Now, ["client"] = "SONORA Windows" });
+                var body = J.Ser(new Dictionary<string, object> { ["name"] = Current.Name ?? "", ["email"] = Current.Email ?? "", ["photo"] = Current.Photo ?? "", ["bio"] = Current.Bio ?? "", ["color"] = Current.Color ?? "", ["updatedAt"] = Library.Now, ["client"] = "SONORA Windows" });
                 var r = await Net.Send("PATCH", UserUrl("profile", tok), body);
                 if (!r.Ok) Log.W("profile save: " + r.Code + " " + r.Body);
             }

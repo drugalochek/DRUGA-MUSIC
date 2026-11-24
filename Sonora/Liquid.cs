@@ -53,8 +53,9 @@ namespace Sonora
                         var c1 = col(order[0]);
                         int second = order.Skip(1).FirstOrDefault(i => wsum[i] > wsum[order[0]] * .12 && Math.Min(Math.Abs(i - order[0]), Bins - Math.Abs(i - order[0])) >= 2);
                         var c2 = second != order[0] && wsum[second] > 0 ? col(second) : Shift(c1, 28);
-                        var c3 = Darken(c1, .45);
-                        res = new[] { Vivid(c1), Vivid(c2), c3 };
+                        int third = order.Skip(1).FirstOrDefault(i => i != second && wsum[i] > wsum[order[0]] * .08 && Math.Min(Math.Abs(i - order[0]), Bins - Math.Abs(i - order[0])) >= 2);
+                        var c3 = third != order[0] && third != second && wsum[third] > 0 ? col(third) : Shift(c1, -24);
+                        res = new[] { Vivid(c1), Vivid(c2), Vivid(c3) };
                     }
                     else if (an > 0)
                     {
@@ -113,6 +114,12 @@ namespace Sonora
             double h, s, l; Hsl(c.R, c.G, c.B, out h, out s, out l);
             return FromHsl(h + deg, s, l);
         }
+        // тёмный, но цветной вариант для фона
+        public static Color Deep(Color c, double l)
+        {
+            double h, s, ll; Hsl(c.R, c.G, c.B, out h, out s, out ll);
+            return FromHsl(h, Math.Min(.85, s * .95), Math.Min(ll, l) * .62 + .03);
+        }
         public static Color Darken(Color c, double k) { return Color.FromRgb((byte)(c.R * k), (byte)(c.G * k), (byte)(c.B * k)); }
         public static Color Mix(Color a, Color b, double k) { return Color.FromRgb((byte)(a.R + (b.R - a.R) * k), (byte)(a.G + (b.G - a.G) * k), (byte)(a.B + (b.B - a.B) * k)); }
         public static Color A(Color c, double a) { return Color.FromArgb((byte)Math.Max(0, Math.Min(255, a * 255)), c.R, c.G, c.B); }
@@ -158,79 +165,52 @@ namespace Sonora
         }
     }
 
-    // «Живая вода»: мягкие пятна цвета обложки плавают, переливаются и светятся в такт
+    // Живой фон в цветах обложки: плавные градиенты палитры медленно перетекают друг в друга (без «пятен»)
     public sealed class Liquid : Grid
     {
-        readonly Canvas canvas = new Canvas { IsHitTestVisible = false, ClipToBounds = true };
         readonly Rectangle baseRect = new Rectangle { IsHitTestVisible = false };
+        readonly Rectangle flowRect = new Rectangle { IsHitTestVisible = false };
+        readonly Rectangle shadeRect = new Rectangle { IsHitTestVisible = false };
         readonly Rectangle pulse = new Rectangle { IsHitTestVisible = false, Opacity = 0 };
-        readonly List<Blob> blobs = new List<Blob>();
+        readonly LinearGradientBrush baseBrush = new LinearGradientBrush(), flowBrush = new LinearGradientBrush(), pulseBrush = new LinearGradientBrush();
+        readonly GradientStop b0 = new GradientStop(Colors.Black, 0), b1 = new GradientStop(Colors.Black, .55), b2 = new GradientStop(Colors.Black, 1);
+        readonly GradientStop f0 = new GradientStop(Colors.Transparent, 0), f1 = new GradientStop(Colors.Transparent, .5), f2 = new GradientStop(Colors.Transparent, 1);
+        readonly GradientStop p0 = new GradientStop(Colors.Transparent, 0), p1 = new GradientStop(Colors.Transparent, 1);
         readonly DispatcherTimer timer;
         readonly bool big;
-        readonly GradientStop baseA = new GradientStop(Colors.Black, 0), baseB = new GradientStop(Colors.Black, 1);
-        readonly GradientStop pulseA = new GradientStop(Colors.Transparent, 0), pulseB = new GradientStop(Colors.Transparent, 1);
         double t, energy, slow;
         DateTime last = DateTime.Now;
         Color[] pal = Palette.Fallback;
-
-        sealed class Blob
-        {
-            public Ellipse E; public GradientStop S0, S1; public TranslateTransform Tr; public ScaleTransform Sc;
-            public double Fx, Fy, Px, Py, Ax, Ay, Size, Alpha; public int Ci;
-        }
 
         public Liquid(bool bigMode)
         {
             big = bigMode;
             IsHitTestVisible = false;
-            var lb = new LinearGradientBrush { StartPoint = new Point(0, 0), EndPoint = new Point(1, 1) };
-            lb.GradientStops.Add(baseA); lb.GradientStops.Add(baseB);
-            baseRect.Fill = lb;
-            var pb = new RadialGradientBrush { Center = new Point(.5, big ? .42 : .5), GradientOrigin = new Point(.5, big ? .42 : .5), RadiusX = big ? .75 : .7, RadiusY = big ? .6 : 1.4 };
-            pb.GradientStops.Add(pulseA); pb.GradientStops.Add(pulseB);
-            pulse.Fill = pb;
+            baseBrush.GradientStops.Add(b0); baseBrush.GradientStops.Add(b1); baseBrush.GradientStops.Add(b2);
+            flowBrush.GradientStops.Add(f0); flowBrush.GradientStops.Add(f1); flowBrush.GradientStops.Add(f2);
+            pulseBrush.GradientStops.Add(p0); pulseBrush.GradientStops.Add(p1);
+            pulseBrush.StartPoint = big ? new Point(.5, 0) : new Point(0, .5);
+            pulseBrush.EndPoint = big ? new Point(.5, 1) : new Point(1, .5);
+            baseRect.Fill = baseBrush;
+            flowRect.Fill = flowBrush;
+            pulse.Fill = pulseBrush;
+            // мягкое затемнение для читаемости текста
+            var sh = big
+                ? new LinearGradientBrush(new GradientStopCollection { new GradientStop(Color.FromArgb(40, 0, 0, 0), 0), new GradientStop(Color.FromArgb(70, 0, 0, 0), .45), new GradientStop(Color.FromArgb(170, 0, 0, 0), 1) }, new Point(.5, 0), new Point(.5, 1))
+                : new LinearGradientBrush(new GradientStopCollection { new GradientStop(Color.FromArgb(30, 0, 0, 0), 0), new GradientStop(Color.FromArgb(80, 0, 0, 0), 1) }, new Point(0, .5), new Point(1, .5));
+            sh.Freeze();
+            shadeRect.Fill = sh;
             Children.Add(baseRect);
-            Children.Add(canvas);
+            Children.Add(flowRect);
             Children.Add(pulse);
-            var rnd = new Random(big ? 7 : 3);
-            int n = big ? 6 : 5;
-            for (int i = 0; i < n; i++)
-            {
-                var b = new Blob
-                {
-                    S0 = new GradientStop(Colors.Transparent, 0),
-                    S1 = new GradientStop(Colors.Transparent, 1),
-                    Tr = new TranslateTransform(),
-                    Sc = new ScaleTransform(1, 1),
-                    Fx = .05 + rnd.NextDouble() * .09,
-                    Fy = .04 + rnd.NextDouble() * .08,
-                    Px = rnd.NextDouble() * 6.28,
-                    Py = rnd.NextDouble() * 6.28,
-                    Ax = .32 + rnd.NextDouble() * .2,
-                    Ay = big ? .28 + rnd.NextDouble() * .18 : .5 + rnd.NextDouble() * .4,
-                    Size = big ? .55 + rnd.NextDouble() * .35 : .34 + rnd.NextDouble() * .22,
-                    Alpha = .55 + rnd.NextDouble() * .35,
-                    Ci = i % 3 == 2 ? 0 : i % 3
-                };
-                var rb = new RadialGradientBrush();
-                rb.GradientStops.Add(b.S0);
-                rb.GradientStops.Add(new GradientStop(Colors.Transparent, .55));
-                rb.GradientStops.Add(b.S1);
-                // промежуточная точка — для мягкого «водяного» края
-                rb.GradientStops[1].Color = Colors.Transparent;
-                b.E = new Ellipse { Fill = rb, RenderTransformOrigin = new Point(.5, .5), IsHitTestVisible = false };
-                var tg = new TransformGroup(); tg.Children.Add(b.Sc); tg.Children.Add(b.Tr);
-                b.E.RenderTransform = tg;
-                canvas.Children.Add(b.E);
-                blobs.Add(b);
-            }
-            timer = new DispatcherTimer(DispatcherPriority.Render) { Interval = TimeSpan.FromMilliseconds(33) };
+            Children.Add(shadeRect);
+            timer = new DispatcherTimer(DispatcherPriority.Render) { Interval = TimeSpan.FromMilliseconds(40) };
             timer.Tick += (s, e) => Frame();
-            SizeChanged += (s, e) => Layout();
             IsVisibleChanged += (s, e) => Sync();
             Loaded += (s, e) => Sync();
             Unloaded += (s, e) => timer.Stop();
             SetColors(pal, false);
+            Frame(true);
         }
 
         public void Sync()
@@ -238,78 +218,59 @@ namespace Sonora
             bool on = IsVisible && Library.D.LiquidBg && !(Shell.I != null && Shell.I.ShotMode);
             if (on && !timer.IsEnabled) { last = DateTime.Now; timer.Start(); }
             else if (!on && timer.IsEnabled) timer.Stop();
-            if (!on) { Frame(true); }
-        }
-
-        void Layout()
-        {
-            double w = ActualWidth, h = ActualHeight;
-            if (w <= 0 || h <= 0) return;
-            foreach (var b in blobs)
-            {
-                double d = big ? Math.Max(w, h) * b.Size : w * b.Size;
-                b.E.Width = d;
-                b.E.Height = big ? d : Math.Max(h * 2.4, d * .55);
-            }
-            Frame(true);
+            if (!on) Frame(true);
         }
 
         public void SetColors(Color[] p, bool animate = true)
         {
             pal = p ?? Palette.Fallback;
-            var dark = Palette.Darken(pal[2], big ? .55 : .7);
-            var dark2 = Palette.Darken(pal[0], big ? .16 : .22);
-            Anim(baseA, Color.FromArgb(255, dark.R, dark.G, dark.B), animate);
-            Anim(baseB, Color.FromArgb(255, dark2.R, dark2.G, dark2.B), animate);
-            Anim(pulseA, Palette.A(Palette.Mix(pal[0], Colors.White, .25), big ? .55 : .7), animate);
-            Anim(pulseB, Palette.A(pal[0], 0), animate);
-            foreach (var b in blobs)
-            {
-                var c = pal[b.Ci];
-                Anim(b.S0, Palette.A(c, b.Alpha * (big ? .85 : .9)), animate);
-                Anim(b.S1, Palette.A(c, 0), animate);
-            }
+            // фон — приглушённые цвета палитры, поверх — более яркий «перелив»
+            Anim(b0, Palette.Deep(pal[0], big ? .42 : .5), animate);
+            Anim(b1, Palette.Deep(pal[2], big ? .30 : .36), animate);
+            Anim(b2, Palette.Deep(pal[1], big ? .36 : .44), animate);
+            Anim(f0, Palette.A(pal[1], big ? .42 : .5), animate);
+            Anim(f1, Palette.A(pal[0], 0), animate);
+            Anim(f2, Palette.A(pal[0], big ? .38 : .46), animate);
+            Anim(p0, Palette.A(Palette.Mix(pal[0], Colors.White, .2), big ? .32 : .4), animate);
+            Anim(p1, Palette.A(pal[0], 0), animate);
         }
         static void Anim(GradientStop s, Color c, bool animate)
         {
             if (!animate) { s.BeginAnimation(GradientStop.ColorProperty, null); s.Color = c; return; }
-            s.BeginAnimation(GradientStop.ColorProperty, new ColorAnimation(c, TimeSpan.FromMilliseconds(900)) { EasingFunction = new SineEase() });
+            s.BeginAnimation(GradientStop.ColorProperty, new ColorAnimation(c, TimeSpan.FromMilliseconds(1200)) { EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut } });
+        }
+        static void Angle(LinearGradientBrush b, double a)
+        {
+            double c = Math.Cos(a) * .5, s = Math.Sin(a) * .5;
+            b.StartPoint = new Point(.5 - c, .5 - s);
+            b.EndPoint = new Point(.5 + c, .5 + s);
         }
 
         void Frame(bool force = false)
         {
-            double w = ActualWidth, h = ActualHeight;
-            if (w <= 0 || h <= 0) return;
             var now = DateTime.Now;
             double dt = Math.Min(.1, (now - last).TotalSeconds);
             last = now;
             var win = Application.Current?.MainWindow;
             if (!force && win != null && win.WindowState == WindowState.Minimized) return;
             var p = Player.I;
-            bool playing = p.IsPlaying && !p.Loading;
-            // уровень громкости в такт (если анализ доступен), иначе — спокойное «дыхание»
+            bool playing = p != null && p.IsPlaying && !p.Loading;
             double target = 0;
             if (playing && Library.D.BeatGlow)
             {
                 var lv = Beat.Level(p.Current, p.Position + .06);
-                target = lv >= 0 ? lv : .18 + .12 * Math.Sin(t * 2.2);
+                target = lv >= 0 ? lv : .14 + .08 * Math.Sin(t * 2.0);
             }
-            energy += (target - energy) * (target > energy ? Math.Min(1, dt * 22) : Math.Min(1, dt * 4.5));
-            slow += (energy - slow) * Math.Min(1, dt * 1.5);
-            t += dt * (playing ? .9 + slow * 1.6 : .25);
-            foreach (var b in blobs)
-            {
-                double x = w * (.5 + b.Ax * Math.Sin(t * b.Fx * 6.28 + b.Px));
-                double y = h * (.5 + b.Ay * Math.Cos(t * b.Fy * 6.28 + b.Py));
-                double wob = 1 + .07 * Math.Sin(t * 1.3 + b.Px);
-                double sc = wob + energy * (big ? .16 : .22);
-                b.Sc.ScaleX = sc * (1 + .05 * Math.Sin(t * .9 + b.Py));
-                b.Sc.ScaleY = sc * (1 + .05 * Math.Cos(t * .8 + b.Px));
-                b.Tr.X = x - b.E.Width / 2;
-                b.Tr.Y = y - b.E.Height / 2;
-                b.E.Opacity = Math.Min(1, .72 + slow * .25 + energy * .2);
-            }
-            pulse.Opacity = Math.Min(.85, energy * (big ? .55 : .75));
+            energy += (target - energy) * (target > energy ? Math.Min(1, dt * 18) : Math.Min(1, dt * 4));
+            slow += (energy - slow) * Math.Min(1, dt * 1.2);
+            t += dt * (playing ? 1 + slow * 1.2 : .35);
+            // медленное вращение двух слоёв навстречу друг другу — цвета перетекают
+            Angle(baseBrush, .8 + t * .05);
+            Angle(flowBrush, 2.4 - t * .07 + Math.Sin(t * .11) * .6);
+            b1.Offset = .5 + .18 * Math.Sin(t * .09);
+            f1.Offset = .5 + .22 * Math.Sin(t * .13 + 1);
+            flowRect.Opacity = .75 + .25 * Math.Sin(t * .17);
+            pulse.Opacity = Math.Min(.9, energy * (big ? .8 : 1));
         }
     }
 }

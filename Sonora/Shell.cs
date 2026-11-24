@@ -30,7 +30,7 @@ namespace Sonora
         readonly ScaleTransform sheetScale = new ScaleTransform(1, 1);
         public readonly FullPlayer Full;
         Border toastBox; TextBlock toastText; DispatcherTimer toastTimer;
-        Border profileBtn, notifBadge, backBtn;
+        Border notifBadge, backBtn;
         Border side, contentPanel, topGlow, sidePromo;
         Grid ambient; Ellipse trackGlow;
         static Ellipse Glow(string hex, double a, double w, double h, HorizontalAlignment ha, VerticalAlignment va, Thickness m)
@@ -277,7 +277,7 @@ namespace Sonora
             };
             item(Mixes.Liked, "Мне нравится", U.Tn(Library.D.Fav.Count), Th.Pink, null);
             if (Library.D.Recent.Count > 0) item(Mixes.Recent, "Недавно прослушанные", "История · " + U.Tn(Library.D.Recent.Count), Th.B("#1E3A5F"), null);
-            if (Library.D.Offline.Count > 0) item(Mixes.Downloaded, "Скачанные", "Офлайн · " + U.Tn(Library.D.Offline.Count), Th.G("#2DD4BF", "#2563EB"), null);
+            if (Library.D.Offline.Count > 0) item(Mixes.Downloaded, "Скачанные", "В SONORA · " + U.Tn(Library.D.Offline.Count), Th.G("#60A5FA", "#1D4ED8"), null);
             if (Library.D.Local.Count > 0) item(Mixes.Uploaded, "Загруженная музыка", "С компьютера · " + U.Tn(Library.D.Local.Count), Th.B("#0E4C5A"), null);
             if (Ext.YaOn) item("ext:ya:likes", "Мне нравится", "Яндекс Музыка", Th.Pink, null);
             if (Ext.SpOn) item("ext:sp:likes", "Любимые треки", "Spotify", Th.Pink, null);
@@ -307,10 +307,8 @@ namespace Sonora
             // профиль внизу: аватар в градиентном кольце + бейдж
             var s = Auth.Current;
             string nm = s != null ? (s.Name ?? s.Email ?? "Профиль") : "Гость";
-            var av = new Border { Width = 44, Height = 44, CornerRadius = new CornerRadius(22), Background = Th.Card2 };
-            if (s != null && !string.IsNullOrWhiteSpace(nm)) av.Child = U.Center(U.Tx(nm.Trim().Substring(0, 1).ToUpperInvariant(), 18, Th.White));
-            else av.Child = U.Center(U.Ico("user", 20, Th.Txt));
-            var ring = new Border { Width = 52, Height = 52, CornerRadius = new CornerRadius(26), Background = Th.Ring, Padding = new Thickness(2.5) };
+            var av = Avatar(44);
+            var ring = new Border { Width = 52, Height = 52, CornerRadius = new CornerRadius(26), Background = ProfileRing(), Padding = new Thickness(2.5) };
             ring.Child = new Border { CornerRadius = new CornerRadius(24), Background = Th.Bg, Padding = new Thickness(1.5), Child = av };
             FrameworkElement pc = ring;
             if (!compact)
@@ -327,24 +325,28 @@ namespace Sonora
             }
             var pb = new Border { Padding = new Thickness(compact ? 0 : 4, 6, 6, 6), CornerRadius = new CornerRadius(16), Child = compact ? U.Center(pc) : pc };
             U.Hover(pb, Th.Clear, Th.B("#FFFFFF", .04));
-            sideProfile.Child = U.Click(pb, () => { if (Auth.Current == null) OpenWelcome(); else Go("profile"); }, .99);
+            U.Click(pb, () => { if (Auth.Current == null) OpenWelcome(); else Go("profile"); }, .99);
+            // уведомления — рядом с профилем внизу
+            var bell = IBtn("bell", OpenNotifications);
+            bell.ToolTip = L.T("Уведомления");
+            if (notifBadge.Parent is Panel op) op.Children.Remove(notifBadge);
+            notifBadge.Visibility = HasUnread ? Visibility.Visible : Visibility.Collapsed;
+            var bellWrap = new Grid { VerticalAlignment = VerticalAlignment.Center, Width = 34, Height = 34 };
+            bellWrap.Children.Add(bell);
+            bellWrap.Children.Add(notifBadge);
+            notifBadge.Margin = new Thickness(0, 5, 5, 0);
+            if (compact) sideProfile.Child = U.Col(U.M(U.Center(bellWrap), 0, 0, 0, 10), pb);
+            else sideProfile.Child = U.Cols("* a", pb, U.M(bellWrap, 6, 0, 0, 0));
         }
 
         // ---------- Верхняя строка контента ----------
         FrameworkElement BuildTopbar()
         {
             backBtn = U.IconBtn("chevL", 34, 18, Th.Txt, Back, Th.B("#000000", .45));
-            var bell = IBtn("bell", OpenNotifications);
-            notifBadge = new Border { Width = 9, Height = 9, CornerRadius = new CornerRadius(5), Background = Th.Accent2, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 6, 7, 0), IsHitTestVisible = false };
-            var bellWrap = new Grid { Margin = new Thickness(0, 0, 8, 0) };
-            bellWrap.Children.Add(bell);
-            bellWrap.Children.Add(notifBadge);
-            profileBtn = new Border { Width = 34, Height = 34, CornerRadius = new CornerRadius(17), Background = Th.Accent, BorderBrush = Th.B("#000000", .5), BorderThickness = new Thickness(3) };
-            U.Click(profileBtn, () => Go("profile"), .92);
+            notifBadge = new Border { Width = 9, Height = 9, CornerRadius = new CornerRadius(5), Background = Th.Heart, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 7, 7, 0), IsHitTestVisible = false };
             var gear = IBtn("gear", () => Go("settings"));
-            gear.Margin = new Thickness(0, 0, 8, 0);
             gear.ToolTip = L.T("Настройки");
-            var g = U.Cols("a * a a a", backBtn, null, gear, bellWrap, profileBtn);
+            var g = U.Cols("a * a", backBtn, null, gear);
             g.Margin = new Thickness(20, 14, 20, 8);
             return g;
         }
@@ -355,19 +357,14 @@ namespace Sonora
         }
         void UpdateProfileBtn()
         {
-            var s = Auth.Current;
-            if (s != null && !string.IsNullOrWhiteSpace(s.Name ?? s.Email))
-            {
-                var letter = (s.Name ?? s.Email).Trim().Substring(0, 1).ToUpperInvariant();
-                profileBtn.Child = U.Center(U.Tx(letter, 13, Th.White));
-            }
-            else profileBtn.Child = U.Center(U.Ico("user", 15, Th.White));
-            notifBadge.Visibility = Library.D.UpdatedAt == 0 || ShotMode ? Visibility.Visible : Visibility.Collapsed;
+            UpdateSide();
         }
+        bool HasUnread { get { return ShotMode || Library.D.SeenNotif != Program.Version; } }
         void UpdateNav()
         {
             if (Tabs.Contains(Page)) lastTab = Page;
-            backBtn.Opacity = history.Count > 0 ? 1 : .4;
+            // стрелка «назад» только там, где она реально нужна
+            backBtn.Visibility = Tabs.Contains(Page) ? Visibility.Hidden : Visibility.Visible;
             UpdateSide();
         }
 
@@ -654,6 +651,7 @@ namespace Sonora
 
         public void HandleKey(KeyEventArgs e)
         {
+            if (e.Key == Key.F11) { (Window.GetWindow(this) as MainWindow)?.ToggleFullscreen(); e.Handled = true; return; }
             if (e.OriginalSource is TextBox || e.OriginalSource is PasswordBox)
             {
                 if (e.Key == Key.Escape && SheetOpen) { CloseSheet(); e.Handled = true; }
@@ -661,8 +659,11 @@ namespace Sonora
             }
             switch (e.Key)
             {
+                case Key.F11:
+                    (Window.GetWindow(this) as MainWindow)?.ToggleFullscreen(); e.Handled = true; break;
                 case Key.Escape:
                     if (SheetOpen) CloseSheet();
+                    else if (Window.GetWindow(this) is MainWindow mw && mw.IsFullscreen && !Full.IsOpen) mw.ToggleFullscreen();
                     else if (Full.IsOpen) Full.Close();
                     else if (history.Count > 0) Back();
                     e.Handled = true;
