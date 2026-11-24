@@ -4,10 +4,11 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.widget.Toast
 import androidx.annotation.OptIn
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.media3.common.AudioAttributes
@@ -43,6 +44,20 @@ object Audio {
         private set
 
     val current: Track? get() = queue.getOrNull(index)
+    var source by mutableStateOf("")          // откуда играет: «Микс дня», имя исполнителя…
+    var sleepAt by mutableLongStateOf(0L)     // таймер сна (0 — выключен)
+        private set
+    private var sleepJob: kotlinx.coroutines.Job? = null
+
+    fun setSleep(minutes: Int) {
+        sleepJob?.cancel()
+        if (minutes <= 0) { sleepAt = 0L; return }
+        sleepAt = now() + minutes * 60_000L
+        sleepJob = appScope.launch {
+            while (sleepAt > 0 && now() < sleepAt) kotlinx.coroutines.delay(1000)
+            if (sleepAt > 0) { sleepAt = 0L; exo?.pause(); toast("Таймер сна: воспроизведение остановлено") }
+        }
+    }
 
     fun init(c: Context) { ctx = c.applicationContext }
 
@@ -75,7 +90,7 @@ object Audio {
             override fun onRepeatModeChanged(mode: Int) { repeat = mode }
             override fun onPlayerError(error: PlaybackException) {
                 val cause = generateSequence(error as Throwable) { it.cause }.lastOrNull()?.message
-                Toast.makeText(ctx, "Не удалось воспроизвести: " + (cause ?: error.errorCodeName), Toast.LENGTH_LONG).show()
+                toast("Не удалось воспроизвести: " + (cause ?: error.errorCodeName))
             }
         })
         exo = p
@@ -89,8 +104,9 @@ object Audio {
         return MediaItem.Builder().setMediaId(t.id).setUri(uri).setMediaMetadata(meta.build()).build()
     }
 
-    fun play(list: List<Track>, start: Int = 0, shuffleOn: Boolean? = null) {
+    fun play(list: List<Track>, start: Int = 0, shuffleOn: Boolean? = null, from: String? = null) {
         if (list.isEmpty()) return
+        if (from != null) source = from
         val p = player()
         queue = list
         val s = if (shuffleOn == true) list.indices.random() else start.coerceIn(0, list.size - 1)
@@ -127,6 +143,13 @@ object Audio {
         val at = (index + 1).coerceAtMost(queue.size)
         p.addMediaItem(at, item(t))
         queue = queue.toMutableList().apply { add(at, t) }
+    }
+
+    fun removeAt(i: Int) {
+        if (i !in queue.indices || i == index) return
+        player().removeMediaItem(i)
+        queue = queue.toMutableList().apply { removeAt(i) }
+        index = player().currentMediaItemIndex
     }
 
     fun addToQueue(t: Track) {

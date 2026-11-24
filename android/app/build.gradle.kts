@@ -15,7 +15,7 @@ android {
         minSdk = 26
         targetSdk = 34
         versionCode = (System.getenv("SONORA_VERSION_CODE") ?: "1").toInt()
-        versionName = "0.1.0"
+        versionName = "0.2.0"
     }
 
     // подпись: если в окружении есть ключ (секреты GitHub), Gradle подписывает сам; иначе APK подписывается после сборки

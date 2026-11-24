@@ -83,6 +83,7 @@ data class Track(
     val verified: Boolean, val explicit: Boolean, val db: String,
 ) {
     // «A feat. B», «A & B», «A, B» — трек засчитывается каждому исполнителю
+    val hasLyrics: Boolean get() = lyrics.isNotBlank()
     val artists: List<String> get() = artist.split(Regex("\\s*(,|&| feat\\.? | ft\\.? )\\s*", RegexOption.IGNORE_CASE)).map { it.trim() }.filter { it.isNotEmpty() }.ifEmpty { listOf(artist) }
 }
 
@@ -95,10 +96,12 @@ object Auth {
     private const val API_KEY = "AIzaSyCgBtQNo-cebuAoJ7u9vkOGHHpHI0DxSWQ"
     const val DB = "https://sonora-ab012-default-rtdb.firebaseio.com"
 
-    class Session(val uid: String, val email: String, var name: String, var idToken: String, var refreshToken: String, var expiresAt: Long)
+    class Session(val uid: String, val email: String, var name: String, var idToken: String, var refreshToken: String, var expiresAt: Long,
+                  var photo: String = "", var bio: String = "", var color: String = "")
 
     var current by mutableStateOf<Session?>(null)
         private set
+    var rev by mutableIntStateOf(0)        // имя/фото/описание профиля изменились
     private lateinit var prefs: SharedPreferences
 
     fun init(ctx: Context) {
@@ -106,7 +109,8 @@ object Auth {
         val raw = prefs.getString("session", null) ?: return
         try {
             val j = JSONObject(raw)
-            current = Session(j.getString("uid"), j.optString("email"), j.optString("name"), j.optString("idToken"), j.optString("refreshToken"), j.optLong("expiresAt"))
+            current = Session(j.getString("uid"), j.optString("email"), j.optString("name"), j.optString("idToken"), j.optString("refreshToken"), j.optLong("expiresAt"),
+                j.optString("photo"), j.optString("bio"), j.optString("color"))
         } catch (_: Exception) { }
     }
 
@@ -114,7 +118,8 @@ object Auth {
         val s = current
         if (s == null) { prefs.edit().remove("session").apply(); return }
         prefs.edit().putString("session", JSONObject().put("uid", s.uid).put("email", s.email).put("name", s.name)
-            .put("idToken", s.idToken).put("refreshToken", s.refreshToken).put("expiresAt", s.expiresAt).toString()).apply()
+            .put("idToken", s.idToken).put("refreshToken", s.refreshToken).put("expiresAt", s.expiresAt)
+            .put("photo", s.photo).put("bio", s.bio).put("color", s.color).toString()).apply()
     }
 
     private fun itk(m: String) = "https://identitytoolkit.googleapis.com/v1/accounts:$m?key=$API_KEY"
@@ -152,15 +157,39 @@ object Auth {
         return Session(d.getString("localId"), d.optString("email"), d.str("displayName") ?: "", d.getString("idToken"), d.getString("refreshToken"), now() + (exp * 1000).toLong())
     }
 
+    // профиль общий с ПК: имя, фото, описание и цвет
     private fun loadProfileName(s: Session) {
         try {
             val r = Net.send("GET", "$DB/users/${enc(s.uid)}/profile.json?auth=${enc(s.idToken)}")
             if (r.ok && r.body.trim().startsWith("{")) {
-                val n = JSONObject(r.body).str("name")
+                val d = JSONObject(r.body)
+                val n = d.str("name")
                 if (!n.isNullOrBlank()) s.name = n
+                d.str("photo")?.let { if (it.isNotBlank()) s.photo = it }
+                d.str("bio")?.let { s.bio = it }
+                d.str("color")?.let { s.color = it }
             }
         } catch (_: Exception) { }
         if (s.name.isBlank()) s.name = s.email.substringBefore('@')
+    }
+
+    suspend fun loadProfile() {
+        val s = current ?: return
+        try { token() } catch (_: Exception) { return }
+        withContext(Dispatchers.IO) { loadProfileName(s) }
+        persist(); rev++
+    }
+
+    suspend fun saveProfile(name: String, bio: String, color: String): Boolean {
+        val s = current ?: return false
+        val tok = try { token() } catch (_: Exception) { null } ?: return false
+        val body = JSONObject().put("name", name.trim()).put("bio", bio.trim()).put("color", color).put("email", s.email)
+            .put("updatedAt", now()).put("client", "SONORA Android").toString()
+        val r = try { withContext(Dispatchers.IO) { Net.send("PATCH", "$DB/users/${enc(s.uid)}/profile.json?auth=${enc(tok)}", body) } } catch (_: Exception) { null }
+        if (r == null || !r.ok) return false
+        s.name = name.trim().ifEmpty { s.name }; s.bio = bio.trim(); s.color = color
+        persist(); rev++
+        return true
     }
 
     suspend fun signIn(email: String, pass: String) {
@@ -315,7 +344,7 @@ object Catalog {
 // ---------------- Обложки и цвет под обложку ----------------
 object Covers {
     private val cache = object : LruCache<String, ImageBitmap>(48) {}
-    private val colors = HashMap<String, Color>()
+    private val colors = HashMap<String, List<Color>>()
     private val bytesCache = object : LruCache<String, ByteArray>(8) {}
 
     fun bytes(t: Track): ByteArray? {
@@ -340,31 +369,84 @@ object Covers {
             var sample = 1
             while (opts.outWidth / (sample * 2) >= 600) sample *= 2
             val bmp = BitmapFactory.decodeByteArray(b, 0, b.size, BitmapFactory.Options().apply { inSampleSize = sample }) ?: return@withContext null
-            synchronized(colors) { colors[t.id] = dominant(bmp) }
+            val pal = dominant(bmp)
+            synchronized(colors) { colors[t.id] = pal }
+            rev++
             bmp.asImageBitmap().also { cache.put(t.id, it) }
         }
     }
 
-    fun color(t: Track?): Color? = if (t == null) null else synchronized(colors) { colors[t.id] }
+    fun color(t: Track?): Color? = palette(t)?.get(0)
+    fun palette(t: Track?): List<Color>? = if (t == null) null else synchronized(colors) { colors[t.id] }
+    var rev by mutableIntStateOf(0)
+        private set
 
-    // средний «насыщенный» цвет обложки, затемнённый под чёрный фон
-    private fun dominant(b: Bitmap): Color {
-        val s = Bitmap.createScaledBitmap(b, 16, 16, true)
-        var r = 0.0; var g = 0.0; var bl = 0.0; var w = 0.0
-        for (x in 0 until 16) for (y in 0 until 16) {
-            val p = s.getPixel(x, y)
-            val pr = (p shr 16 and 255) / 255.0; val pg = (p shr 8 and 255) / 255.0; val pb = (p and 255) / 255.0
-            val mx = maxOf(pr, pg, pb); val mn = minOf(pr, pg, pb)
-            val weight = 0.15 + (mx - mn) * 2 + (if (mx < 0.12) 0.0 else 0.2)
-            r += pr * weight; g += pg * weight; bl += pb * weight; w += weight
+    val Fallback = listOf(Color(0xFF3B82F6), Color(0xFF38BDF8), Color(0xFF1E3A8A))
+
+    // Палитра обложки как на ПК: основной цвет, второй оттенок и третий (12 корзин по тону)
+    private fun dominant(src: Bitmap): List<Color> {
+        val bmp = Bitmap.createScaledBitmap(src, 36, 36, true)
+        val bins = 12
+        val ws = DoubleArray(bins); val rs = DoubleArray(bins); val gs = DoubleArray(bins); val bs = DoubleArray(bins)
+        var ar = 0.0; var ag = 0.0; var ab = 0.0; var an = 0
+        for (x in 0 until 36) for (y in 0 until 36) {
+            val p = bmp.getPixel(x, y)
+            val r = p shr 16 and 255; val g = p shr 8 and 255; val b = p and 255
+            ar += r; ag += g; ab += b; an++
+            val hsl = Pal.hsl(r, g, b)
+            if (hsl[2] < .08f || hsl[2] > .94f) continue
+            val wt = (.12 + hsl[1]) * (1 - Math.abs(hsl[2] - .5) * 1.1) + .01
+            val bin = (hsl[0] / 360f * bins).toInt() % bins
+            ws[bin] += wt; rs[bin] += r * wt; gs[bin] += g * wt; bs[bin] += b * wt
         }
-        r /= w; g /= w; bl /= w
-        val hsv = FloatArray(3)
-        android.graphics.Color.RGBToHSV((r * 255).toInt(), (g * 255).toInt(), (bl * 255).toInt(), hsv)
-        hsv[1] = (hsv[1] * 1.25f).coerceAtMost(0.85f)
-        hsv[2] = hsv[2].coerceIn(0.32f, 0.55f)
-        return Color(android.graphics.Color.HSVToColor(hsv))
+        val order = (0 until bins).sortedByDescending { ws[it] }
+        val o0 = order[0]
+        fun col(i: Int) = Color((rs[i] / ws[i]).toInt(), (gs[i] / ws[i]).toInt(), (bs[i] / ws[i]).toInt())
+        fun far(i: Int) = minOf(Math.abs(i - o0), bins - Math.abs(i - o0)) >= 2
+        if (ws[o0] > 0.05) {
+            val c1 = col(o0)
+            val second = order.drop(1).firstOrNull { ws[it] > ws[o0] * .12 && far(it) }
+            val c2 = if (second != null && ws[second] > 0) col(second) else Pal.shift(c1, 28f)
+            val third = order.drop(1).firstOrNull { it != second && ws[it] > ws[o0] * .08 && far(it) }
+            val c3 = if (third != null && ws[third] > 0) col(third) else Pal.shift(c1, -24f)
+            return listOf(Pal.natural(c1), Pal.natural(c2), Pal.natural(c3))
+        }
+        if (an == 0) return Fallback
+        val g0 = Pal.natural(Color((ar / an).toInt(), (ag / an).toInt(), (ab / an).toInt()))
+        return listOf(g0, Pal.mix(g0, Color.White, .18f), Pal.mix(g0, Color.Black, .35f))
     }
+}
+
+// Цветовая математика палитры (как Palette на ПК)
+object Pal {
+    fun hsl(r: Int, g: Int, b: Int): FloatArray {
+        val R = r / 255f; val G = g / 255f; val B = b / 255f
+        val mx = maxOf(R, G, B); val mn = minOf(R, G, B)
+        val l = (mx + mn) / 2
+        if (mx == mn) return floatArrayOf(0f, 0f, l)
+        val d = mx - mn
+        val s = if (l > .5f) d / (2 - mx - mn) else d / (mx + mn)
+        var h = when (mx) { R -> (G - B) / d + (if (G < B) 6 else 0); G -> (B - R) / d + 2; else -> (R - G) / d + 4 }
+        h *= 60
+        return floatArrayOf(h, s, l)
+    }
+    fun hsl(c: Color) = hsl((c.red * 255).toInt(), (c.green * 255).toInt(), (c.blue * 255).toInt())
+    fun fromHsl(h0: Float, s: Float, l: Float, a: Float = 1f): Color {
+        val h = (((h0 % 360) + 360) % 360) / 360f
+        fun f(p: Float, q: Float, t0: Float): Float {
+            var t = t0; if (t < 0) t += 1; if (t > 1) t -= 1
+            return when { t < 1f / 6 -> p + (q - p) * 6 * t; t < .5f -> q; t < 2f / 3 -> p + (q - p) * (2f / 3 - t) * 6; else -> p }
+        }
+        if (s == 0f) return Color(l, l, l, a)
+        val q = if (l < .5f) l * (1 + s) else l + s - l * s
+        val p = 2 * l - q
+        return Color(f(p, q, h + 1f / 3).coerceIn(0f, 1f), f(p, q, h).coerceIn(0f, 1f), f(p, q, h - 1f / 3).coerceIn(0f, 1f), a)
+    }
+    fun natural(c: Color): Color { val x = hsl(c); return fromHsl(x[0], minOf(.9f, x[1] * 1.08f), x[2].coerceIn(.32f, .64f)) }
+    fun surface(c: Color, l: Float): Color { val x = hsl(c); return fromHsl(x[0], minOf(.78f, x[1] * 1.05f), l) }
+    fun light(c: Color): Color { val x = hsl(c); return fromHsl(x[0], x[1].coerceIn(.45f, .9f), .72f) }
+    fun shift(c: Color, deg: Float): Color { val x = hsl(c); return fromHsl(x[0] + deg, x[1], x[2]) }
+    fun mix(a: Color, b: Color, k: Float) = Color(a.red + (b.red - a.red) * k, a.green + (b.green - a.green) * k, a.blue + (b.blue - a.blue) * k, 1f)
 }
 
 // ---------------- Медиатека (лайки, плейлисты, история) + синхронизация с ПК ----------------
@@ -421,6 +503,7 @@ object Lib {
         if (push) Cloud.schedule()
     }
 
+    fun touch() = changed()
     fun isFav(id: String) = fav.contains(id)
     fun toggleFav(id: String) { if (!fav.remove(id)) fav.add(0, id); changed() }
     fun setFavAll(ids: List<String>, on: Boolean): Int {
